@@ -191,6 +191,29 @@ tr:hover td{background:#1a1f26}
   .tag{background:#ddd!important;color:#000!important}
   .print-date{display:block!important}
 }
+
+/* === EXTRACT MODAL === */
+#extract-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px}
+#extract-overlay.hidden{display:none}
+.extract-box{background:#1a1f26;border:1px solid #2a2f36;border-radius:12px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.extract-title{font-size:14px;font-weight:800;color:#38bdf8}
+.extract-sub{font-size:10px;color:#888;line-height:1.5}
+.extract-label{font-size:9px;color:#0F6E56;font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.extract-key-row{display:flex;gap:6px;align-items:center}
+.extract-key-input{flex:1;background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:7px 10px;font-size:10px;font-family:monospace;letter-spacing:1px}
+.extract-key-input:focus{outline:none;border-color:#38bdf8}
+.extract-textarea{width:100%;background:#242b32;color:#ccc;border:1px solid #2a2f36;border-radius:4px;padding:10px;font-size:10px;font-family:system-ui;resize:vertical;box-sizing:border-box;min-height:140px;line-height:1.5}
+.extract-textarea:focus{outline:none;border-color:#38bdf8}
+.extract-btn{background:#38bdf8;color:#0f1419;border:none;border-radius:6px;padding:9px 16px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.extract-btn:disabled{opacity:0.4;cursor:not-allowed}
+.extract-cancel{background:#242b32;color:#888;border:none;border-radius:6px;padding:9px 14px;font-size:11px;cursor:pointer}
+.extract-results{display:none;flex-direction:column;gap:8px}
+.extract-result-item{background:#242b32;border-radius:6px;padding:10px 12px;font-size:10px;color:#ccc;border-left:3px solid #0F6E56}
+.extract-result-name{font-weight:700;color:#fff;font-size:11px;margin-bottom:4px}
+.extract-result-meta{color:#888;font-size:9px}
+.extract-match{border-left-color:#38bdf8}
+.extract-new{border-left-color:#0F6E56}
+.extract-err{color:#ef4444;font-size:10px;background:#1a0a0a;border-radius:4px;padding:8px 10px}
 </style>
 </head>
 <body>
@@ -224,6 +247,7 @@ tr:hover td{background:#1a1f26}
   <button class="tab-btn active" data-tab="overview" onclick="showTab('overview',this)">📊 Overview</button>
   <button class="tab-btn" data-tab="projects" onclick="showTab('projects',this)">📋 Details</button>
   <button class="tab-btn" data-tab="table" onclick="showTab('table',this)">🗂️ Summary</button>
+  <button class="tab-btn" id="tab-btn-reports" data-tab="reports" onclick="showTab('reports',this)" style="display:none">📁 Reports</button>
   <button class="tab-btn" id="tab-btn-history" data-tab="history" onclick="showTab('history',this)" style="display:none">📜 History</button>
 </div>
 
@@ -258,6 +282,7 @@ tr:hover td{background:#1a1f26}
       <span style="font-size:9px;color:#888">Date:</span>
       <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
+    <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
@@ -420,6 +445,16 @@ tr:hover td{background:#1a1f26}
   </table>
 </div>
 
+<!-- REPORTS REPOSITORY -->
+<div id="reports" class="tab">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Board Meeting Reports</div>
+    <button class="upload-btn" id="report-upload-label-btn" style="display:none" onclick="document.getElementById('report-file-input').click()">⬆ Add Report</button>
+    <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleReportAdd(this)">
+  </div>
+  <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
+</div>
+
 <!-- HISTORY -->
 <div id="history" class="tab">
   <div style="font-size:10px;color:#555;margin-bottom:8px">Newest first · all users · all projects</div>
@@ -428,6 +463,47 @@ tr:hover td{background:#1a1f26}
 
 </div></div>
 <div id="loading-bar"></div>
+
+<!-- EXTRACT MODAL -->
+<div id="extract-overlay" class="hidden">
+  <div class="extract-box">
+    <div class="extract-title">🤖 Extract Projects from Board Report</div>
+    <div class="extract-sub">Paste the text from your board meeting minutes or report. Groq AI (free) will identify projects, status, owners, revenue, and next steps — then update your pipeline.</div>
+
+    <div>
+      <div class="extract-label">Groq API Key</div>
+      <div class="extract-key-row">
+        <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
+        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save Key</button>
+      </div>
+      <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
+    </div>
+
+    <div>
+      <div class="extract-label">Board Report Text</div>
+      <textarea class="extract-textarea" id="extract-text" placeholder="Paste your board meeting report here…&#10;&#10;e.g.:&#10;La India Nicaragua — In Progress. $4.5M project. Owner: Dave. Fabrication ongoing, awaiting financing.&#10;APEX Mining — Bid submitted. ₱60k. Howlin/Dave. Evaluation phase."></textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="extract-btn" id="extract-go-btn" onclick="runExtract()">⚡ Extract with Groq</button>
+      <button class="extract-cancel" onclick="closeExtractModal()">Cancel</button>
+      <span id="extract-status" style="font-size:9px;color:#888"></span>
+    </div>
+
+    <div id="extract-err"></div>
+
+    <div id="extract-results" class="extract-results">
+      <div style="font-size:11px;font-weight:700;color:#0F6E56;border-top:1px solid #2a2f36;padding-top:10px">
+        📋 Extracted Projects — Review before saving
+      </div>
+      <div id="extract-items-list"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="extract-btn" onclick="applyExtracted()" style="background:#0F6E56">✅ Apply to Pipeline</button>
+        <button class="extract-cancel" onclick="resetExtract()">Try Again</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── DEFAULT DATA ───────────────────────────────────────
@@ -479,7 +555,10 @@ function ppCheck(){
     document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';
     const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;
     document.getElementById('pp-licensee').appendChild(rb);
-    if(obj.role==='admin') document.getElementById('tab-btn-history').style.display='';
+    if(obj.role==='admin'){
+      document.getElementById('tab-btn-history').style.display='';
+      document.getElementById('tab-btn-reports').style.display='';
+    }
     return true;
   }
   document.getElementById('lock-overlay').classList.remove('hidden');
@@ -520,6 +599,7 @@ async function initData(){
   rebuildDOM();refreshAll();buildFilterOwners();
   if(wasOpen!==null&&wasOpen<data.length) detail(wasOpen);
   await loadHistory();
+  if(isAdmin()) loadReports();
 }
 async function saveProjects(){await sb.from('pp_data').upsert({key:'projects',value:data});}
 async function saveMeta(){await sb.from('pp_data').upsert({key:'meta',value:_meta});}
@@ -643,6 +723,7 @@ function rebuildDOM(){
   renderProjectList();
   renderTableBody();
   document.getElementById('upload-label').style.display=canEdit()?'':'none';
+  document.getElementById('extract-btn').style.display=isAdmin()?'':'none';
   document.getElementById('meeting-date').style.display=canEdit()?'':'none';
   document.getElementById('btn-edit').style.display=isAdmin()?'':'none';
   document.getElementById('btn-del').style.display=isAdmin()?'':'none';
@@ -961,6 +1042,187 @@ function renderHistory(rows){
     const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
     return`<div class="hist-item"><span class="hist-time">${when}</span><span class="hist-who">${e.user}</span><span style="color:#555"> · </span><span class="hist-proj">${e.proj}</span><div class="hist-detail">${e.field}: <span style="color:#ef4444">${e.old_val}</span> → <span style="color:#4CAF50">${e.new_val}</span></div></div>`;
   }).join('');
+}
+
+// ── REPORTS REPOSITORY ─────────────────────────────────
+let _reports=[];
+async function loadReports(){
+  const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
+  _reports=(rows&&rows[0]?rows[0].value:[])||[];
+  renderReports();
+  document.getElementById('report-upload-label-btn').style.display=isAdmin()?'':'none';
+}
+function renderReports(){
+  const el=document.getElementById('reports-list');
+  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports uploaded yet.</div>';return;}
+  el.innerHTML=[..._reports].reverse().map((r,ri)=>{
+    const i=_reports.length-1-ri;
+    return`<div style="background:#1a1f26;border-radius:6px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-left:4px solid #0C447C">
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:#fff">${r.name}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px">${r.date} · Added by ${r.addedBy}</div>
+        ${r.notes?`<div style="font-size:9px;color:#aaa;margin-top:3px">${r.notes}</div>`:''}
+      </div>
+      ${isAdmin()?`<button onclick="deleteReport(${i})" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:4px" title="Delete">🗑</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function handleReportAdd(input){
+  if(!input.files.length||!isAdmin()) return;
+  const f=input.files[0];
+  const name=f.name;
+  const date=new Date().toISOString().slice(0,10);
+  const addedBy=localStorage.getItem('pp_licensee')||'Admin';
+  const notes=prompt(`Notes for "${name}" (optional):`,'')||'';
+  _reports.push({name,date,addedBy,notes});
+  await sb.from('pp_data').upsert({key:'reports',value:_reports});
+  // also update board bar
+  handleBoardUpload({files:[f]});
+  renderReports();
+  input.value='';
+}
+async function deleteReport(i){
+  if(!isAdmin()||!confirm('Remove this report from the repository?')) return;
+  _reports.splice(i,1);
+  await sb.from('pp_data').upsert({key:'reports',value:_reports});
+  renderReports();
+}
+
+// ── GROQ EXTRACT ───────────────────────────────────────
+let _extractedProjects=[];
+
+function openExtractModal(){
+  document.getElementById('extract-overlay').classList.remove('hidden');
+  const saved=localStorage.getItem('pp_groq_key')||'';
+  const inp=document.getElementById('groq-key-input');
+  inp.value=saved;
+  document.getElementById('groq-key-status').textContent=saved?'✓ Key saved in this browser':'No key saved yet — get one free at console.groq.com';
+  resetExtract();
+}
+function closeExtractModal(){
+  document.getElementById('extract-overlay').classList.add('hidden');
+}
+function saveGroqKey(){
+  const k=document.getElementById('groq-key-input').value.trim();
+  if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
+  localStorage.setItem('pp_groq_key',k);
+  document.getElementById('groq-key-status').textContent='✓ Key saved in this browser';
+}
+function resetExtract(){
+  _extractedProjects=[];
+  document.getElementById('extract-results').style.display='none';
+  document.getElementById('extract-err').innerHTML='';
+  document.getElementById('extract-status').textContent='';
+  document.getElementById('extract-go-btn').disabled=false;
+}
+async function runExtract(){
+  const key=document.getElementById('groq-key-input').value.trim()||localStorage.getItem('pp_groq_key')||'';
+  const text=document.getElementById('extract-text').value.trim();
+  const errEl=document.getElementById('extract-err');
+  const statusEl=document.getElementById('extract-status');
+  errEl.innerHTML='';
+  if(!key){errEl.innerHTML='<div class="extract-err">⛔ Enter your Groq API key first.</div>';return;}
+  if(!text){errEl.innerHTML='<div class="extract-err">⛔ Paste your board report text first.</div>';return;}
+  document.getElementById('extract-go-btn').disabled=true;
+  statusEl.textContent='⏳ Sending to Groq…';
+  const prompt=`You are a project data extractor for a consulting company pipeline tracker.
+
+Extract ALL projects mentioned in this board meeting report text.
+For each project return a JSON object with these exact keys:
+- "n": project name (string)
+- "s": status — must be one of: "In Progress", "Bid Submitted", "Proposal Pending", "Planning", "Waiting Feedback", "On Hold", "Completed"
+- "r": revenue/contract value as a string (e.g. "₱60k", "$4.5M", "TBD")
+- "o": owner/responsible person name (string, or "" if unknown)
+- "p": priority — must be one of: "★★★★★", "★★★★☆", "★★★☆☆", "★★☆☆☆", "★☆☆☆☆" (infer from urgency/value)
+- "notes": brief summary of key updates from the report (2-3 sentences max)
+- "done": array of completed steps mentioned (strings)
+- "current": array of current/ongoing steps (strings)
+- "next": array of next steps mentioned (strings)
+
+Return ONLY a valid JSON array of these objects. No explanation, no markdown, no code blocks. Just the raw JSON array.
+
+Board report text:
+${text}`;
+
+  try{
+    const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        messages:[{role:'user',content:prompt}],
+        temperature:0.1,
+        max_tokens:2048
+      })
+    });
+    if(!resp.ok){
+      const e=await resp.json().catch(()=>({}));
+      throw new Error(e.error?.message||'Groq returned '+resp.status);
+    }
+    const result=await resp.json();
+    const raw=result.choices[0].message.content.trim();
+    // strip any accidental markdown fences
+    const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+    const parsed=JSON.parse(clean);
+    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in the text.');
+    _extractedProjects=parsed;
+    statusEl.textContent=`✓ Found ${parsed.length} project(s)`;
+    showExtractResults(parsed);
+  }catch(e){
+    errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
+    statusEl.textContent='';
+    document.getElementById('extract-go-btn').disabled=false;
+  }
+}
+function showExtractResults(parsed){
+  const list=document.getElementById('extract-items-list');
+  list.innerHTML=parsed.map((p,i)=>{
+    const existing=data.find(d=>d.n.toLowerCase()===p.n.toLowerCase());
+    const badge=existing
+      ?`<span style="font-size:8px;background:#0c2a3a;color:#38bdf8;border-radius:3px;padding:1px 5px;margin-left:5px">UPDATE existing</span>`
+      :`<span style="font-size:8px;background:#0a2a0a;color:#4CAF50;border-radius:3px;padding:1px 5px;margin-left:5px">NEW project</span>`;
+    return`<div class="extract-result-item ${existing?'extract-match':'extract-new'}">
+      <div class="extract-result-name">${p.n}${badge}</div>
+      <div class="extract-result-meta">
+        ${p.s} · ${p.r||'TBD'} · ${p.o||'—'} · ${p.p}
+      </div>
+      ${p.notes?`<div style="color:#888;font-size:9px;margin-top:4px">${p.notes}</div>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('extract-results').style.display='flex';
+}
+async function applyExtracted(){
+  if(!_extractedProjects.length) return;
+  const user=localStorage.getItem('pp_licensee')||'Admin';
+  for(const p of _extractedProjects){
+    const existing=data.findIndex(d=>d.n.toLowerCase()===p.n.toLowerCase());
+    const id=existing>=0?data[existing].id:'p'+Date.now()+Math.random().toString(36).slice(2,6);
+    const entry={
+      id,
+      n:p.n,
+      s:p.s||'Planning',
+      r:p.r||'TBD',
+      o:p.o||'',
+      p:p.p||'★★★☆☆',
+      d:(p.done||[]).map(x=>({label:x,date:''})),
+      c:(p.current||[]).map(x=>({label:x,date:''})),
+      x:(p.next||[]).map(x=>({label:x,date:''})),
+      notes:p.notes||'',
+      deadline:''
+    };
+    if(existing>=0){
+      await logHistory(p.n,'[AI Extract]',data[existing].s,p.s);
+      data[existing]=entry;
+    }else{
+      data.push(entry);
+      if(!_meta[id]) _meta[id]={createdAt:new Date().toISOString().slice(0,10)};
+    }
+  }
+  await saveProjects();
+  await saveMeta();
+  rebuildDOM();refreshAll();buildFilterOwners();
+  closeExtractModal();
+  alert(`✅ ${_extractedProjects.length} project(s) applied to pipeline.`);
 }
 
 // ── INIT ───────────────────────────────────────────────
