@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WeightWatcher — Scale Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -259,7 +260,7 @@
     <div class="scale-icon">⚖️</div>
     <div class="header-text">
       <h1>Weight<span>Watcher</span></h1>
-      <p>SCALE MONITOR &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span></p>
+      <p>SCALE MONITOR &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span> &nbsp;<span id="sync-badge" style="display:none;font-size:0.6rem;background:rgba(52,211,153,0.25);border-radius:4px;padding:1px 5px;letter-spacing:0;">☁️ synced</span></p>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
   </div>
@@ -479,6 +480,72 @@
 <script>
 'use strict';
 
+// ── SUPABASE SYNC ─────────────────────────────────────────
+const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+function getUserKey(){return localStorage.getItem('ww_license_name')||'';}
+function showSyncBadge(){const el=document.getElementById('sync-badge');if(el)el.style.display='inline';}
+
+async function pushToCloud(dataKey,value){
+  const uk=getUserKey(); if(!uk) return;
+  try{ await sb.from('ww_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
+  catch(e){ console.warn('WW push error:',e); }
+}
+
+async function syncFromCloud(){
+  const uk=getUserKey(); if(!uk) return;
+  try{
+    const {data,error}=await sb.from('ww_data').select('*').eq('user_key',uk);
+    if(error||!data||!data.length) return;
+    const cloudR=data.find(r=>r.data_key==='readings')?.value||[];
+    const cloudP=data.find(r=>r.data_key==='profile')?.value||null;
+    // Merge readings by id — keep all unique from both local and cloud
+    const local=JSON.parse(localStorage.getItem('ww_readings')||'[]');
+    const localIds=new Set(local.map(r=>r.id));
+    const incoming=cloudR.filter(r=>!localIds.has(r.id));
+    if(incoming.length){
+      const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+      _readingsCache=merged;
+      localStorage.setItem('ww_readings',JSON.stringify(merged));
+    }
+    // Use cloud profile if local has no height set
+    if(cloudP&&!(_profileCache&&_profileCache.height)){
+      _profileCache=cloudP;
+      localStorage.setItem('ww_profile',JSON.stringify(cloudP));
+    }
+    showSyncBadge(); renderAll();
+  } catch(e){ console.warn('WW sync error:',e); }
+}
+
+function subscribeRealtime(){
+  const uk=getUserKey(); if(!uk) return;
+  sb.channel('ww-'+uk)
+    .on('postgres_changes',{event:'*',schema:'public',table:'ww_data',filter:'user_key=eq.'+uk},payload=>{
+      const d=payload.new;
+      if(!d) return;
+      if(d.data_key==='readings'){
+        const cloud=d.value||[];
+        const local=loadReadings();
+        const localIds=new Set(local.map(r=>r.id));
+        const incoming=cloud.filter(r=>!localIds.has(r.id));
+        if(incoming.length){
+          const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+          _readingsCache=merged;
+          localStorage.setItem('ww_readings',JSON.stringify(merged));
+          renderAll();
+        }
+      }
+      if(d.data_key==='profile'&&d.value){
+        _profileCache=d.value;
+        localStorage.setItem('ww_profile',JSON.stringify(d.value));
+      }
+      showSyncBadge();
+    })
+    .subscribe();
+}
+
 // ── LICENSE ───────────────────────────────────────────────
 const LICENSES = {
   '007':               'Developer',
@@ -541,6 +608,7 @@ function saveProfile() {
   if (oldUnit !== p.unit) drumsReady=false;
   _profileCache=p;
   localStorage.setItem('ww_profile',JSON.stringify(p));
+  pushToCloud('profile',p);
   document.getElementById('s-target-unit').textContent=p.unit;
   document.getElementById('unit-label-drum').textContent=p.unit;
 }
@@ -551,7 +619,7 @@ function loadReadings() {
   if (!_readingsCache) _readingsCache=JSON.parse(localStorage.getItem('ww_readings')||'[]');
   return _readingsCache;
 }
-function saveReadings(arr) { _readingsCache=arr; localStorage.setItem('ww_readings',JSON.stringify(arr)); }
+function saveReadings(arr) { _readingsCache=arr; localStorage.setItem('ww_readings',JSON.stringify(arr)); pushToCloud('readings',arr); }
 
 // ── UNIT HELPERS ──────────────────────────────────────────
 function toDisplay(kg) { const p=loadProfile(); return p.unit==='lbs' ? +(kg*2.20462).toFixed(1) : +kg.toFixed(1); }
@@ -1271,6 +1339,9 @@ function renderAll() {
   renderAll();
   checkReminder();
   setInterval(checkReminder,60000);
+  // Cloud sync
+  syncFromCloud();
+  subscribeRealtime();
 })();
 </script>
 </body>
