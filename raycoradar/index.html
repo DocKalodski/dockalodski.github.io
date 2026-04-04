@@ -502,6 +502,11 @@
   <button type="button" id="rr-clients-tab-btn" style="display:none;" onclick="switchTab('clients', this)">👥 Clients</button>
 </nav>
 
+<!-- Beta banner -->
+<div id="beta-banner" style="display:none;background:#fef9c3;border-left:4px solid #f59e0b;padding:9px 16px;font-size:0.83rem;color:#78350f;text-align:center;">
+  👋 You're on the shared beta key — ask Doc Kalodski for your own key so your data stays yours!
+</div>
+
 <!-- ════════════════════════════════════════════════
      DASHBOARD TAB
 ════════════════════════════════════════════════ -->
@@ -854,6 +859,8 @@ function checkLicense() {
   if (name) {
     document.getElementById('lock-overlay').classList.add('hidden');
     _applyLicensedTo(name);
+    const bb=document.getElementById('beta-banner');
+    if(bb) bb.style.display = (key==='RR-BETA-APR2026') ? '' : 'none';
     return true;
   }
   localStorage.removeItem('rr_license_key');
