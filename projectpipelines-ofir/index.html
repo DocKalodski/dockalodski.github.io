@@ -181,8 +181,9 @@ tr:hover td{background:#1a1f26}
   .wrapper{height:auto!important;overflow:visible!important}
   .content{overflow:visible!important;height:auto!important}
   .tab{display:flex!important;overflow:visible!important}
-  #overview,#projects,#history{display:none!important}
-  #table{display:block!important;padding:4px!important}
+  #overview:not(.active),#projects:not(.active),#history:not(.active),#table:not(.active),#reports:not(.active){display:none!important}
+  #table.active{display:block!important;padding:4px!important}
+  #overview.active,#projects.active{display:flex!important;overflow:visible!important}
   .header{background:none!important;border-bottom:2px solid #000;padding:6px 0;flex-direction:column;text-align:center}
   .header h1{color:#000!important;font-size:13px}
   .header p{color:#555!important}
@@ -193,6 +194,10 @@ tr:hover td{background:#1a1f26}
   .tag{background:#ddd!important;color:#000!important}
   .print-date{display:block!important}
 }
+
+/* === PRINT MODAL === */
+.print-opt-btn{background:#242b32;border:1px solid #2a2f36;border-radius:8px;padding:12px 14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;width:100%;transition:background 0.15s}
+.print-opt-btn:hover{background:#0C447C;border-color:#0C447C}
 
 /* === EXTRACT MODAL === */
 #extract-overlay{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:16px}
@@ -242,7 +247,7 @@ tr:hover td{background:#1a1f26}
   <div class="header-actions" style="display:flex;gap:5px;flex-shrink:0">
     <button id="dedup-hdr-btn" class="hdr-btn" onclick="openDedupModal()" style="display:none;background:rgba(249,115,22,0.2);color:#f97316">🧹 <span id="dedup-count"></span></button>
     <button id="install-btn" class="hdr-btn" onclick="installApp()">📲</button>
-    <button class="hdr-btn" onclick="window.print()">🖨️</button>
+    <button class="hdr-btn" onclick="openPrintModal()">🖨️</button>
   </div>
 </div>
 
@@ -470,6 +475,31 @@ tr:hover td{background:#1a1f26}
 
 </div></div>
 <div id="loading-bar"></div>
+
+<!-- PRINT MODAL -->
+<div id="print-modal-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1a1f26;border:1px solid #2a2f36;border-radius:12px;padding:24px;max-width:400px;width:100%;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:14px;font-weight:800;color:#fff">🖨️ Print / Export</div>
+    <div style="font-size:10px;color:#555">Choose what to print:</div>
+    <div id="print-options" style="display:flex;flex-direction:column;gap:8px">
+      <button class="print-opt-btn" onclick="doPrint('table')">
+        <div style="font-size:1.3rem">🗂️</div>
+        <div><div style="font-weight:700">Summary Table</div><div style="font-size:9px;color:#888;margin-top:2px">All projects — status, revenue, owner, deadline, age</div></div>
+      </button>
+      <button class="print-opt-btn" onclick="doPrint('overview')">
+        <div style="font-size:1.3rem">📊</div>
+        <div><div style="font-weight:700">Overview</div><div style="font-size:9px;color:#888;margin-top:2px">Stats, top priorities, stagnant projects</div></div>
+      </button>
+      <button class="print-opt-btn" onclick="doPrint('projects')">
+        <div style="font-size:1.3rem">📋</div>
+        <div><div style="font-weight:700">Project Details</div><div style="font-size:9px;color:#888;margin-top:2px">All project cards with steps and notes</div></div>
+      </button>
+    </div>
+    <div style="text-align:right;margin-top:4px">
+      <button class="extract-cancel" onclick="closePrintModal()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- DEDUP MODAL -->
 <div id="dedup-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;padding:16px">
@@ -1135,6 +1165,35 @@ async function deleteReport(i){
   _reports.splice(i,1);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   renderReports();
+}
+
+// ── PRINT ──────────────────────────────────────────────
+let _printFromTab=null;
+function openPrintModal(){document.getElementById('print-modal-overlay').style.display='flex';}
+function closePrintModal(){document.getElementById('print-modal-overlay').style.display='none';}
+function doPrint(tab){
+  closePrintModal();
+  // remember current tab, switch to print target, print, restore
+  const activeTab=document.querySelector('.tab.active');
+  const activeBtn=document.querySelector('.tab-btn.active');
+  const targetTab=document.getElementById(tab);
+  const targetBtn=document.querySelector(`[data-tab="${tab}"]`);
+  // switch
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  targetTab.classList.add('active');
+  if(targetBtn) targetBtn.classList.add('active');
+  if(tab==='table') document.getElementById('print-date').textContent='Printed: '+new Date().toLocaleDateString('en-PH',{dateStyle:'long'});
+  setTimeout(()=>{
+    window.print();
+    // restore after print dialog closes
+    setTimeout(()=>{
+      document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+      activeTab.classList.add('active');
+      if(activeBtn) activeBtn.classList.add('active');
+    },500);
+  },100);
 }
 
 // ── DEDUPLICATION ──────────────────────────────────────
