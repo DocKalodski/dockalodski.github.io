@@ -1110,11 +1110,24 @@ function goto(i){clearFilters();const btn=document.querySelector('[data-tab="pro
 })();
 
 // ── BOARD DATES ────────────────────────────────────────
-function handleBoardUpload(input){
+async function handleBoardUpload(input){
   if(!input.files.length||!canEdit())return;
+  const file=input.files[0];
   const old=_board?_board.name:'none';
-  const b={name:input.files[0].name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
-  saveBoard(b);logHistory('(global)','Board Report',old,b.name);
+  const b={name:file.name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
+  await saveBoard(b);logHistory('(global)','Board Report',old,b.name);
+  // Also add to Reports repository so it appears in the Reports tab
+  let text='';
+  try{text=await readFileText(file);}catch(e){text='';}
+  if(text.trim()){
+    const date=new Date().toISOString().slice(0,10);
+    const addedBy=localStorage.getItem('pp_licensee')||'Admin';
+    const entry={name:file.name,date,addedBy,text};
+    const existing=_reports.findIndex(r=>r.name===file.name);
+    if(existing>=0)_reports[existing]=entry;else _reports.push(entry);
+    await sb.from('pp_data').upsert({key:'reports',value:_reports});
+    if(isAdmin())renderReports();
+  }
 }
 function handleBoardDateOverride(val){
   if(!val||!_board||!canEdit())return;
@@ -1221,7 +1234,10 @@ async function handleReportUpload(file){
   if(existing>=0) _reports[existing]=entry;
   else _reports.push(entry);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
-  handleBoardUpload({files:[file]});
+  // Sync board header (inline — avoids re-reading the file or re-saving reports)
+  const _old=_board?_board.name:'none';
+  const _b={name:file.name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
+  await saveBoard(_b);logHistory('(global)','Board Report',_old,_b.name);
   renderReports();
   document.getElementById('report-file-input').value='';
   alert(`✅ "${file.name}" added to repository. Use 🤖 Extract Projects to update the pipeline.`);
