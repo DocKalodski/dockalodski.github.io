@@ -99,7 +99,7 @@ tr:active{background:#1a1f26}
 <button class="tab-btn active" onclick="show('overview')">📊 Overview</button>
 <button class="tab-btn" onclick="show('projects')">📋 Projects</button>
 <button class="tab-btn" onclick="show('table')">🗂️ Table</button>
-<button class="tab-btn" onclick="show('history')">📜 History</button>
+<button id="tab-btn-history" class="tab-btn" onclick="show('history')" style="display:none">📜 History</button>
 </div>
 <div class="content">
 
@@ -244,7 +244,7 @@ function getRole(){const k=localStorage.getItem('pp_license');const m=k?ppMatch(
 function isAdmin(){return getRole()==='admin';}
 function canUpload(){return getRole()==='admin'||getRole()==='uploader';}
 function ppActivate(){const raw=document.getElementById('lock-input').value;const obj=ppMatch(raw);const err=document.getElementById('lock-err');const inp=document.getElementById('lock-input');if(!obj){inp.classList.add('err');err.textContent='⛔ Invalid key — contact Doc Kalodski.';return;}localStorage.setItem('pp_license',raw.trim().toUpperCase());localStorage.setItem('pp_licensee',obj.name);localStorage.setItem('pp_role',obj.role);location.reload();}
-function ppCheck(){const k=localStorage.getItem('pp_license');const obj=k?ppMatch(k):null;if(obj){document.getElementById('lock-overlay').classList.add('hidden');document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;document.getElementById('pp-licensee').appendChild(rb);return true;}document.getElementById('lock-overlay').classList.remove('hidden');return false;}
+function ppCheck(){const k=localStorage.getItem('pp_license');const obj=k?ppMatch(k):null;if(obj){document.getElementById('lock-overlay').classList.add('hidden');document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;document.getElementById('pp-licensee').appendChild(rb);if(obj.role==='admin'){const hb=document.getElementById('tab-btn-history');if(hb)hb.style.display='';}return true;}document.getElementById('lock-overlay').classList.remove('hidden');return false;}
 if(!ppCheck())throw new Error('not licensed');
 
 // ── SUPABASE DATA LAYER ────────────────────────────────
