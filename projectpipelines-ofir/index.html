@@ -9,6 +9,8 @@
 <meta name="theme-color" content="#0C447C">
 <title>ProjectPipelines for OFIR Consulting Corporation</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
 /* === BASE === */
 body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}
@@ -468,28 +470,30 @@ tr:hover td{background:#1a1f26}
 <div id="extract-overlay" class="hidden">
   <div class="extract-box">
     <div class="extract-title">🤖 Extract Projects from Board Report</div>
-    <div class="extract-sub">Paste the text from your board meeting minutes or report. Groq AI (free) will identify projects, status, owners, revenue, and next steps — then update your pipeline.</div>
 
+    <!-- Key setup — shown only once -->
     <div id="groq-key-section" style="display:none">
-      <div class="extract-label">Groq API Key <span style="color:#555;font-weight:400;text-transform:none">(one-time setup · <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">get free key</a>)</span></div>
-      <div class="extract-key-row">
+      <div class="extract-sub">One-time setup: enter your free Groq API key. <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">Get key here</a> (free, takes 1 min).</div>
+      <div class="extract-key-row" style="margin-top:8px">
         <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
         <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Continue</button>
       </div>
       <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
     </div>
 
-    <div>
-      <div class="extract-label">Board Report Text</div>
-      <textarea class="extract-textarea" id="extract-text" placeholder="Paste your board meeting report here…&#10;&#10;e.g.:&#10;La India Nicaragua — In Progress. $4.5M project. Owner: Dave. Fabrication ongoing, awaiting financing.&#10;APEX Mining — Bid submitted. ₱60k. Howlin/Dave. Evaluation phase."></textarea>
+    <!-- Drop zone — shown when key exists -->
+    <div id="extract-dropzone" style="display:none;border:2px dashed #2a2f36;border-radius:8px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s"
+      onclick="document.getElementById('extract-file-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#38bdf8'"
+      ondragleave="this.style.borderColor='#2a2f36'"
+      ondrop="event.preventDefault();this.style.borderColor='#2a2f36';handleExtractFile(event.dataTransfer.files[0])">
+      <div style="font-size:2rem;margin-bottom:8px">📄</div>
+      <div style="font-size:12px;font-weight:700;color:#ccc">Drop your board report here</div>
+      <div style="font-size:10px;color:#555;margin-top:4px">or click to browse · PDF, Word, TXT</div>
+      <input type="file" id="extract-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleExtractFile(this.files[0])">
     </div>
 
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <button class="extract-btn" id="extract-go-btn" onclick="runExtract()">⚡ Extract with Groq</button>
-      <button class="extract-cancel" onclick="closeExtractModal()">Cancel</button>
-      <span id="extract-status" style="font-size:9px;color:#888"></span>
-    </div>
-
+    <div id="extract-status" style="font-size:10px;color:#38bdf8;text-align:center;display:none;padding:12px"></div>
     <div id="extract-err"></div>
 
     <div id="extract-results" class="extract-results">
@@ -499,8 +503,12 @@ tr:hover td{background:#1a1f26}
       <div id="extract-items-list"></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="extract-btn" onclick="applyExtracted()" style="background:#0F6E56">✅ Apply to Pipeline</button>
-        <button class="extract-cancel" onclick="resetExtract()">Try Again</button>
+        <button class="extract-cancel" onclick="resetExtract()">Try Another File</button>
       </div>
+    </div>
+
+    <div style="text-align:right">
+      <button class="extract-cancel" onclick="closeExtractModal()">Close</button>
     </div>
   </div>
 </div>
@@ -1094,10 +1102,9 @@ let _extractedProjects=[];
 
 function openExtractModal(){
   document.getElementById('extract-overlay').classList.remove('hidden');
-  // show key section only if no key saved yet
   const hasKey=!!groqKey();
   document.getElementById('groq-key-section').style.display=hasKey?'none':'block';
-  document.getElementById('extract-go-btn').style.display=hasKey?'':'none';
+  document.getElementById('extract-dropzone').style.display=hasKey?'block':'none';
   resetExtract();
 }
 function saveGroqKey(){
@@ -1105,7 +1112,7 @@ function saveGroqKey(){
   if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
   localStorage.setItem('pp_groq_key',k);
   document.getElementById('groq-key-section').style.display='none';
-  document.getElementById('extract-go-btn').style.display='';
+  document.getElementById('extract-dropzone').style.display='block';
 }
 function closeExtractModal(){
   document.getElementById('extract-overlay').classList.add('hidden');
@@ -1114,68 +1121,94 @@ function resetExtract(){
   _extractedProjects=[];
   document.getElementById('extract-results').style.display='none';
   document.getElementById('extract-err').innerHTML='';
-  document.getElementById('extract-status').textContent='';
-  const btn=document.getElementById('extract-go-btn');
-  btn.disabled=false;
-  if(groqKey()) btn.style.display='';
+  const st=document.getElementById('extract-status');
+  st.textContent='';st.style.display='none';
+  if(groqKey()) document.getElementById('extract-dropzone').style.display='block';
 }
-async function runExtract(){
-  const key=groqKey();
-  const text=document.getElementById('extract-text').value.trim();
+async function readFileText(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='txt'){
+    return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(file);});
+  }
+  if(ext==='pdf'){
+    if(typeof pdfjsLib==='undefined') throw new Error('PDF reader not loaded yet — try again in a moment.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let text='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      text+=content.items.map(s=>s.str).join(' ')+'\n';
+    }
+    return text;
+  }
+  if(ext==='docx'||ext==='doc'){
+    if(typeof mammoth==='undefined') throw new Error('Word reader not loaded yet — try again in a moment.');
+    const buf=await file.arrayBuffer();
+    const result=await mammoth.extractRawText({arrayBuffer:buf});
+    return result.value;
+  }
+  throw new Error('Unsupported file type. Use PDF, Word (.docx), or .txt');
+}
+async function handleExtractFile(file){
+  if(!file) return;
   const errEl=document.getElementById('extract-err');
   const statusEl=document.getElementById('extract-status');
   errEl.innerHTML='';
-  if(!key){errEl.innerHTML='<div class="extract-err">⛔ Enter your Groq API key first.</div>';return;}
-  if(!text){errEl.innerHTML='<div class="extract-err">⛔ Paste your board report text first.</div>';return;}
-  document.getElementById('extract-go-btn').disabled=true;
-  statusEl.textContent='⏳ Sending to Groq…';
-  const prompt=`You are a project data extractor for a consulting company pipeline tracker.
+  statusEl.style.display='block';
+  statusEl.textContent='📄 Reading file…';
+  document.getElementById('extract-dropzone').style.display='none';
+  let text='';
+  try{
+    text=await readFileText(file);
+    if(!text.trim()) throw new Error('Could not extract text from this file. Try a different format.');
+  }catch(e){
+    errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
+    statusEl.style.display='none';
+    document.getElementById('extract-dropzone').style.display='block';
+    return;
+  }
+  statusEl.textContent='⚡ Sending to Groq AI…';
+  const key=groqKey();
+  if(!key){errEl.innerHTML='<div class="extract-err">⛔ No Groq key found. Reload and enter your key.</div>';statusEl.style.display='none';return;}
+  const prompt=`You are a project data extractor for OFIR Consulting Corporation's project pipeline tracker.
 
-Extract ALL projects mentioned in this board meeting report text.
+Extract ALL projects mentioned in this board meeting report.
 For each project return a JSON object with these exact keys:
 - "n": project name (string)
-- "s": status — must be one of: "In Progress", "Bid Submitted", "Proposal Pending", "Planning", "Waiting Feedback", "On Hold", "Completed"
-- "r": revenue/contract value as a string (e.g. "₱60k", "$4.5M", "TBD")
-- "o": owner/responsible person name (string, or "" if unknown)
-- "p": priority — must be one of: "★★★★★", "★★★★☆", "★★★☆☆", "★★☆☆☆", "★☆☆☆☆" (infer from urgency/value)
-- "notes": brief summary of key updates from the report (2-3 sentences max)
-- "done": array of completed steps mentioned (strings)
-- "current": array of current/ongoing steps (strings)
-- "next": array of next steps mentioned (strings)
+- "s": status — one of: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
+- "r": revenue/contract value as string (e.g. "₱60k","$4.5M","TBD")
+- "o": owner/responsible person (string, "" if unknown)
+- "p": priority — one of: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆" (infer from urgency/value)
+- "notes": 2-3 sentence summary of key updates
+- "done": array of completed steps (strings)
+- "current": array of ongoing steps (strings)
+- "next": array of next steps (strings)
 
-Return ONLY a valid JSON array of these objects. No explanation, no markdown, no code blocks. Just the raw JSON array.
+Return ONLY a valid JSON array. No explanation, no markdown, no code blocks.
 
-Board report text:
-${text}`;
-
+Report:
+${text.slice(0,12000)}`;
   try{
     const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
       headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'llama-3.3-70b-versatile',
-        messages:[{role:'user',content:prompt}],
-        temperature:0.1,
-        max_tokens:2048
-      })
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],temperature:0.1,max_tokens:2048})
     });
-    if(!resp.ok){
-      const e=await resp.json().catch(()=>({}));
-      throw new Error(e.error?.message||'Groq returned '+resp.status);
-    }
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Groq error '+resp.status);}
     const result=await resp.json();
     const raw=result.choices[0].message.content.trim();
-    // strip any accidental markdown fences
     const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
     const parsed=JSON.parse(clean);
-    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in the text.');
+    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in this document.');
     _extractedProjects=parsed;
-    statusEl.textContent=`✓ Found ${parsed.length} project(s)`;
+    statusEl.textContent=`✓ Found ${parsed.length} project(s) — review below`;
     showExtractResults(parsed);
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
-    statusEl.textContent='';
-    document.getElementById('extract-go-btn').disabled=false;
+    statusEl.style.display='none';
+    document.getElementById('extract-dropzone').style.display='block';
   }
 }
 function showExtractResults(parsed){
