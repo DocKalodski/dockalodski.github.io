@@ -470,11 +470,11 @@ tr:hover td{background:#1a1f26}
     <div class="extract-title">🤖 Extract Projects from Board Report</div>
     <div class="extract-sub">Paste the text from your board meeting minutes or report. Groq AI (free) will identify projects, status, owners, revenue, and next steps — then update your pipeline.</div>
 
-    <div>
-      <div class="extract-label">Groq API Key</div>
+    <div id="groq-key-section" style="display:none">
+      <div class="extract-label">Groq API Key <span style="color:#555;font-weight:400;text-transform:none">(one-time setup · <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">get free key</a>)</span></div>
       <div class="extract-key-row">
         <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
-        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save Key</button>
+        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Continue</button>
       </div>
       <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
     </div>
@@ -1089,34 +1089,38 @@ async function deleteReport(i){
 }
 
 // ── GROQ EXTRACT ───────────────────────────────────────
+function groqKey(){return localStorage.getItem('pp_groq_key')||'';}
 let _extractedProjects=[];
 
 function openExtractModal(){
   document.getElementById('extract-overlay').classList.remove('hidden');
-  const saved=localStorage.getItem('pp_groq_key')||'';
-  const inp=document.getElementById('groq-key-input');
-  inp.value=saved;
-  document.getElementById('groq-key-status').textContent=saved?'✓ Key saved in this browser':'No key saved yet — get one free at console.groq.com';
+  // show key section only if no key saved yet
+  const hasKey=!!groqKey();
+  document.getElementById('groq-key-section').style.display=hasKey?'none':'block';
+  document.getElementById('extract-go-btn').style.display=hasKey?'':'none';
   resetExtract();
-}
-function closeExtractModal(){
-  document.getElementById('extract-overlay').classList.add('hidden');
 }
 function saveGroqKey(){
   const k=document.getElementById('groq-key-input').value.trim();
   if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
   localStorage.setItem('pp_groq_key',k);
-  document.getElementById('groq-key-status').textContent='✓ Key saved in this browser';
+  document.getElementById('groq-key-section').style.display='none';
+  document.getElementById('extract-go-btn').style.display='';
+}
+function closeExtractModal(){
+  document.getElementById('extract-overlay').classList.add('hidden');
 }
 function resetExtract(){
   _extractedProjects=[];
   document.getElementById('extract-results').style.display='none';
   document.getElementById('extract-err').innerHTML='';
   document.getElementById('extract-status').textContent='';
-  document.getElementById('extract-go-btn').disabled=false;
+  const btn=document.getElementById('extract-go-btn');
+  btn.disabled=false;
+  if(groqKey()) btn.style.display='';
 }
 async function runExtract(){
-  const key=document.getElementById('groq-key-input').value.trim()||localStorage.getItem('pp_groq_key')||'';
+  const key=groqKey();
   const text=document.getElementById('extract-text').value.trim();
   const errEl=document.getElementById('extract-err');
   const statusEl=document.getElementById('extract-status');
