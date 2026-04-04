@@ -501,6 +501,18 @@ tr:hover td{background:#1a1f26}
       </div>
     </div>
 
+    <div id="extract-text-section" style="display:none;flex-direction:column;gap:10px">
+      <div class="extract-sub">Paste the text from your board meeting minutes or report. Groq AI (free) will identify projects, status, owners, revenue, and next steps — then update your pipeline.</div>
+      <div>
+        <div class="extract-label">Board Report Text</div>
+        <textarea class="extract-textarea" id="extract-report-textarea" placeholder="Paste your board meeting report here...&#10;&#10;e.g.&#10;La India Nicaragua — In Progress. $4.5M project. Owner: Dave. Fabrication ongoing, awaiting financing.&#10;APEX Mining — Bid submitted. ₱60k. Howlin/Dave. Evaluation phase."></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="extract-btn" onclick="runExtractText()">⚡ Extract with Groq</button>
+        <button class="extract-cancel" onclick="closeExtractModal()">Cancel</button>
+      </div>
+    </div>
+
     <div id="extract-groq-key-section" style="display:none">
       <div class="extract-sub">One-time setup: enter your free Groq API key. <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">Get key here</a>.</div>
       <div class="extract-key-row" style="margin-top:8px">
@@ -1148,12 +1160,9 @@ function openExtractModal(){
     document.getElementById('extract-groq-key-section').style.display='block';
     return;
   }
-  // Show report picker
-  if(!_reports.length){
-    document.getElementById('extract-no-reports').style.display='block';
-  }else{
-    showReportPicker();
-  }
+  const ts=document.getElementById('extract-text-section');
+  ts.style.display='flex';
+  document.getElementById('extract-report-textarea').value='';
 }
 function showReportPicker(){
   const picker=document.getElementById('extract-report-picker');
@@ -1174,8 +1183,9 @@ function saveGroqKey(){
   if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
   localStorage.setItem('pp_groq_key',k);
   document.getElementById('extract-groq-key-section').style.display='none';
-  if(!_reports.length) document.getElementById('extract-no-reports').style.display='block';
-  else showReportPicker();
+  const ts=document.getElementById('extract-text-section');
+  ts.style.display='flex';
+  document.getElementById('extract-report-textarea').value='';
 }
 function closeExtractModal(){
   document.getElementById('extract-overlay').classList.add('hidden');
@@ -1187,6 +1197,7 @@ function resetExtract(){
   document.getElementById('extract-groq-key-section').style.display='none';
   document.getElementById('extract-no-reports').style.display='none';
   document.getElementById('extract-report-picker').style.display='none';
+  document.getElementById('extract-text-section').style.display='none';
   const st=document.getElementById('extract-status');
   st.textContent='';st.style.display='none';
 }
@@ -1239,6 +1250,54 @@ ${report.text.slice(0,12000)}`;
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
     showReportPicker();
+  }
+}
+async function runExtractText(){
+  const text=document.getElementById('extract-report-textarea').value.trim();
+  if(!text){document.getElementById('extract-err').innerHTML='<div class="extract-err">⛔ Please paste your board report text first.</div>';return;}
+  document.getElementById('extract-text-section').style.display='none';
+  const statusEl=document.getElementById('extract-status');
+  const errEl=document.getElementById('extract-err');
+  statusEl.style.display='block';
+  statusEl.textContent='⚡ Sending to Groq AI…';
+  const key=groqKey();
+  const prompt=`You are a project data extractor for OFIR Consulting Corporation's project pipeline tracker.
+
+Extract ALL projects mentioned in this board meeting report.
+For each project return a JSON object with these exact keys:
+- "n": project name (string)
+- "s": status — one of: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
+- "r": revenue/contract value as string (e.g. "₱60k","$4.5M","TBD")
+- "o": owner/responsible person (string, "" if unknown)
+- "p": priority — one of: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆" (infer from urgency/value)
+- "notes": 2-3 sentence summary of key updates
+- "done": array of completed steps (strings)
+- "current": array of ongoing steps (strings)
+- "next": array of next steps (strings)
+
+Return ONLY a valid JSON array. No explanation, no markdown, no code blocks.
+
+Report:
+${text.slice(0,12000)}`;
+  try{
+    const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],temperature:0.1,max_tokens:2048})
+    });
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Groq error '+resp.status);}
+    const result=await resp.json();
+    const raw=result.choices[0].message.content.trim();
+    const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+    const parsed=JSON.parse(clean);
+    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in this text.');
+    _extractedProjects=parsed;
+    statusEl.textContent=`✓ Found ${parsed.length} project(s) — review below`;
+    showExtractResults(parsed);
+  }catch(e){
+    errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
+    statusEl.style.display='none';
+    document.getElementById('extract-text-section').style.display='flex';
   }
 }
 function showExtractResults(parsed){
