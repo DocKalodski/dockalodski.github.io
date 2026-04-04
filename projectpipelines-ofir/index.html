@@ -1164,17 +1164,20 @@ function openExtractModal(){
   ts.style.display='flex';
   document.getElementById('extract-report-textarea').value='';
 }
+let _currentExtractIdx=null;
 function showReportPicker(){
   const picker=document.getElementById('extract-report-picker');
   picker.style.display='block';
   document.getElementById('extract-report-list').innerHTML=[..._reports].reverse().map((r,ri)=>{
     const i=_reports.length-1-ri;
-    return`<div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-left:3px solid #0C447C" onclick="runExtractFromReport(${i})">
+    const done=!!r.extractedAt;
+    return`<div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-left:3px solid ${done?'#0F6E56':'#0C447C'};opacity:${done?'0.8':'1'}" onclick="runExtractFromReport(${i})">
       <div>
         <div style="font-size:11px;font-weight:700;color:#fff">📄 ${r.name}</div>
         <div style="font-size:9px;color:#888;margin-top:1px">${r.date} · ${r.addedBy}</div>
+        ${done?`<div style="font-size:8px;color:#4CAF50;margin-top:2px">✓ Extracted on ${r.extractedAt}</div>`:''}
       </div>
-      <span style="font-size:10px;color:#38bdf8;font-weight:600">Extract →</span>
+      <span style="font-size:${done?'9':'10'}px;color:${done?'#555':'#38bdf8'};font-weight:600">${done?'Re-extract':'Extract →'}</span>
     </div>`;
   }).join('');
 }
@@ -1202,6 +1205,7 @@ function resetExtract(){
   st.textContent='';st.style.display='none';
 }
 async function runExtractFromReport(i){
+  _currentExtractIdx=i;
   const report=_reports[i];
   if(!report||!report.text){
     document.getElementById('extract-err').innerHTML='<div class="extract-err">⛔ No text stored for this report. Delete it and re-upload from the Reports tab.</div>';
@@ -1353,6 +1357,11 @@ async function applyExtracted(){
   }
   await saveProjects();
   await saveMeta();
+  if(_currentExtractIdx!==null&&_reports[_currentExtractIdx]){
+    _reports[_currentExtractIdx].extractedAt=new Date().toISOString().slice(0,10);
+    await sb.from('pp_data').upsert({key:'reports',value:_reports});
+    renderReports();
+  }
   rebuildDOM();refreshAll();buildFilterOwners();
   closeExtractModal();
   alert(`✅ ${_extractedProjects.length} project(s) applied to pipeline.`);
