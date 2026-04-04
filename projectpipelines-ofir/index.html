@@ -3,29 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PP-OFIR">
+<meta name="theme-color" content="#0C447C">
 <title>ProjectPipelines for OFIR Consulting Corporation</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+/* === BASE === */
 body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}
-.header{background:linear-gradient(135deg,#0C447C,#0F6E56);padding:1rem;text-align:center}
-.header h1{margin:0;font-size:18px;line-height:1.3}
-.header p{margin:0.25rem 0 0;font-size:12px;opacity:0.9}
+.wrapper{display:flex;flex-direction:column;height:100vh}
+
+/* === HEADER === */
+.header{background:linear-gradient(135deg,#0C447C,#0F6E56);padding:0.65rem 1rem;display:flex;align-items:center;gap:8px}
+.header-text{flex:1;text-align:center}
+.header h1{margin:0;font-size:15px;font-weight:800;line-height:1.3}
+.header p{margin:0.15rem 0 0;font-size:10px;opacity:0.85}
+.hdr-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:6px;padding:5px 9px;font-size:10px;cursor:pointer;font-weight:600;white-space:nowrap}
+.hdr-btn:hover{background:rgba(255,255,255,0.25)}
+
+/* === TABS === */
 .tabs{display:flex;gap:4px;background:#1a1f26;padding:0.5rem;border-bottom:1px solid #2a2f36;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab-btn{padding:8px 10px;background:#242b32;border:none;color:#888;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.tab-btn{padding:7px 10px;background:#242b32;border:none;color:#888;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0}
 .tab-btn.active{background:#0F6E56;color:#fff}
+
+/* === FILTER BAR === */
+.filter-bar{background:#1a1f26;border-bottom:1px solid #2a2f36;padding:7px 10px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.filter-input{background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;font-family:system-ui;flex:1;min-width:90px}
+.filter-input:focus{outline:none;border-color:#0F6E56}
+.filter-sel{background:#242b32;color:#ccc;border:1px solid #2a2f36;border-radius:4px;padding:5px 5px;font-size:10px;font-family:system-ui;cursor:pointer}
+.filter-sel:focus{outline:none;border-color:#0F6E56}
+.filter-clear{background:none;border:1px solid #2a2f36;color:#888;border-radius:4px;padding:5px 7px;font-size:10px;cursor:pointer}
+.filter-clear:hover{border-color:#ef4444;color:#ef4444}
+.filter-count{font-size:9px;color:#555;white-space:nowrap}
+
+/* === CONTENT === */
 .content{display:flex;flex:1;overflow:hidden}
 .tab{display:none;width:100%;overflow-y:auto;padding:1rem;flex-direction:column}
 .tab.active{display:flex}
+
+/* === OVERVIEW WIDGETS === */
+.recent-strip{background:#1a1f26;border-radius:6px;border-left:4px solid #38bdf8;padding:9px 12px;margin-bottom:10px}
+.recent-strip-title{font-size:9px;color:#38bdf8;text-transform:uppercase;font-weight:700;margin-bottom:5px}
+.recent-row{font-size:9px;color:#888;padding:3px 0;border-bottom:1px solid #242b32;display:flex;gap:5px;flex-wrap:wrap}
+.recent-row:last-child{border-bottom:none}
+.recent-row strong{color:#ccc}
+.owner-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.owner-chip{background:#242b32;color:#888;border:1px solid #2a2f36;border-radius:12px;padding:3px 10px;font-size:9px;cursor:pointer;font-weight:600}
+.owner-chip.active{background:#0C447C;color:#fff;border-color:#0C447C}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
-.card{background:#1a1f26;padding:1rem;border-radius:6px;border-left:4px solid #0F6E56;text-align:center}
-.big{font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:0.5rem}
+.card{background:#1a1f26;padding:0.9rem;border-radius:6px;border-left:4px solid #0F6E56;text-align:center}
+.big{font-size:22px;font-weight:700;color:#0F6E56;margin-bottom:4px}
 .small{font-size:10px;color:#888;text-transform:uppercase}
+.pval{font-size:8px;color:#555;margin-top:2px}
 .box{background:#1a1f26;border-radius:6px;padding:1rem;border-left:4px solid;margin-bottom:1rem}
 .box-h{font-size:12px;font-weight:600;margin-bottom:0.75rem;color:#fff}
 .item{font-size:10px;color:#ccc;margin-bottom:0.5rem;padding:0.5rem;background:#242b32;border-radius:4px;display:flex;justify-content:space-between;cursor:pointer}
 .item strong{color:#0F6E56}
-.item-r{font-size:9px;color:#888}
+.item-r{font-size:9px;color:#888;text-align:right}
+
+/* === PROJECT CARDS === */
 .proj{background:#1a1f26;padding:0.75rem;border-radius:6px;border-left:4px solid #0C447C;margin-bottom:8px;cursor:pointer;transition:border-left-color 0.15s}
 .proj:active{background:#242b32}
 .proj.s-active{border-left-color:#0F6E56}
@@ -34,16 +72,18 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .proj.s-waiting{border-left-color:#555}
 .proj.s-done{border-left-color:#4CAF50}
 .proj.s-stag{border-left-color:#ef4444}
-.notes-view{font-size:10px;color:#888;margin-top:10px;padding-top:10px;border-top:1px solid #2a2f36;white-space:pre-wrap;line-height:1.5}
-.notes-label{color:#0F6E56;font-size:9px;text-transform:uppercase;font-weight:600;margin-bottom:4px}
-.loading-msg{text-align:center;padding:2rem;color:#555;font-size:11px}
-.proj-h{font-size:11px;font-weight:600;color:#fff;margin-bottom:0.3rem}
+.proj-h{font-size:11px;font-weight:600;color:#fff;margin-bottom:0.3rem;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .proj-m{font-size:9px;color:#888}
+.dl-ok{font-size:8px;background:#1a3a2a;color:#4CAF50;border-radius:3px;padding:1px 5px;font-weight:600}
+.dl-soon{font-size:8px;background:#3a2a00;color:#f59e0b;border-radius:3px;padding:1px 5px;font-weight:600}
+.dl-over{font-size:8px;background:#7f1d1d;color:#fca5a5;border-radius:3px;padding:1px 5px;font-weight:600}
+
+/* === DETAIL PANEL === */
 .detail{background:#1a1f26;border-radius:6px;border-left:4px solid #0F6E56;padding:1rem;margin-top:1rem;display:none}
 .detail.show{display:block}
 .detail-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;border-bottom:1px solid #2a2f36;padding-bottom:0.5rem}
 .detail-n{font-size:13px;font-weight:700;color:#0F6E56;flex:1}
-.detail-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.detail-actions{display:flex;gap:5px;align-items:center;flex-shrink:0}
 .close{background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0}
 .edit-btn{background:#0C447C;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer;font-weight:600}
 .del-btn{background:#7f1d1d;color:#fca5a5;border:none;border-radius:4px;padding:4px 8px;font-size:10px;cursor:pointer}
@@ -55,6 +95,24 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .step-i{color:#ccc;margin-bottom:0.3rem;padding-left:10px;position:relative}
 .step-i::before{content:'▸';position:absolute;left:0;color:#0F6E56;font-size:8px}
 .step-i.p::before{color:#BA7517}
+.step-date{color:#555;font-size:8px;margin-left:4px}
+.notes-view{font-size:10px;color:#888;white-space:pre-wrap;line-height:1.5}
+.notes-label{color:#0F6E56;font-size:9px;text-transform:uppercase;font-weight:600;margin-bottom:4px;margin-top:10px}
+
+/* === COMMENTS === */
+.comment-section{margin-top:12px;padding-top:10px;border-top:1px solid #2a2f36}
+.comment-title{color:#38bdf8;font-size:9px;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+.comment-item{background:#242b32;border-radius:4px;padding:7px 8px;margin-bottom:6px}
+.comment-meta{display:flex;justify-content:space-between;margin-bottom:3px}
+.comment-user{color:#0F6E56;font-weight:600;font-size:9px}
+.comment-time{color:#555;font-size:9px}
+.comment-text{color:#ccc;font-size:10px;line-height:1.4}
+.comment-input-row{display:flex;gap:6px;margin-top:8px}
+.comment-input{flex:1;background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:7px 8px;font-size:10px;font-family:system-ui;resize:none}
+.comment-input:focus{outline:none;border-color:#38bdf8}
+.comment-btn{background:#38bdf8;color:#0f1419;border:none;border-radius:4px;padding:7px 12px;font-size:10px;font-weight:700;cursor:pointer}
+
+/* === EDIT FORM === */
 .ef-row{margin-bottom:10px}
 .ef-label{color:#0F6E56;font-size:9px;text-transform:uppercase;font-weight:600;margin-bottom:4px}
 .ef-input{width:100%;background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:7px 8px;font-size:11px;box-sizing:border-box;font-family:system-ui}
@@ -64,30 +122,35 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .ef-save{background:#0F6E56;color:#fff;border:none;border-radius:4px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer}
 .ef-cancel{background:#242b32;color:#888;border:none;border-radius:4px;padding:8px 12px;font-size:11px;cursor:pointer;margin-left:6px}
 .tag-wrap{display:flex;flex-wrap:wrap;gap:5px;background:#242b32;border:1px solid #2a2f36;border-radius:4px;padding:6px 8px;min-height:34px}
-.tag-chip{background:#0C447C;color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;display:flex;align-items:center;gap:4px;cursor:default}
+.tag-chip{background:#0C447C;color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;display:flex;align-items:center;gap:4px}
 .tag-chip span{cursor:pointer;color:#94a3b8;font-size:12px;line-height:1}
 .tag-chip span:hover{color:#ef4444}
 .tag-add-row{display:flex;gap:5px;margin-top:5px}
+.tag-add-date{background:#1a1f26;color:#888;border:1px solid #2a2f36;border-radius:4px;padding:5px 6px;font-size:10px;color-scheme:dark;width:120px}
+.tag-add-date:focus{outline:none;border-color:#0F6E56}
 .tag-add-input{flex:1;background:#1a1f26;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;font-family:system-ui}
 .tag-add-input:focus{outline:none;border-color:#0F6E56}
-.tag-add-date{background:#1a1f26;color:#888;border:1px solid #2a2f36;border-radius:4px;padding:5px 6px;font-size:10px;font-family:system-ui;color-scheme:dark;width:120px}
-.tag-add-date:focus{outline:none;border-color:#0F6E56}
 .tag-add-btn{background:#0F6E56;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:700}
-.step-date{color:#555;font-size:8px;margin-left:4px}
 .add-proj-btn{background:#0C447C;color:#fff;border:none;border-radius:6px;padding:10px;font-size:11px;font-weight:600;cursor:pointer;width:100%;margin-top:4px}
+
+/* === TABLE === */
 table{width:100%;border-collapse:collapse;font-size:10px}
-th{padding:8px;text-align:left;font-weight:600;color:#0F6E56;background:#242b32;border-bottom:2px solid #2a2f36}
-td{padding:8px;border-bottom:1px solid #2a2f36;color:#ccc;cursor:pointer}
-tr:hover{background:#1a1f26}
-.tag{background:#0C447C;color:#fff;padding:2px 6px;border-radius:3px;font-size:8px;font-weight:600}
-.wrapper{display:flex;flex-direction:column;height:100vh}
+th{padding:8px 6px;text-align:left;font-weight:600;color:#0F6E56;background:#242b32;border-bottom:2px solid #2a2f36;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:#fff}
+.sort-asc::after{content:' ↑'}
+.sort-desc::after{content:' ↓'}
+td{padding:7px 6px;border-bottom:1px solid #2a2f36;color:#ccc;cursor:pointer;font-size:9px}
+tr:hover td{background:#1a1f26}
+.tag{background:#0C447C;color:#fff;padding:2px 5px;border-radius:3px;font-size:8px;font-weight:600}
+
+/* === MISC === */
 .board-bar{background:#1a1f26;border:1px solid #2a2f36;border-radius:6px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .board-bar-info{flex:1;font-size:10px;color:#ccc}
 .board-bar-info strong{color:#0F6E56;display:block;font-size:11px}
 .upload-btn{background:#242b32;color:#0F6E56;border:1px solid #0F6E56;border-radius:4px;padding:6px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap}
-.meeting-input{background:#242b32;color:#ccc;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;color-scheme:dark;width:100%}
+.meeting-input{background:#242b32;color:#ccc;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;color-scheme:dark}
 .as-of{font-size:8px;color:#0F6E56;margin-top:3px;font-style:italic}
-.stag-badge{font-size:8px;background:#7f1d1d;color:#fca5a5;border-radius:3px;padding:1px 5px;margin-left:6px}
+.stag-badge{font-size:8px;background:#7f1d1d;color:#fca5a5;border-radius:3px;padding:1px 5px;margin-left:4px}
 .hist-item{padding:8px 10px;border-bottom:1px solid #2a2f36;font-size:10px}
 .hist-who{color:#0F6E56;font-weight:600}
 .hist-proj{color:#38bdf8}
@@ -105,6 +168,32 @@ tr:hover{background:#1a1f26}
 .lock-box input.err{border-color:#ef4444}
 .lock-err{font-size:11px;color:#ef4444;min-height:16px;margin-bottom:10px}
 .lock-btn{width:100%;padding:11px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer}
+#install-btn{display:none}
+.loading-msg{text-align:center;padding:2rem;color:#555;font-size:11px}
+
+/* === PRINT === */
+.print-date{display:none;font-size:9px;color:#555;text-align:right;margin-bottom:8px}
+@media print{
+  #lock-overlay,#loading-bar,.tabs,.filter-bar,.header-actions,.board-bar,
+  .detail,.add-proj-btn,.comment-section,.edit-btn,.del-btn,.close,
+  .upload-btn,.hdr-btn,#install-btn,.recent-strip,.owner-chips,
+  .box,h3,#stat-grid{display:none!important}
+  body,html{overflow:visible!important;height:auto!important;background:#fff!important;color:#000!important}
+  .wrapper{height:auto!important;overflow:visible!important}
+  .content{overflow:visible!important;height:auto!important}
+  .tab{display:flex!important;overflow:visible!important}
+  #overview,#projects,#history{display:none!important}
+  #table{display:block!important;padding:4px!important}
+  .header{background:none!important;border-bottom:2px solid #000;padding:6px 0;flex-direction:column;text-align:center}
+  .header h1{color:#000!important;font-size:13px}
+  .header p{color:#555!important}
+  table{font-size:8px}
+  th{background:#eee!important;color:#000!important;border-bottom:1px solid #000;cursor:default}
+  td{color:#000!important;border-bottom:1px solid #eee}
+  tr:hover td{background:none!important}
+  .tag{background:#ddd!important;color:#000!important}
+  .print-date{display:block!important}
+}
 </style>
 </head>
 <body>
@@ -124,42 +213,69 @@ tr:hover{background:#1a1f26}
 
 <div class="wrapper">
 <div class="header">
-  <h1>ProjectPipelines for OFIR Consulting Corporation</h1>
-  <p>by Doc Kalodski · <span id="pp-licensee"></span> · <span onclick="ppLogout()" style="cursor:pointer;opacity:0.5;font-size:10px;text-decoration:underline">change key</span></p>
+  <div class="header-text">
+    <h1>ProjectPipelines for OFIR Consulting Corporation</h1>
+    <p>by Doc Kalodski · <span id="pp-licensee"></span> · <span onclick="ppLogout()" style="cursor:pointer;opacity:0.5;font-size:10px;text-decoration:underline">change key</span></p>
+  </div>
+  <div class="header-actions" style="display:flex;gap:5px;flex-shrink:0">
+    <button id="install-btn" class="hdr-btn" onclick="installApp()">📲</button>
+    <button class="hdr-btn" onclick="window.print()">🖨️</button>
+  </div>
 </div>
+
 <div class="tabs">
-  <button class="tab-btn active" data-tab="overview"  onclick="showTab('overview',this)">📊 Overview</button>
-  <button class="tab-btn"        data-tab="projects"  onclick="showTab('projects',this)">📋 Details</button>
-  <button class="tab-btn"        data-tab="table"     onclick="showTab('table',this)">🗂️ Summary</button>
+  <button class="tab-btn active" data-tab="overview" onclick="showTab('overview',this)">📊 Overview</button>
+  <button class="tab-btn" data-tab="projects" onclick="showTab('projects',this)">📋 Details</button>
+  <button class="tab-btn" data-tab="table" onclick="showTab('table',this)">🗂️ Summary</button>
   <button class="tab-btn" id="tab-btn-history" data-tab="history" onclick="showTab('history',this)" style="display:none">📜 History</button>
 </div>
+
+<div class="filter-bar" id="filter-bar" style="display:none">
+  <input class="filter-input" id="f-search" type="text" placeholder="🔍 Search…" oninput="applyFilters()">
+  <select class="filter-sel" id="f-status" onchange="applyFilters()">
+    <option value="">All Status</option>
+    <option>In Progress</option><option>Bid Submitted</option><option>Proposal Pending</option>
+    <option>Planning</option><option>Waiting Feedback</option><option>On Hold</option><option>Completed</option>
+  </select>
+  <select class="filter-sel" id="f-owner" onchange="applyFilters()"><option value="">All Owners</option></select>
+  <select class="filter-sel" id="f-prob" onchange="applyFilters()">
+    <option value="">All Priority</option>
+    <option value="★★★★★">★★★★★</option><option value="★★★★☆">★★★★☆</option>
+    <option value="★★★☆☆">★★★☆☆</option><option value="★★☆☆☆">★★☆☆☆</option>
+  </select>
+  <button class="filter-clear" onclick="clearFilters()">✕</button>
+  <span class="filter-count" id="f-count"></span>
+</div>
+
 <div class="content">
 
 <!-- OVERVIEW -->
 <div id="overview" class="tab active">
+  <div id="recent-strip" style="display:none"></div>
   <div class="board-bar">
     <div class="board-bar-info">
       <strong>📋 Board Report</strong>
       <span id="board-info">No report uploaded yet</span>
     </div>
-    <div id="board-date-wrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
-      <span style="font-size:9px;color:#888">Report date:</span>
-      <input type="date" id="board-date-override" class="meeting-input" style="width:130px" onchange="handleBoardDateOverride(this.value)">
+    <div id="board-date-wrap" style="display:none;align-items:center;gap:5px">
+      <span style="font-size:9px;color:#888">Date:</span>
+      <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
   </div>
+  <div id="owner-chips" class="owner-chips" style="display:none"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
   <div id="priority-boxes"></div>
   <div class="box" style="border-left-color:#ef4444">
     <div class="box-h">🚨 NOT MOVING</div>
-    <div id="stagnant-list"><div style="font-size:10px;color:#888;">Loading…</div></div>
+    <div id="stagnant-list"><div style="font-size:10px;color:#888">Loading…</div></div>
   </div>
 </div>
 
-<!-- PROJECTS -->
+<!-- DETAILS -->
 <div id="projects" class="tab">
   <div id="projects-list"></div>
   <div id="detail" class="detail">
@@ -167,17 +283,18 @@ tr:hover{background:#1a1f26}
       <div class="detail-n" id="dn"></div>
       <div class="detail-actions">
         <button class="edit-btn" id="btn-edit" onclick="toggleEdit()" style="display:none">✏️ Edit</button>
-        <button class="del-btn"  id="btn-del"  onclick="deleteProj()" style="display:none">🗑</button>
+        <button class="del-btn" id="btn-del" onclick="deleteProj()" style="display:none">🗑</button>
         <button class="close" onclick="closeDetail()">✕</button>
       </div>
     </div>
-    <!-- View mode -->
     <div id="det-view">
       <div class="detail-m">
         <div><span class="detail-l">Status</span><div id="ds"></div></div>
         <div><span class="detail-l">Revenue</span><div id="dr"></div></div>
         <div><span class="detail-l">Owner</span><div id="do"></div></div>
         <div><span class="detail-l">Probability</span><div id="dp"></div></div>
+        <div><span class="detail-l">Deadline</span><div id="ddl" style="font-size:10px"></div></div>
+        <div><span class="detail-l">In Pipeline</span><div id="d-age" style="font-size:10px;color:#555"></div></div>
       </div>
       <div class="steps">
         <div class="step"><div class="step-t">✓ Done</div><div id="dd"></div></div>
@@ -185,30 +302,34 @@ tr:hover{background:#1a1f26}
         <div class="step"><div class="step-t">→ Next</div><div id="dn2"></div></div>
       </div>
       <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2a2f36">
-        <div class="detail-l" style="margin-bottom:6px">📅 Last Meeting / Activity</div>
-        <div id="last-touched" style="font-size:10px;color:#888;margin-bottom:8px">Not yet tracked</div>
-        <input type="date" id="meeting-date" class="meeting-input" onchange="handleMeetingDate(this.value)" style="display:none">
+        <div class="detail-l" style="margin-bottom:5px">📅 Last Meeting / Activity</div>
+        <div id="last-touched" style="font-size:10px;color:#888;margin-bottom:7px">Not yet tracked</div>
+        <input type="date" id="meeting-date" class="meeting-input" onchange="handleMeetingDate(this.value)" style="display:none;width:100%">
       </div>
       <div id="notes-view-wrap" style="display:none">
         <div class="notes-label">📝 Notes / Remarks</div>
         <div class="notes-view" id="notes-view"></div>
       </div>
+      <div class="comment-section">
+        <div class="comment-title">💬 Team Updates</div>
+        <div id="comment-list"></div>
+        <div class="comment-input-row" id="comment-input-row" style="display:none">
+          <textarea class="comment-input" id="comment-input" rows="2" placeholder="Add an update…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addComment()}"></textarea>
+          <button class="comment-btn" onclick="addComment()">Post</button>
+        </div>
+      </div>
     </div>
-    <!-- Edit mode (admin only) -->
+
+    <!-- EDIT MODE -->
     <div id="det-edit" style="display:none">
       <div class="ef-row"><div class="ef-label">Project Name</div><input class="ef-input" id="ef-name" type="text"></div>
 
       <div class="ef-row">
         <div class="ef-label">Status</div>
         <select class="ef-select" id="ef-status" onchange="efOtherToggle('ef-status','ef-status-other')">
-          <option value="In Progress">In Progress</option>
-          <option value="Bid Submitted">Bid Submitted</option>
-          <option value="Proposal Pending">Proposal Pending</option>
-          <option value="Planning">Planning</option>
-          <option value="Waiting Feedback">Waiting Feedback</option>
-          <option value="On Hold">On Hold</option>
-          <option value="Completed">Completed</option>
-          <option value="__other__">Other (type below)…</option>
+          <option>In Progress</option><option>Bid Submitted</option><option>Proposal Pending</option>
+          <option>Planning</option><option>Waiting Feedback</option><option>On Hold</option>
+          <option>Completed</option><option value="__other__">Other (type below)…</option>
         </select>
         <input class="ef-input" id="ef-status-other" type="text" placeholder="Custom status…" style="display:none;margin-top:5px">
       </div>
@@ -218,17 +339,10 @@ tr:hover{background:#1a1f26}
       <div class="ef-row">
         <div class="ef-label">Owner</div>
         <select class="ef-select" id="ef-owner" onchange="efOtherToggle('ef-owner','ef-owner-other')">
-          <option value="Doc Kalodski">Doc Kalodski</option>
-          <option value="Witco/FSmidth">Witco/FSmidth</option>
-          <option value="Howlin/Dave">Howlin/Dave</option>
-          <option value="Jake Foronda">Jake Foronda</option>
-          <option value="Rolly Cruz">Rolly Cruz</option>
-          <option value="Abel">Abel</option>
-          <option value="OFIR Holdings">OFIR Holdings</option>
-          <option value="OFIR">OFIR</option>
-          <option value="O2 Mining">O2 Mining</option>
-          <option value="Oscar/Lepanto">Oscar/Lepanto</option>
-          <option value="__other__">Other (type below)…</option>
+          <option>Doc Kalodski</option><option>Witco/FSmidth</option><option>Howlin/Dave</option>
+          <option>Jake Foronda</option><option>Rolly Cruz</option><option>Abel</option>
+          <option>OFIR Holdings</option><option>OFIR</option><option>O2 Mining</option>
+          <option>Oscar/Lepanto</option><option value="__other__">Other (type below)…</option>
         </select>
         <input class="ef-input" id="ef-owner-other" type="text" placeholder="Custom owner…" style="display:none;margin-top:5px">
       </div>
@@ -245,6 +359,11 @@ tr:hover{background:#1a1f26}
       </div>
 
       <div class="ef-row">
+        <div class="ef-label">📅 Deadline / Target Date</div>
+        <input class="ef-input" id="ef-deadline" type="date" style="color-scheme:dark">
+      </div>
+
+      <div class="ef-row">
         <div class="ef-label">✓ Done</div>
         <div class="tag-wrap" id="ef-done-chips"></div>
         <div class="tag-add-row">
@@ -252,7 +371,7 @@ tr:hover{background:#1a1f26}
           <input class="tag-add-date" id="ef-done-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('done')">+</button>
         </div>
-        <input class="tag-add-input" id="ef-done-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('done')}">
+        <input class="tag-add-input" id="ef-done-other" type="text" placeholder="Custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('done')}">
       </div>
 
       <div class="ef-row">
@@ -263,7 +382,7 @@ tr:hover{background:#1a1f26}
           <input class="tag-add-date" id="ef-current-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('current')">+</button>
         </div>
-        <input class="tag-add-input" id="ef-current-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('current')}">
+        <input class="tag-add-input" id="ef-current-other" type="text" placeholder="Custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('current')}">
       </div>
 
       <div class="ef-row">
@@ -274,7 +393,7 @@ tr:hover{background:#1a1f26}
           <input class="tag-add-date" id="ef-next-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('next')">+</button>
         </div>
-        <input class="tag-add-input" id="ef-next-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('next')}">
+        <input class="tag-add-input" id="ef-next-other" type="text" placeholder="Custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('next')}">
       </div>
 
       <div class="ef-row">
@@ -287,55 +406,64 @@ tr:hover{background:#1a1f26}
   </div>
 </div>
 
-<!-- TABLE -->
+<!-- SUMMARY TABLE -->
 <div id="table" class="tab">
+  <div class="print-date" id="print-date"></div>
   <table>
-    <thead><tr><th>Project</th><th>Status</th><th>Revenue</th><th>Prob</th><th>Last Update</th></tr></thead>
+    <thead><tr>
+      <th id="th-n" onclick="sortTable('n')">Project</th>
+      <th id="th-s" onclick="sortTable('s')">Status</th>
+      <th id="th-r" onclick="sortTable('r')">Revenue</th>
+      <th id="th-p" onclick="sortTable('p')">Priority</th>
+      <th id="th-o" onclick="sortTable('o')">Owner</th>
+      <th id="th-deadline" onclick="sortTable('deadline')">Deadline</th>
+      <th id="th-last" onclick="sortTable('last')">Last Update</th>
+      <th id="th-age" onclick="sortTable('age')">Age</th>
+    </tr></thead>
     <tbody id="table-body"></tbody>
   </table>
 </div>
 
 <!-- HISTORY -->
 <div id="history" class="tab">
-  <div style="font-size:10px;color:#555;margin-bottom:8px;">Newest first · all editors · all projects</div>
-  <div id="history-list"><div style="color:#555;font-size:10px;padding:12px;">Loading…</div></div>
+  <div style="font-size:10px;color:#555;margin-bottom:8px">Newest first · all users · all projects</div>
+  <div id="history-list"><div style="color:#555;font-size:10px;padding:12px">Loading…</div></div>
 </div>
 
-</div><!-- .content -->
-</div><!-- .wrapper -->
+</div></div>
 <div id="loading-bar"></div>
 
 <script>
-// ── DEFAULT PROJECT DATA ───────────────────────────────
+// ── DEFAULT DATA ───────────────────────────────────────
 const DEFAULT_PROJECTS=[
-  {id:'p0', n:"La India Nicaragua",  s:"In Progress",      r:"$4-5M",  o:"Witco/FSmidth", p:"★★★★★",d:["Design","Sourcing","Contractor","Budget"],      c:["Fabrication","Financing"],   x:["Secure funding","Fabrication","Installation"]},
-  {id:'p1', n:"APEX Mining",         s:"Bid Submitted",    r:"~₱60k",  o:"Howlin/Dave",   p:"★★★★★",d:["Bid","PNID","Design","Bid done"],               c:["Evaluation"],                x:["Award","Contract","Execution"]},
-  {id:'p2', n:"TVI Surigao",         s:"Bid Submitted",    r:"TBD",    o:"Jake Foronda",  p:"★★★★★",d:["Invitation","Evaluation","Estimate"],            c:["Awaiting"],                  x:["Award","Contract","Execution"]},
-  {id:'p3', n:"Pasar Leyte",         s:"Bid Submitted",    r:"TBD",    o:"Jake Foronda",  p:"★★★★★",d:["Opportunity","Feasibility"],                    c:["Awaiting"],                  x:["Award","Survey","Recovery"]},
-  {id:'p4', n:"Hallmark Mining",     s:"Planning",         r:"~₱1B",   o:"Rolly Cruz",    p:"★★★★☆",d:["Ore found","Investor"],                         c:["Diligence","NDA"],           x:["Finalize","Register","Approval"]},
-  {id:'p5', n:"PGMPI Aglubang",      s:"Planning",         r:"TBD",    o:"Abel",          p:"★★★★☆",d:["Opportunity"],                                  c:["Scoping"],                   x:["Study","Plan","Investor"]},
-  {id:'p6', n:"PGMPI Dizon",         s:"Planning",         r:"TBD",    o:"OFIR Holdings", p:"★★★★☆",d:["Contact"],                                      c:["Scoping"],                   x:["Study","Modeling","Investor"]},
-  {id:'p7', n:"Kingking",            s:"Proposal Pending", r:"TBD",    o:"OFIR",          p:"★★★☆☆",d:["Opportunity"],                                  c:["OVERDUE"],                   x:["SUBMIT","Present","Negotiate"]},
-  {id:'p8', n:"Brisbane",            s:"Waiting Feedback", r:"TBD",    o:"O2 Mining",     p:"★★★☆☆",d:["Contact"],                                      c:["Awaiting"],                  x:["Scope","Check","Proposal"]},
-  {id:'p9', n:"Khan Altai",          s:"Waiting Feedback", r:"TBD",    o:"O2 Mining",     p:"★★★☆☆",d:["Proposal"],                                     c:["NO RESPONSE"],               x:["Followup","Feedback","Renegotiate"]},
-  {id:'p10',n:"Far Southeast",       s:"Waiting Feedback", r:"TBD",    o:"Oscar/Lepanto",  p:"★★★☆☆",d:["Project ID"],                                  c:["Drilling"],                  x:["Clarify","Drilling","Study"]}
+  {id:'p0',n:"La India Nicaragua",  s:"In Progress",     r:"$4-5M", o:"Witco/FSmidth",p:"★★★★★",d:["Design","Sourcing","Contractor","Budget"],     c:["Fabrication","Financing"],  x:["Secure funding","Fabrication","Installation"],notes:'',deadline:''},
+  {id:'p1',n:"APEX Mining",         s:"Bid Submitted",   r:"~₱60k", o:"Howlin/Dave",  p:"★★★★★",d:["Bid","PNID","Design","Bid done"],              c:["Evaluation"],               x:["Award","Contract","Execution"],notes:'',deadline:''},
+  {id:'p2',n:"TVI Surigao",         s:"Bid Submitted",   r:"TBD",   o:"Jake Foronda", p:"★★★★★",d:["Invitation","Evaluation","Estimate"],           c:["Awaiting"],                 x:["Award","Contract","Execution"],notes:'',deadline:''},
+  {id:'p3',n:"Pasar Leyte",         s:"Bid Submitted",   r:"TBD",   o:"Jake Foronda", p:"★★★★★",d:["Opportunity","Feasibility"],                   c:["Awaiting"],                 x:["Award","Survey","Recovery"],notes:'',deadline:''},
+  {id:'p4',n:"Hallmark Mining",     s:"Planning",        r:"~₱1B",  o:"Rolly Cruz",   p:"★★★★☆",d:["Ore found","Investor"],                        c:["Diligence","NDA"],          x:["Finalize","Register","Approval"],notes:'',deadline:''},
+  {id:'p5',n:"PGMPI Aglubang",      s:"Planning",        r:"TBD",   o:"Abel",         p:"★★★★☆",d:["Opportunity"],                                 c:["Scoping"],                  x:["Study","Plan","Investor"],notes:'',deadline:''},
+  {id:'p6',n:"PGMPI Dizon",         s:"Planning",        r:"TBD",   o:"OFIR Holdings",p:"★★★★☆",d:["Contact"],                                     c:["Scoping"],                  x:["Study","Modeling","Investor"],notes:'',deadline:''},
+  {id:'p7',n:"Kingking",            s:"Proposal Pending",r:"TBD",   o:"OFIR",         p:"★★★☆☆",d:["Opportunity"],                                 c:["OVERDUE"],                  x:["SUBMIT","Present","Negotiate"],notes:'',deadline:''},
+  {id:'p8',n:"Brisbane",            s:"Waiting Feedback",r:"TBD",   o:"O2 Mining",    p:"★★★☆☆",d:["Contact"],                                     c:["Awaiting"],                 x:["Scope","Check","Proposal"],notes:'',deadline:''},
+  {id:'p9',n:"Khan Altai",          s:"Waiting Feedback",r:"TBD",   o:"O2 Mining",    p:"★★★☆☆",d:["Proposal"],                                    c:["NO RESPONSE"],              x:["Followup","Feedback","Renegotiate"],notes:'',deadline:''},
+  {id:'p10',n:"Far Southeast",      s:"Waiting Feedback",r:"TBD",   o:"Oscar/Lepanto",p:"★★★☆☆",d:["Project ID"],                                  c:["Drilling"],                 x:["Clarify","Drilling","Study"],notes:'',deadline:''},
 ];
 
-// ── SUPABASE ────────────────────────────────────────────
+// ── CONFIG ─────────────────────────────────────────────
 const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
-
-// ── LICENSE ─────────────────────────────────────────────
+const CACHE_KEY='pp_cache_v3';
 const PP_LICENSES={
   '007':            {name:'Doc Kalodski',role:'admin'},
   'OFIR-2026-0101': {name:'OFIR Team',  role:'editor'},
   'BETATESTER-1234':{name:'Beta Tester',role:'viewer'},
 };
+
+// ── LICENSE ────────────────────────────────────────────
 function ppMatch(k){const c=k.trim().toUpperCase().replace(/-/g,'');for(const[key,obj]of Object.entries(PP_LICENSES)){if(key.replace(/-/g,'').toUpperCase()===c)return obj;}return null;}
 function getRole(){const k=localStorage.getItem('pp_license');const m=k?ppMatch(k):null;return m?m.role:'none';}
 function isAdmin(){return getRole()==='admin';}
-function canUpload(){return getRole()==='admin'||getRole()==='editor';}
-
+function canEdit(){return getRole()==='admin'||getRole()==='editor';}
 function ppLogout(){localStorage.removeItem('pp_license');localStorage.removeItem('pp_licensee');location.reload();}
 function ppActivate(){
   const raw=document.getElementById('lock-input').value;
@@ -347,7 +475,6 @@ function ppActivate(){
   localStorage.setItem('pp_licensee',obj.name);
   location.reload();
 }
-
 function ppCheck(){
   const k=localStorage.getItem('pp_license');
   const obj=k?ppMatch(k):null;
@@ -364,318 +491,394 @@ function ppCheck(){
 }
 if(!ppCheck()) throw new Error('not licensed');
 
-// ── DATA LAYER ──────────────────────────────────────────
+// ── PWA ────────────────────────────────────────────────
+let _installPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_installPrompt=e;document.getElementById('install-btn').style.display='';});
+function installApp(){if(_installPrompt){_installPrompt.prompt();_installPrompt.then(()=>{_installPrompt=null;document.getElementById('install-btn').style.display='none';});}}
+
+// ── STATE ──────────────────────────────────────────────
 const sb=supabase.createClient(SB_URL,SB_KEY);
-let data=[], _meta={}, _board=null;
+let data=[], _meta={}, _board=null, _histRows=[], currentProj=0, currentProjOpen=null;
+let _filteredIdx=null, _sortCol='', _sortDir=1, _ownerFilter='';
 
+// ── DATA ───────────────────────────────────────────────
 async function initData(){
-  const {data:rows}=await sb.from('pp_data').select('*');
-  let projFromDB=null;
-  for(const row of rows||[]){
-    if(row.key==='meta')     _meta=row.value||{};
-    if(row.key==='board')    _board=row.value||null;
-    if(row.key==='projects') projFromDB=row.value||null;
+  try{
+    const {data:rows,error}=await sb.from('pp_data').select('*');
+    if(error) throw error;
+    let proj=null;
+    for(const r of rows||[]){
+      if(r.key==='meta')     _meta=r.value||{};
+      if(r.key==='board')    _board=r.value||null;
+      if(r.key==='projects') proj=r.value||null;
+    }
+    data=proj&&proj.length?proj:DEFAULT_PROJECTS;
+    if(!proj&&isAdmin()) await sb.from('pp_data').upsert({key:'projects',value:data});
+    localStorage.setItem(CACHE_KEY,JSON.stringify({data,_meta,_board}));
+  }catch(e){
+    const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(c){data=c.data||DEFAULT_PROJECTS;_meta=c._meta||{};_board=c._board||null;}
+    else data=DEFAULT_PROJECTS;
   }
-  if(projFromDB&&projFromDB.length){
-    data=projFromDB;
-  } else {
-    data=DEFAULT_PROJECTS;
-    if(isAdmin()) await sb.from('pp_data').upsert({key:'projects',value:data});
-  }
-  rebuildDOM();
-  refreshAll();
-  await loadHistoryFromDB();
+  const wasOpen=currentProjOpen;
+  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
+  if(wasOpen!==null&&wasOpen<data.length) detail(wasOpen);
+  await loadHistory();
 }
-
 async function saveProjects(){await sb.from('pp_data').upsert({key:'projects',value:data});}
 async function saveMeta(){await sb.from('pp_data').upsert({key:'meta',value:_meta});}
 async function saveBoard(b){_board=b;await sb.from('pp_data').upsert({key:'board',value:b});}
-
-async function logHistory(proj,field,oldVal,newVal){
+async function logHistory(proj,field,oldV,newV){
   const user=localStorage.getItem('pp_licensee')||'Unknown';
-  await sb.from('pp_history').insert({user,proj:proj||'(global)',field,old_val:String(oldVal||'—'),new_val:String(newVal||'—')});
+  await sb.from('pp_history').insert({user,proj:proj||'(global)',field,old_val:String(oldV||'—'),new_val:String(newV||'—')});
 }
-async function loadHistoryFromDB(){
+async function loadHistory(){
   const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).limit(50);
-  renderHistory(rows||[]);
+  _histRows=rows||[];renderHistory(_histRows);renderRecentStrip(_histRows);
 }
-
 sb.channel('pp_rt')
-  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>{
-    // Don't wipe DOM if admin is mid-edit
-    if(document.getElementById('det-edit').style.display!=='none') return;
-    initData();
-  })
-  .on('postgres_changes',{event:'INSERT',schema:'public',table:'pp_history'},()=>loadHistoryFromDB())
+  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>{if(document.getElementById('det-edit').style.display!=='none')return;initData();})
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'pp_history'},()=>loadHistory())
   .subscribe();
 
-// ── DOM ──────────────────────────────────────────────────
-function rebuildDOM(){
-  // Projects list
-  const pl=document.getElementById('projects-list');
-  pl.innerHTML=data.map((p,i)=>`
-    <div class="proj" id="proj-${i}" onclick="detail(${i})">
-      <div class="proj-h">${p.n}</div>
-      <div class="proj-m" id="pm-${i}">${p.s} | ${p.r} | ${p.p}</div>
-    </div>`).join('');
-  // Apply status colors (refreshCards will fine-tune stagnant)
-  data.forEach((p,i)=>{
-    const el=document.getElementById('proj-'+i);
-    if(el){el.className='proj '+statusClass(p.s,false);}
+// ── HELPERS ────────────────────────────────────────────
+function fmtDate(iso){if(!iso)return'';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}
+function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);}
+function daysUntil(iso){if(!iso)return null;return Math.ceil((new Date(iso+'T00:00:00').getTime()-Date.now())/86400000);}
+function normItems(arr){return(arr||[]).map(x=>typeof x==='string'?{label:x,date:''}:x);}
+function statusClass(s,stag){
+  if(stag)return 's-stag';
+  if(/progress/i.test(s))return 's-active';
+  if(/bid|proposal/i.test(s))return 's-bid';
+  if(/planning/i.test(s))return 's-planning';
+  if(/complet/i.test(s))return 's-done';
+  return 's-waiting';
+}
+function dlBadge(dl){
+  if(!dl)return'';
+  const d=daysUntil(dl);
+  if(d<0)return`<span class="dl-over">OVERDUE ${Math.abs(d)}d</span>`;
+  if(d<=14)return`<span class="dl-soon">Due in ${d}d</span>`;
+  return`<span class="dl-ok">Due ${fmtDate(dl)}</span>`;
+}
+function parseRev(r){
+  if(!r||r==='TBD')return null;
+  const c=r.replace(/[~,\s]/g,'');
+  const rng=c.match(/([₱$])(\d+\.?\d*)-(\d+\.?\d*)([kmb]?)/i);
+  if(rng)return{cur:rng[1],val:applyM((+rng[2]+ +rng[3])/2,rng[4])};
+  const m=c.match(/([₱$])(\d+\.?\d*)([kmb]?)/i);
+  if(!m)return null;
+  return{cur:m[1],val:applyM(+m[2],m[3])};
+}
+function applyM(n,m){m=(m||'').toLowerCase();return m==='k'?n*1e3:m==='m'?n*1e6:m==='b'?n*1e9:n;}
+function fmtV(v){return v>=1e9?(v/1e9).toFixed(1)+'B':v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?Math.round(v/1e3)+'k':Math.round(v);}
+function pipelineTotal(){
+  let php=0,usd=0,n=0;
+  data.forEach(p=>{const r=parseRev(p.r);if(!r)return;n++;if(r.cur==='₱')php+=r.val;else usd+=r.val;});
+  if(!n)return'';
+  const parts=[];if(php)parts.push('~₱'+fmtV(php));if(usd)parts.push('~$'+fmtV(usd));
+  return parts.join(' + ')+' ('+n+' projects)';
+}
+
+// ── TABS ───────────────────────────────────────────────
+function showTab(t,btn){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(t).classList.add('active');
+  if(btn)btn.classList.add('active');
+  document.getElementById('filter-bar').style.display=(t==='projects'||t==='table')?'flex':'none';
+  if(t==='table')document.getElementById('print-date').textContent='Printed: '+new Date().toLocaleDateString('en-PH',{dateStyle:'long'});
+}
+
+// ── FILTERS ────────────────────────────────────────────
+function buildFilterOwners(){
+  const sel=document.getElementById('f-owner');
+  const cur=sel.value;
+  const owners=[...new Set(data.map(p=>p.o).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">All Owners</option>'+owners.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
+}
+function applyFilters(){
+  const s=document.getElementById('f-search').value.trim().toLowerCase();
+  const st=document.getElementById('f-status').value;
+  const ow=document.getElementById('f-owner').value;
+  const pr=document.getElementById('f-prob').value;
+  _filteredIdx=data.map((_,i)=>i).filter(i=>{
+    const p=data[i];
+    if(s&&!p.n.toLowerCase().includes(s)&&!p.o.toLowerCase().includes(s)&&!p.s.toLowerCase().includes(s))return false;
+    if(st&&p.s!==st)return false;
+    if(ow&&p.o!==ow)return false;
+    if(pr&&p.p.slice(0,5)!==pr)return false;
+    return true;
   });
-  if(isAdmin()){
+  document.getElementById('f-count').textContent=_filteredIdx.length+' of '+data.length;
+  renderProjectList();renderTableBody();
+}
+function clearFilters(){
+  ['f-search','f-status','f-owner','f-prob'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _filteredIdx=null;document.getElementById('f-count').textContent='';
+  renderProjectList();renderTableBody();
+}
+
+// ── SORT ───────────────────────────────────────────────
+function sortTable(col){
+  if(_sortCol===col)_sortDir*=-1;else{_sortCol=col;_sortDir=1;}
+  document.querySelectorAll('th').forEach(t=>t.classList.remove('sort-asc','sort-desc'));
+  const th=document.getElementById('th-'+col);
+  if(th)th.classList.add(_sortDir===1?'sort-asc':'sort-desc');
+  renderTableBody();
+}
+function sortedFiltered(){
+  const idx=_filteredIdx||data.map((_,i)=>i);
+  if(!_sortCol)return idx;
+  return[...idx].sort((a,b)=>{
+    const pa=data[a],pb=data[b];let va,vb;
+    if(_sortCol==='r'){va=(parseRev(pa.r)||{val:-1}).val;vb=(parseRev(pb.r)||{val:-1}).val;return(vb-va)*_sortDir;}
+    if(_sortCol==='deadline'){va=pa.deadline||'9999';vb=pb.deadline||'9999';}
+    else if(_sortCol==='last'){va=(_meta[pa.id]||{}).meetingDate||(_meta[pa.id]||{}).lastTouched||'0';vb=(_meta[pb.id]||{}).meetingDate||(_meta[pb.id]||{}).lastTouched||'0';}
+    else if(_sortCol==='age'){va=(_meta[pa.id]||{}).createdAt||'9999';vb=(_meta[pb.id]||{}).createdAt||'9999';}
+    else if(_sortCol==='p'){va=pa.p?pa.p.split('★').length:0;vb=pb.p?pb.p.split('★').length:0;return(vb-va)*_sortDir;}
+    else{va=pa[_sortCol]||'';vb=pb[_sortCol]||'';}
+    return va<vb?-_sortDir:va>vb?_sortDir:0;
+  });
+}
+
+// ── DOM ────────────────────────────────────────────────
+function rebuildDOM(){
+  renderProjectList();
+  renderTableBody();
+  document.getElementById('upload-label').style.display=canEdit()?'':'none';
+  document.getElementById('meeting-date').style.display=canEdit()?'':'none';
+  document.getElementById('btn-edit').style.display=isAdmin()?'':'none';
+  document.getElementById('btn-del').style.display=isAdmin()?'':'none';
+  document.getElementById('comment-input-row').style.display=canEdit()?'flex':'none';
+  const pl=document.getElementById('projects-list');
+  if(isAdmin()&&!pl.querySelector('.add-proj-btn')){
     const btn=document.createElement('button');
     btn.className='add-proj-btn';btn.textContent='+ Add Project';btn.onclick=addProject;
     pl.appendChild(btn);
   }
-  // Table
-  document.getElementById('table-body').innerHTML=data.map((p,i)=>`
-    <tr onclick="goto(${i})">
-      <td><b>${p.n}</b></td>
-      <td id="ts-${i}"><span class="tag">${p.s}</span></td>
-      <td>${p.r}</td><td>${p.p}</td>
-      <td id="tu-${i}">—</td>
-    </tr>`).join('');
-  // Upload visibility
-  document.getElementById('upload-label').style.display=canUpload()?'':'none';
-  document.getElementById('meeting-date').style.display=canUpload()?'':'none';
-  // Admin buttons in detail panel
-  document.getElementById('btn-edit').style.display=isAdmin()?'':'none';
-  document.getElementById('btn-del').style.display=isAdmin()?'':'none';
 }
 
-function refreshAll(){
-  refreshBoardBar();
-  refreshOverviewStats();
-  refreshPriorityBoxes();
-  refreshCards();
-  refreshStagnant();
+function renderProjectList(){
+  const pl=document.getElementById('projects-list');
+  const addBtn=pl.querySelector('.add-proj-btn');
+  const idx=_filteredIdx||data.map((_,i)=>i);
+  pl.innerHTML=idx.map(i=>{
+    const p=data[i];const m=_meta[p.id]||{};
+    const ref=m.meetingDate||m.lastTouched;
+    const isStag=_board?(ref?ref<=_board.date:true):false;
+    return`<div class="proj ${statusClass(p.s,isStag)}" id="proj-${i}" onclick="detail(${i})">
+      <div class="proj-h">${p.n} ${dlBadge(p.deadline)}</div>
+      <div class="proj-m" id="pm-${i}">${p.s} | ${p.r} | ${p.p}</div>
+    </div>`;
+  }).join('');
+  if(addBtn)pl.appendChild(addBtn);
 }
+
+function renderTableBody(){
+  const idx=sortedFiltered();
+  document.getElementById('table-body').innerHTML=idx.map(i=>{
+    const p=data[i];const m=_meta[p.id]||{};
+    const ref=m.meetingDate||m.lastTouched;
+    const isStag=_board?(ref?ref<=_board.date:true):false;
+    const age=m.createdAt?daysSince(m.createdAt)+'d':'—';
+    const dl=p.deadline?(()=>{const d=daysUntil(p.deadline);return d<0?`<span style="color:#fca5a5">OVERDUE ${Math.abs(d)}d</span>`:d<=14?`<span style="color:#f59e0b">${d}d</span>`:`<span style="color:#888">${fmtDate(p.deadline)}</span>`})():'—';
+    return`<tr onclick="goto(${i})">
+      <td><b>${p.n}</b></td>
+      <td><span class="tag">${p.s}</span>${isStag?' 🔴':''}</td>
+      <td>${p.r}</td><td>${p.p}</td><td>${p.o}</td>
+      <td>${dl}</td>
+      <td>${fmtDate(ref||(_board?_board.date:null))}</td>
+      <td>${age}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── OVERVIEW ───────────────────────────────────────────
+function buildOwnerChips(){
+  const owners=[...new Set(data.map(p=>p.o).filter(Boolean))].sort();
+  const bar=document.getElementById('owner-chips');
+  bar.style.display=owners.length?'flex':'none';
+  bar.innerHTML='<span class="owner-chip active" onclick="setOwnerFilter(\'\',this)">All</span>'+
+    owners.map(o=>`<span class="owner-chip" onclick="setOwnerFilter('${o.replace(/'/g,"\\'")}',this)">${o}</span>`).join('');
+}
+function setOwnerFilter(owner,el){
+  _ownerFilter=owner;
+  document.querySelectorAll('.owner-chip').forEach(c=>c.classList.remove('active'));
+  if(el)el.classList.add('active');
+  refreshPriorityBoxes();refreshStagnant();
+}
+function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();refreshStagnant();}
 
 function refreshOverviewStats(){
   const total=data.length;
   const active=data.filter(p=>/progress|planning/i.test(p.s)).length;
   const bids=data.filter(p=>/bid|proposal/i.test(p.s)).length;
-  let stagnant=0;
-  if(_board){
-    const cut=_board.date;
-    stagnant=data.filter(p=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;}).length;
-  }
-  const sc=stagnant>0?'#ef4444':'#4CAF50';
+  let stag=0;
+  if(_board){const cut=_board.date;stag=data.filter(p=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;}).length;}
+  const sc=stag>0?'#ef4444':'#4CAF50';
+  const pv=pipelineTotal();
   document.getElementById('stat-grid').innerHTML=`
     <div class="card"><div class="big">${total}</div><div class="small">Total Projects</div></div>
     <div class="card"><div class="big">${active}</div><div class="small">Active</div></div>
-    <div class="card"><div class="big">${bids}</div><div class="small">Bids Out</div></div>
-    <div class="card" style="border-left-color:${sc}"><div class="big" style="color:${sc}">${stagnant}</div><div class="small">Not Moving</div></div>`;
+    <div class="card"><div class="big">${bids}</div><div class="small">Bids Out</div>${pv?`<div class="pval">${pv}</div>`:''}</div>
+    <div class="card" style="border-left-color:${sc}"><div class="big" style="color:${sc}">${stag}</div><div class="small">Not Moving</div></div>`;
 }
-
 function refreshPriorityBoxes(){
-  const must=data.filter(p=>p.p==='★★★★★'&&/progress/i.test(p.s));
-  const high=data.filter(p=>p.p==='★★★★★'&&!/progress/i.test(p.s));
-  const mon =data.filter(p=>p.p==='★★★★☆'||p.p==='★★★☆☆');
+  const src=_ownerFilter?data.filter(p=>p.o===_ownerFilter):data;
+  const must=src.filter(p=>p.p==='★★★★★'&&/progress/i.test(p.s));
+  const high=src.filter(p=>p.p==='★★★★★'&&!/progress/i.test(p.s));
+  const mon=src.filter(p=>p.p==='★★★★☆'||p.p==='★★★☆☆');
   function box(color,icon,title,list){
     if(!list.length)return'';
-    return`<div class="box" style="border-left-color:${color}"><div class="box-h">${icon} ${title}</div>${list.map(p=>`<div class="item" onclick="goto(${data.indexOf(p)})"><div><strong>${p.n}</strong> | ${p.r} | ${p.s}</div><div class="item-r">${p.o}</div></div>`).join('')}</div>`;
+    return`<div class="box" style="border-left-color:${color}"><div class="box-h">${icon} ${title}</div>${list.map(p=>`<div class="item" onclick="goto(${data.indexOf(p)})"><div><strong>${p.n}</strong>${p.deadline?` ${dlBadge(p.deadline)}`:''}<br><span style="color:#555;font-size:9px">${p.r} · ${p.s}</span></div><div class="item-r">${p.o}</div></div>`).join('')}</div>`;
   }
   document.getElementById('priority-boxes').innerHTML=
-    box('#0F6E56','🏆','MUST WIN',must)+
-    box('#4CAF50','💰','HIGH VALUE',high)+
-    box('#BA7517','⚠️','MONITOR',mon);
+    box('#0F6E56','🏆','MUST WIN',must)+box('#4CAF50','💰','HIGH VALUE',high)+box('#BA7517','⚠️','MONITOR',mon);
 }
-
 function refreshBoardBar(){
-  const el=document.getElementById('board-info');
-  el.textContent=_board?`${_board.name} · ${fmtDate(_board.date)}`:'No report uploaded yet';
+  document.getElementById('board-info').textContent=_board?`${_board.name} · ${fmtDate(_board.date)}`:'No report uploaded yet';
   const wrap=document.getElementById('board-date-wrap');
-  if(wrap) wrap.style.display=(_board&&canUpload())?'flex':'none';
+  if(wrap)wrap.style.display=(_board&&canEdit())?'flex':'none';
   const odi=document.getElementById('board-date-override');
-  if(odi&&_board) odi.value=_board.date||'';
+  if(odi&&_board)odi.value=_board.date||'';
 }
-
 function refreshCards(){
   data.forEach((p,i)=>{
-    const m=_meta[p.id]||{};
-    const ref=m.meetingDate||m.lastTouched;
+    const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;
     const days=ref?daysSince(ref):null;
     const isStag=_board?(ref?ref<=_board.date:true):false;
-    const badge=isStag?`<span class="stag-badge">🔴 no movement${days!==null?' · '+days+'d':''}</span>`:'';
-    const projEl=document.getElementById('proj-'+i);
-    if(projEl) projEl.className='proj '+statusClass(p.s,isStag);
+    const badge=isStag?`<span class="stag-badge">🔴 ${days!==null?days+'d idle':'no activity'}</span>`:'';
+    const el=document.getElementById('proj-'+i);
+    if(el)el.className='proj '+statusClass(p.s,isStag);
     const card=document.getElementById('pm-'+i);
-    if(card) card.innerHTML=`${p.s} | ${p.r} | ${p.p}`+(ref?`<div class="as-of">last activity: ${fmtDate(ref)}</div>`:'')+badge;
-    const cell=document.getElementById('ts-'+i);
-    if(cell) cell.innerHTML=`<span class="tag">${p.s}</span>${isStag?' 🔴':''}`;
-    const upd=document.getElementById('tu-'+i);
-    if(upd) upd.textContent=fmtDate(ref||(_board?_board.date:null));
+    if(card)card.innerHTML=`${p.s} | ${p.r} | ${p.p}`+(ref?`<div class="as-of">last: ${fmtDate(ref)}</div>`:'')+badge;
   });
 }
-
 function refreshStagnant(){
   const list=document.getElementById('stagnant-list');
-  if(!_board){list.innerHTML='<div style="font-size:10px;color:#888;">Upload a board report to start tracking movement.</div>';return;}
+  if(!_board){list.innerHTML='<div style="font-size:10px;color:#888">Upload a board report to start tracking.</div>';return;}
   const cut=_board.date;
-  const stag=data.map((p,i)=>({p,i,m:_meta[p.id]||{}})).filter(({m})=>{const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;});
-  if(!stag.length){list.innerHTML='<div style="font-size:10px;color:#4CAF50;">✓ All projects moved since last board meeting.</div>';return;}
-  list.innerHTML=stag.map(({p,i,m})=>{
-    const ref=m.meetingDate||m.lastTouched;
-    const days=ref?daysSince(ref):null;
-    return`<div class="item" onclick="goto(${i})" style="border-left:3px solid #ef4444"><div><strong>${p.n}</strong> | ${p.s}</div><div class="item-r" style="color:#fca5a5">${days!==null?days+' days idle':'no activity logged'}</div></div>`;
+  const src=(_ownerFilter?data.map((p,i)=>({p,i})).filter(({p})=>p.o===_ownerFilter):data.map((p,i)=>({p,i})));
+  const stag=src.filter(({p})=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;});
+  if(!stag.length){list.innerHTML='<div style="font-size:10px;color:#4CAF50">✓ All projects moved since last board meeting.</div>';return;}
+  list.innerHTML=stag.map(({p,i})=>{
+    const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;const days=ref?daysSince(ref):null;
+    return`<div class="item" onclick="goto(${i})" style="border-left:3px solid #ef4444"><div><strong>${p.n}</strong> | ${p.s}</div><div class="item-r" style="color:#fca5a5">${days!==null?days+'d idle':'no activity'}</div></div>`;
+  }).join('');
+}
+function renderRecentStrip(rows){
+  const el=document.getElementById('recent-strip');
+  const last3=rows.slice(0,3);
+  if(!last3.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML=`<div class="recent-strip-title">🕐 Recent Changes</div>`+last3.map(e=>{
+    const dt=new Date(e.created_at);
+    const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+    return`<div class="recent-row"><span style="color:#38bdf8;flex-shrink:0">${when}</span><strong>${e.user}</strong><span>·</span><strong>${e.proj}</strong><span style="color:#555">— ${e.field}</span></div>`;
   }).join('');
 }
 
-// ── HELPERS ──────────────────────────────────────────────
-function fmtDate(iso){if(!iso)return'';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}
-function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);}
-function statusClass(s,isStag){
-  if(isStag) return 's-stag';
-  if(/progress/i.test(s))  return 's-active';
-  if(/bid|proposal/i.test(s)) return 's-bid';
-  if(/planning/i.test(s))  return 's-planning';
-  if(/complet/i.test(s))   return 's-done';
-  return 's-waiting';
-}
-
-// ── TABS ─────────────────────────────────────────────────
-function showTab(t,btn){
-  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
-  document.getElementById(t).classList.add('active');
-  if(btn) btn.classList.add('active');
-}
-
-// ── PROJECT DETAIL ────────────────────────────────────────
-let currentProj=0;
-
+// ── DETAIL ─────────────────────────────────────────────
 function detail(i){
-  currentProj=i;
+  currentProj=i;currentProjOpen=i;
   const p=data[i];const m=_meta[p.id]||{};
   document.getElementById('dn').textContent=p.n;
-  document.getElementById('ds').innerHTML=p.s+(_board?`<div style="font-size:8px;color:#888;margin-top:3px;">as of ${fmtDate(_board.date)} · ${_board.name}</div>`:'');
+  document.getElementById('ds').innerHTML=p.s+(_board?`<div style="font-size:8px;color:#888;margin-top:3px">as of ${fmtDate(_board.date)} · ${_board.name}</div>`:'');
   document.getElementById('dr').textContent=p.r;
   document.getElementById('do').textContent=p.o;
   document.getElementById('dp').textContent=p.p;
-  const renderItem=(x,cls)=>{const o=typeof x==='string'?{label:x,date:''}:x;return`<div class="${cls}">${o.label}${o.date?`<span class="step-date">${fmtDate(o.date)}</span>`:''}</div>`;};
-  document.getElementById('dd').innerHTML=normItems(p.d).map(x=>renderItem(x,'step-i')).join('');
-  document.getElementById('dc').innerHTML=normItems(p.c).map(x=>renderItem(x,'step-i')).join('');
-  document.getElementById('dn2').innerHTML=normItems(p.x).map(x=>renderItem(x,'step-i p')).join('');
+  const ddlEl=document.getElementById('ddl');
+  if(ddlEl)ddlEl.innerHTML=p.deadline?`${fmtDate(p.deadline)} ${dlBadge(p.deadline)}`:'<span style="color:#555">Not set</span>';
+  const ageEl=document.getElementById('d-age');
+  if(ageEl)ageEl.textContent=m.createdAt?daysSince(m.createdAt)+' days':'—';
+  const ri=(x,cls)=>{const o=typeof x==='string'?{label:x,date:''}:x;return`<div class="${cls}">${o.label}${o.date?`<span class="step-date">${fmtDate(o.date)}</span>`:''}</div>`;};
+  document.getElementById('dd').innerHTML=normItems(p.d).map(x=>ri(x,'step-i')).join('');
+  document.getElementById('dc').innerHTML=normItems(p.c).map(x=>ri(x,'step-i')).join('');
+  document.getElementById('dn2').innerHTML=normItems(p.x).map(x=>ri(x,'step-i p')).join('');
   const ref=m.meetingDate||m.lastTouched;
   document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
   document.getElementById('meeting-date').value=m.meetingDate||'';
-  // Notes
-  const nv=document.getElementById('notes-view');
-  const nvw=document.getElementById('notes-view-wrap');
+  const nv=document.getElementById('notes-view');const nvw=document.getElementById('notes-view-wrap');
   if(nv&&nvw){nv.textContent=p.notes||'';nvw.style.display=p.notes?'block':'none';}
-  // Ensure view mode
   document.getElementById('det-view').style.display='';
   document.getElementById('det-edit').style.display='none';
   document.getElementById('btn-edit').textContent='✏️ Edit';
-  // Attach detail below this project card
+  renderComments(i);
   const det=document.getElementById('detail');
   const card=document.getElementById('proj-'+i);
-  if(card) card.insertAdjacentElement('afterend',det);
+  if(card)card.insertAdjacentElement('afterend',det);
   det.classList.add('show');
 }
 
-// ── STEP DROPDOWN OPTIONS ────────────────────────────────
+// ── COMMENTS ───────────────────────────────────────────
+function renderComments(i){
+  const p=data[i];const m=_meta[p.id]||{};
+  const comments=m.comments||[];
+  const list=document.getElementById('comment-list');
+  if(!comments.length){list.innerHTML='<div style="font-size:9px;color:#555;padding:3px 0">No updates yet.</div>';return;}
+  list.innerHTML=comments.map(c=>{
+    const dt=new Date(c.ts);
+    const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+    return`<div class="comment-item"><div class="comment-meta"><span class="comment-user">${c.user}</span><span class="comment-time">${when}</span></div><div class="comment-text">${c.text.replace(/\n/g,'<br>')}</div></div>`;
+  }).join('');
+}
+async function addComment(){
+  const inp=document.getElementById('comment-input');
+  const text=inp.value.trim();if(!text)return;
+  const p=data[currentProj];
+  if(!_meta[p.id])_meta[p.id]={};
+  if(!_meta[p.id].comments)_meta[p.id].comments=[];
+  const user=localStorage.getItem('pp_licensee')||'Unknown';
+  _meta[p.id].comments.push({user,text,ts:new Date().toISOString()});
+  inp.value='';
+  await saveMeta();
+  renderComments(currentProj);
+  await logHistory(p.n,'Comment','—',text.slice(0,60)+(text.length>60?'…':''));
+}
+
+// ── STEP DROPDOWNS ─────────────────────────────────────
 const STEP_GROUPS=[
-  {label:'🔍 Opportunity & Business Dev', opts:[
-    'Opportunity Identified','Initial Contact','NDA Signed','Site Visit',
-    'Feasibility Study','Scoping','Estimation / Costing','Due Diligence']},
-  {label:'📄 Proposal & Bidding', opts:[
-    'Proposal Preparation','Bid Submitted','Awaiting Evaluation',
-    'Under Evaluation','Negotiation','Re-bid / Revised Proposal']},
-  {label:'🏆 Award & Mobilization', opts:[
-    'Award Received','Letter of Intent','Contract Signing',
-    'Mobilization','Kick-off Meeting']},
-  {label:'⚙️ Execution', opts:[
-    'Design','Detailed Engineering','Procurement / Sourcing',
-    'Contractor Engagement','Fabrication','Financing / Funding',
-    'Construction','Installation','Commissioning','Testing & Inspection']},
-  {label:'✅ Closure', opts:[
-    'Deliverable Submission','Final Report','Client Acceptance',
-    'Punch-list / Snagging','Follow-up','Completed']},
-  {label:'📋 Monitoring', opts:[
-    'Awaiting Client Feedback','Awaiting Permit','Awaiting Funding',
-    'Regulatory Submission','Investor Presentation','Board Presentation']},
-  {label:'⚠️ Blockers', opts:[
-    'On Hold','No Response','Overdue / Delayed',
-    'Budget Issue','Client-side Delay','Force Majeure']},
+  {label:'🔍 Opportunity & Business Dev',opts:['Opportunity Identified','Initial Contact','NDA Signed','Site Visit','Feasibility Study','Scoping','Estimation / Costing','Due Diligence']},
+  {label:'📄 Proposal & Bidding',opts:['Proposal Preparation','Bid Submitted','Awaiting Evaluation','Under Evaluation','Negotiation','Re-bid / Revised Proposal']},
+  {label:'🏆 Award & Mobilization',opts:['Award Received','Letter of Intent','Contract Signing','Mobilization','Kick-off Meeting']},
+  {label:'⚙️ Execution',opts:['Design','Detailed Engineering','Procurement / Sourcing','Contractor Engagement','Fabrication','Financing / Funding','Construction','Installation','Commissioning','Testing & Inspection']},
+  {label:'✅ Closure',opts:['Deliverable Submission','Final Report','Client Acceptance','Punch-list / Snagging','Follow-up','Completed']},
+  {label:'📋 Monitoring',opts:['Awaiting Client Feedback','Awaiting Permit','Awaiting Funding','Regulatory Submission','Investor Presentation','Board Presentation']},
+  {label:'⚠️ Blockers',opts:['On Hold','No Response','Overdue / Delayed','Budget Issue','Client-side Delay','Force Majeure']},
 ];
-
 function buildStepSelects(){
-  const placeholder='<option value="">— Select step —</option>';
-  const groups=STEP_GROUPS.map(g=>
-    `<optgroup label="${g.label}">${g.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</optgroup>`
-  ).join('');
-  const other='<option value="__other__">✏️ Other (type below)…</option>';
-  const html=placeholder+groups+other;
-  ['done','current','next'].forEach(k=>{
-    const s=document.getElementById('ef-'+k+'-sel');
-    if(s) s.innerHTML=html;
-  });
+  const html='<option value="">— Select step —</option>'+STEP_GROUPS.map(g=>`<optgroup label="${g.label}">${g.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</optgroup>`).join('')+'<option value="__other__">✏️ Other (type below)…</option>';
+  ['done','current','next'].forEach(k=>{const s=document.getElementById('ef-'+k+'-sel');if(s)s.innerHTML=html;});
 }
 
-// ── TAG CHIP HELPERS ─────────────────────────────────────
-// Items stored as {label, date} objects; date is optional string 'YYYY-MM-DD'
+// ── TAG CHIPS ──────────────────────────────────────────
 const _tags={done:[],current:[],next:[]};
-
-function normItems(arr){
-  return(arr||[]).map(x=>typeof x==='string'?{label:x,date:''}:x);
-}
-
 function tagRender(key){
-  const wrap=document.getElementById('ef-'+key+'-chips');
-  if(!wrap)return;
+  const wrap=document.getElementById('ef-'+key+'-chips');if(!wrap)return;
   wrap.innerHTML=_tags[key].map((v,i)=>`<div class="tag-chip">${v.label}${v.date?` <span style="color:#94a3b8;font-size:8px">· ${fmtDate(v.date)}</span>`:''}<span onclick="_tags['${key}'].splice(${i},1);tagRender('${key}')">×</span></div>`).join('');
 }
-
 function tagSelChange(key){
-  const sel=document.getElementById('ef-'+key+'-sel');
-  const other=document.getElementById('ef-'+key+'-other');
-  if(!other)return;
-  other.style.display=sel.value==='__other__'?'':'none';
-  if(sel.value==='__other__') other.focus();
+  const sel=document.getElementById('ef-'+key+'-sel');const oth=document.getElementById('ef-'+key+'-other');
+  if(!oth)return;oth.style.display=sel.value==='__other__'?'':'none';if(sel.value==='__other__')oth.focus();
 }
-
 function tagAdd(key){
-  const sel=document.getElementById('ef-'+key+'-sel');
-  const other=document.getElementById('ef-'+key+'-other');
-  const dateInp=document.getElementById('ef-'+key+'-date');
-  const val=sel.value==='__other__'?(other?other.value.trim():''):sel.value;
+  const sel=document.getElementById('ef-'+key+'-sel');const oth=document.getElementById('ef-'+key+'-other');const di=document.getElementById('ef-'+key+'-date');
+  const val=sel.value==='__other__'?(oth?oth.value.trim():''):sel.value;
   if(!val)return;
-  _tags[key].push({label:val,date:dateInp.value||''});
-  sel.value='';
-  if(other){other.value='';other.style.display='none';}
-  dateInp.value='';
-  tagRender(key);
-}
-function efOtherToggle(selId,inputId){
-  const sel=document.getElementById(selId);
-  const inp=document.getElementById(inputId);
-  inp.style.display=sel.value==='__other__'?'':'none';
-  if(sel.value==='__other__') inp.focus();
-}
-function efSelectVal(selId,otherId){
-  const sel=document.getElementById(selId);
-  if(sel.value==='__other__'){
-    const v=document.getElementById(otherId).value.trim();
-    return v||'';
-  }
-  return sel.value;
-}
-function efSelectSet(selId,otherId,val){
-  const sel=document.getElementById(selId);
-  let found=false;
-  for(const opt of sel.options){if(opt.value===val){sel.value=val;found=true;break;}}
-  if(!found){
-    sel.value='__other__';
-    document.getElementById(otherId).value=val;
-    document.getElementById(otherId).style.display='';
-  } else {
-    document.getElementById(otherId).style.display='none';
-  }
+  _tags[key].push({label:val,date:di.value||''});
+  sel.value='';if(oth){oth.value='';oth.style.display='none';}di.value='';tagRender(key);
 }
 
+// ── EDIT HELPERS ───────────────────────────────────────
+function efOtherToggle(s,i){const sel=document.getElementById(s);const inp=document.getElementById(i);inp.style.display=sel.value==='__other__'?'':'none';if(sel.value==='__other__')inp.focus();}
+function efSelectVal(s,o){const sel=document.getElementById(s);if(sel.value==='__other__'){const v=document.getElementById(o).value.trim();return v||'';}return sel.value;}
+function efSelectSet(s,o,val){
+  const sel=document.getElementById(s);let found=false;
+  for(const opt of sel.options){if(opt.value===val){sel.value=val;found=true;break;}}
+  if(!found){sel.value='__other__';document.getElementById(o).value=val;document.getElementById(o).style.display='';}
+  else document.getElementById(o).style.display='none';
+}
 function toggleEdit(){
   const viewing=document.getElementById('det-edit').style.display==='none';
   if(viewing){
@@ -684,24 +887,21 @@ function toggleEdit(){
     efSelectSet('ef-status','ef-status-other',p.s);
     document.getElementById('ef-revenue').value=p.r;
     efSelectSet('ef-owner','ef-owner-other',p.o);
-    // Probability — match star value only
-    const probSel=document.getElementById('ef-prob');
-    probSel.value=p.p.startsWith('★')?p.p.slice(0,5):'★★★☆☆';
+    document.getElementById('ef-prob').value=p.p.startsWith('★')?p.p.slice(0,5):'★★★☆☆';
+    document.getElementById('ef-deadline').value=p.deadline||'';
     document.getElementById('ef-notes').value=p.notes||'';
     buildStepSelects();
-    // Tags — normalize to {label,date} objects
     _tags.done=normItems(p.d);_tags.current=normItems(p.c);_tags.next=normItems(p.x);
     tagRender('done');tagRender('current');tagRender('next');
     document.getElementById('det-view').style.display='none';
     document.getElementById('det-edit').style.display='';
     document.getElementById('btn-edit').textContent='👁 View';
-  } else {
+  }else{
     document.getElementById('det-view').style.display='';
     document.getElementById('det-edit').style.display='none';
     document.getElementById('btn-edit').textContent='✏️ Edit';
   }
 }
-
 async function saveEdit(){
   const i=currentProj;const old=data[i];
   const newP={...old,
@@ -710,90 +910,77 @@ async function saveEdit(){
     r:document.getElementById('ef-revenue').value.trim()||old.r,
     o:efSelectVal('ef-owner','ef-owner-other')||old.o,
     p:document.getElementById('ef-prob').value||old.p,
-    d:[..._tags.done],
-    c:[..._tags.current],
-    x:[..._tags.next],
+    deadline:document.getElementById('ef-deadline').value||'',
+    d:[..._tags.done],c:[..._tags.current],x:[..._tags.next],
     notes:document.getElementById('ef-notes').value.trim(),
   };
-  for(const[label,key]of[['Name','n'],['Status','s'],['Revenue','r'],['Owner','o'],['Probability','p']]){
-    if(old[key]!==newP[key]) await logHistory(old.n,label,old[key],newP[key]);
+  for(const[label,key]of[['Name','n'],['Status','s'],['Revenue','r'],['Owner','o'],['Probability','p'],['Deadline','deadline']]){
+    if(old[key]!==newP[key])await logHistory(old.n,label,old[key]||'—',newP[key]||'—');
   }
   data[i]=newP;
   await saveProjects();
-  rebuildDOM();refreshAll();detail(i);
+  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();detail(i);
 }
-
 function addProject(){
   const id='p'+Date.now();
-  data.push({id,n:'New Project',s:'Planning',r:'TBD',o:'',p:'★★★☆☆',d:[],c:[],x:[],notes:''});
-  saveProjects();
-  rebuildDOM();refreshAll();
-  detail(data.length-1);
-  toggleEdit();
+  data.push({id,n:'New Project',s:'Planning',r:'TBD',o:'',p:'★★★☆☆',d:[],c:[],x:[],notes:'',deadline:''});
+  if(!_meta[id])_meta[id]={};
+  _meta[id].createdAt=new Date().toISOString().slice(0,10);
+  saveProjects();saveMeta();
+  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
+  detail(data.length-1);toggleEdit();
 }
-
 async function deleteProj(){
   const name=data[currentProj].n;
-  if(!confirm(`Delete "${name}"? This cannot be undone.`))return;
+  if(!confirm(`Delete "${name}"? Cannot be undone.`))return;
   data.splice(currentProj,1);
   await saveProjects();
   await logHistory(name,'(deleted)','present','removed');
-  closeDetail();rebuildDOM();refreshAll();
+  closeDetail();rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
 }
+function closeDetail(){document.getElementById('detail').classList.remove('show');currentProjOpen=null;}
+function goto(i){clearFilters();const btn=document.querySelector('[data-tab="projects"]');showTab('projects',btn);detail(i);}
 
-function closeDetail(){document.getElementById('detail').classList.remove('show');}
-function goto(i){
-  const btn=document.querySelector('[data-tab="projects"]');
-  showTab('projects',btn);
-  detail(i);
-}
+// ── SWIPE TO CLOSE ─────────────────────────────────────
+(()=>{const det=document.getElementById('detail');let tx=0;
+  det.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+  det.addEventListener('touchend',e=>{if(e.changedTouches[0].clientX-tx>60)closeDetail();},{passive:true});
+})();
 
-// ── UPLOADS / DATES ──────────────────────────────────────
+// ── BOARD DATES ────────────────────────────────────────
 function handleBoardUpload(input){
-  if(!input.files.length||!canUpload())return;
+  if(!input.files.length||!canEdit())return;
   const old=_board?_board.name:'none';
-  const existingDate=_board?_board.date:new Date().toISOString().slice(0,10);
-  const b={name:input.files[0].name,date:existingDate};
-  saveBoard(b);
-  logHistory('(global)','Board Report',old,b.name);
+  const b={name:input.files[0].name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
+  saveBoard(b);logHistory('(global)','Board Report',old,b.name);
 }
 function handleBoardDateOverride(val){
-  if(!val||!_board||!canUpload())return;
-  const old=_board.date;
-  _board.date=val;
-  saveBoard(_board);
-  logHistory('(global)','Board Date',old,val);
-  refreshAll();
+  if(!val||!_board||!canEdit())return;
+  const old=_board.date;_board.date=val;
+  saveBoard(_board);logHistory('(global)','Board Date',old,val);refreshAll();
 }
-
 function handleMeetingDate(val){
-  if(!canUpload())return;
+  if(!canEdit())return;
   const p=data[currentProj];
   if(!_meta[p.id])_meta[p.id]={};
   const old=_meta[p.id].meetingDate||'—';
-  _meta[p.id].meetingDate=val;
-  saveMeta();
-  logHistory(p.n,'Meeting Date',old,val);
+  _meta[p.id].meetingDate=val;saveMeta();logHistory(p.n,'Meeting Date',old,val);
   const ref=val||_meta[p.id].lastTouched;
   document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
 }
 
-// ── HISTORY ──────────────────────────────────────────────
+// ── HISTORY ────────────────────────────────────────────
 function renderHistory(rows){
   const el=document.getElementById('history-list');if(!el)return;
-  if(!rows.length){el.innerHTML='<div style="color:#555;font-size:10px;padding:12px;">No changes recorded yet.</div>';return;}
+  if(!rows.length){el.innerHTML='<div style="color:#555;font-size:10px;padding:12px">No changes recorded yet.</div>';return;}
   el.innerHTML=rows.map(e=>{
     const dt=new Date(e.created_at);
     const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
-    return`<div class="hist-item">
-      <span class="hist-time">${when}</span>
-      <span class="hist-who">${e.user}</span><span style="color:#555"> · </span><span class="hist-proj">${e.proj}</span>
-      <div class="hist-detail">${e.field}: <span style="color:#ef4444">${e.old_val}</span> → <span style="color:#4CAF50">${e.new_val}</span></div>
-    </div>`;
+    return`<div class="hist-item"><span class="hist-time">${when}</span><span class="hist-who">${e.user}</span><span style="color:#555"> · </span><span class="hist-proj">${e.proj}</span><div class="hist-detail">${e.field}: <span style="color:#ef4444">${e.old_val}</span> → <span style="color:#4CAF50">${e.new_val}</span></div></div>`;
   }).join('');
 }
 
-// ── START ─────────────────────────────────────────────────
+// ── INIT ───────────────────────────────────────────────
 initData();
 </script>
 </body>
