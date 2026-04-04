@@ -495,7 +495,7 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-function getUserKey(){const k=localStorage.getItem('ww_license_key')||'';return k==='007'?'WW-2026-DOC-0101':k;}
+function getUserKey(){const k=localStorage.getItem('ww_license_key')||'';return k==='007'?'WW-2026-0404-DOC-0101':k;}
 function isDev(){return localStorage.getItem('ww_license_key')==='007';}
 function showSyncBadge(){const el=document.getElementById('sync-badge');if(el)el.style.display='inline';}
 
@@ -559,15 +559,24 @@ function subscribeRealtime(){
 
 // ── LICENSE ───────────────────────────────────────────────
 const LICENSES = {
-  '007':               'Developer',
-  'WW-2026-DOC-0101':  'Doc Kalodski',
-  'WW-2026-BETA-9999': 'Beta Tester',
+  '007':                    'Developer',
+  'WW-2026-0404-DOC-0101':  'Doc Kalodski',
+  // Format: WW-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
+  // Beta testers — expires Apr 30, 2026
+  'WW-BETA-APR2026':        'Beta Tester',
+  // 'WW-2026-MMDD-NAME-0102': 'Next Client',
 };
 
+// Beta expiry rules
+const BETA_EXPIRY = { 'WW-BETA-APR2026': new Date('2026-05-01') };
 function _matchKey(input) {
   const clean = input.trim().toUpperCase().replace(/-/g,'');
   for (const [k,name] of Object.entries(LICENSES)) {
-    if (k.replace(/-/g,'').toUpperCase() === clean) return name;
+    if (k.replace(/-/g,'').toUpperCase() === clean) {
+      const exp=BETA_EXPIRY[k];
+      if (exp&&new Date()>=exp) return '__EXPIRED__';
+      return name;
+    }
   }
   return null;
 }
@@ -576,6 +585,7 @@ function activateLicense() {
   const inEl=document.getElementById('lock-input');
   const errEl=document.getElementById('lock-err');
   const name=_matchKey(raw);
+  if (name==='__EXPIRED__') { inEl.classList.add('error'); errEl.innerHTML='⏳ Beta period ended Apr 30, 2026.<br><span style="font-size:0.7rem">Contact Doc Kalodski for your personal key.</span>'; return; }
   if (!name) { inEl.classList.add('error'); errEl.innerHTML='⛔ Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski for your key.</span>'; return; }
   localStorage.setItem('ww_license_key',raw.trim().toUpperCase());
   localStorage.setItem('ww_license_name',name);
