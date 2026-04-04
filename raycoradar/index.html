@@ -668,7 +668,7 @@
 
 <!-- ── Inline Log Form (moved in DOM by JS to below clicked button) ── -->
 <div id="inline-form">
-  <div id="edit-mode-bar" style="display:none;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.95rem;color:#1d4ed8;align-items:center;gap:10px;">
+  <div id="edit-mode-bar">
     <span style="flex:1;">✏️ Editing this reading</span>
     <button id="cancel-edit" onclick="cancelEdit()">Cancel</button>
   </div>
@@ -698,15 +698,25 @@
   <input type="hidden" id="editing-id" value="">
   <div id="bp-preview-display" style="text-align:center;font-size:2.3rem;font-weight:800;letter-spacing:-1.5px;color:var(--text);padding:4px 0;min-height:48px;"></div>
   <div id="preview-badge" style="text-align:center;margin-bottom:14px;min-height:28px;"></div>
-  <div class="qlog-grid2" style="margin-bottom:12px;">
+  <div class="qlog-grid2" style="margin-bottom:10px;">
     <div class="form-group">
       <label>Reading Slot</label>
       <select id="in-slot" style="font-size:1rem;"></select>
     </div>
     <div class="form-group">
-      <label>Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
-      <input type="text" id="in-notes" placeholder="e.g. after coffee…" maxlength="100" style="font-size:1rem;">
+      <label>Arm / Position</label>
+      <select id="in-arm" style="font-size:1rem;">
+        <option value="">— not specified</option>
+        <option value="L-sit">Left arm, sitting</option>
+        <option value="R-sit">Right arm, sitting</option>
+        <option value="L-std">Left arm, standing</option>
+        <option value="R-std">Right arm, standing</option>
+      </select>
     </div>
+  </div>
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+    <input type="text" id="in-notes" placeholder="e.g. after coffee…" maxlength="100" style="font-size:1rem;">
   </div>
   <div style="margin-bottom:12px;">
     <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Date</div>
@@ -1163,12 +1173,14 @@ function printReport() {
     const dt = new Date(r.timestamp);
     const sl = getSlot(r.slotId);
     const cl = classify(r.sys,r.dia);
+    const armTxt = {'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||'—';
     return `<tr>
       <td>${fmt(dt)}</td>
       <td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td>
       <td><strong>${r.sys}/${r.dia}</strong></td>
       <td>${r.hr||'—'}</td>
       <td>${sl.name}</td>
+      <td>${armTxt}</td>
       <td>${cl.label}</td>
       <td>${r.notes||''}</td>
     </tr>`;
@@ -1186,7 +1198,7 @@ function printReport() {
       ${loadSettings().medications ? `<span><strong>Medications:</strong> ${loadSettings().medications.replace(/\n/g,', ')}</span>` : ''}
     </div>
     <table class="pr-table">
-      <thead><tr><th>Date</th><th>Time</th><th>BP (mmHg)</th><th>HR</th><th>Slot</th><th>Status</th><th>Notes</th></tr></thead>
+      <thead><tr><th>Date</th><th>Time</th><th>BP (mmHg)</th><th>HR</th><th>Slot</th><th>Arm</th><th>Status</th><th>Notes</th></tr></thead>
       <tbody>${tableRows}</tbody>
     </table>
     <div class="pr-zones">
@@ -1368,6 +1380,7 @@ function saveReading() {
   const dia   = parseInt(document.getElementById('in-dia').value);
   const hr    = parseInt(document.getElementById('in-hr').value) || null;
   const notes = document.getElementById('in-notes').value.trim();
+  const arm   = document.getElementById('in-arm').value;
   const editId = document.getElementById('editing-id').value;
 
   if (isNaN(sys)||isNaN(dia)||sys<60||dia<40) { alert('Enter valid systolic and diastolic values.'); return; }
@@ -1395,10 +1408,10 @@ function saveReading() {
   let readings = loadReadings();
   if (editId) {
     const idx = readings.findIndex(r => String(r.id) === editId);
-    if (idx !== -1) readings[idx] = { ...readings[idx], sys, dia, hr, notes, slotId, timestamp: ts };
+    if (idx !== -1) readings[idx] = { ...readings[idx], sys, dia, hr, notes, slotId, arm, timestamp: ts };
     cancelEdit();
   } else {
-    readings.push({ id: Date.now(), timestamp: ts, sys, dia, hr, notes, slotId });
+    readings.push({ id: Date.now(), timestamp: ts, sys, dia, hr, notes, slotId, arm });
   }
 
   saveReadings(readings);
@@ -1410,6 +1423,7 @@ function saveReading() {
 
 function clearForm() {
   document.getElementById('in-notes').value = '';
+  document.getElementById('in-arm').value   = '';
   document.getElementById('editing-id').value = '';
   if (drumSys) drumSys.setValue(120);
   if (drumDia) drumDia.setValue(80);
@@ -1424,6 +1438,7 @@ function editReading(id, _triggerEl) {
   if (drumDia) drumDia.setValue(r.dia);
   if (drumHr)  drumHr.setValue(r.hr || 70);
   document.getElementById('in-notes').value = r.notes || '';
+  document.getElementById('in-arm').value   = r.arm   || '';
   document.getElementById('editing-id').value = String(r.id);
   setDateDrums(new Date(r.timestamp));
   document.getElementById('in-slot').value = r.slotId || '';
@@ -1453,7 +1468,7 @@ function showCalInlineForm(panelId, dateISO, readingId) {
   const defDt = r ? new Date(new Date(r.timestamp).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : dateISO;
   const slotOpts = slots.map(s=>`<option value="${s.id}" ${r?r.slotId===s.id?'selected':'':s===slots[0]?'selected':''}>${s.emoji||''} ${s.name}</option>`).join('');
   panel.insertAdjacentHTML('beforeend',`
-    <div class="cal-inline-form" id="${fid}" style="background:#fff;border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
+    <div class="cal-inline-form" id="${fid}" style="background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
       <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Systolic</label>
@@ -1621,6 +1636,7 @@ function readingItemHTML(r, editingId='') {
 
 // ── SHARED: reading row used in both 7-day accordion and monthly calendar ──
 const DOT_C = {normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'};
+const SEVERITY = {normal:0,elevated:1,stage1:2,stage2:3,crisis:4};
 
 function calRowHTML(r, panelId) {
   const ts = new Date(r.timestamp);
@@ -1642,6 +1658,7 @@ function calRowHTML(r, panelId) {
     <div class="cr-meta">
       <span class="badge ${c.cls}">${c.label}</span>
       <span class="cr-slot">${sl.emoji||''} ${sl.name}</span>
+      ${r.arm?`<span class="cr-slot">· ${{ 'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||r.arm}</span>`:''}
       ${r.notes?`<span class="cr-notes">· ${r.notes}</span>`:''}
     </div>
   </div>`;
@@ -1756,7 +1773,7 @@ function groupByDay(readings, nDays=7) {
       const avgSys = Math.round(dayR.reduce((a,r)=>a+r.sys,0)/dayR.length);
       const avgDia = Math.round(dayR.reduce((a,r)=>a+r.dia,0)/dayR.length);
       // worst reading of the day drives the dot color
-      const worstR = dayR.reduce((w,r)=> classify(r.sys,r.dia).key > classify(w.sys,w.dia).key ? r : w, dayR[0]);
+      const worstR = dayR.reduce((w,r)=> (SEVERITY[classify(r.sys,r.dia).key]||0) > (SEVERITY[classify(w.sys,w.dia).key]||0) ? r : w, dayR[0]);
       result.push({
         label,
         sys:     avgSys,
@@ -1963,6 +1980,23 @@ function renderAnalysis() {
     ? `Time-of-day pattern detected: ${highestSlot[1].emoji} ${highestSlot[1].name} readings are highest (avg ${highestSlot[1].sys}/${highestSlot[1].dia} mmHg), while ${lowestSlot[1].emoji} ${lowestSlot[1].name} readings are lowest (avg ${lowestSlot[1].sys}/${lowestSlot[1].dia} mmHg).`
     : 'Insufficient slot data for time-of-day pattern analysis.';
 
+  // ── Morning surge detection ─────────────────────────────
+  const byDay = {};
+  sorted.forEach(r => { const dk=new Date(r.timestamp).toDateString(); if(!byDay[dk]) byDay[dk]=[]; byDay[dk].push(r); });
+  const dayKeys = Object.keys(byDay).sort((a,b)=>new Date(a)-new Date(b));
+  const surgeEvents = [];
+  for (let i=1;i<dayKeys.length;i++) {
+    const prevR = byDay[dayKeys[i-1]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const currR = byDay[dayKeys[i]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const prevLast = prevR[prevR.length-1], currFirst = currR[0];
+    const surge = currFirst.sys - prevLast.sys;
+    surgeEvents.push({ date: dayKeys[i], surge, morning: currFirst.sys, evening: prevLast.sys });
+  }
+  const avgSurge = surgeEvents.length ? Math.round(surgeEvents.reduce((a,e)=>a+e.surge,0)/surgeEvents.length) : null;
+  const highSurgeCount = surgeEvents.filter(e=>e.surge>=20).length;
+
+  const meds = loadSettings().medications;
+
   const report = [
     `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
     `<span class="ai-head">  RAYCORADAR — BP ANALYSIS REPORT</span>`,
@@ -1970,6 +2004,7 @@ function renderAnalysis() {
     `<span class="ai-label">Generated   :</span> ${new Date().toLocaleString('en-PH')}`,
     `<span class="ai-label">Data Range  :</span> ${fmt(sorted[0].timestamp)} → ${fmt(sorted[sorted.length-1].timestamp)}`,
     `<span class="ai-label">Coverage    :</span> ${readings.length} readings over ${daysCovered} days`,
+    meds ? `<span class="ai-label">Medications :</span> ${meds.replace(/\n/g,' | ')}` : '',
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
     `<span class="ai-head">  CURRENT STATUS (Last 7 Days)</span>`,
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
@@ -1987,6 +2022,8 @@ function renderAnalysis() {
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
     `  ${slotPatternText}`,
     slotEntries.length ? `  Recommendation: ${highestSlot ? `Schedule medications or rest before your ${highestSlot[1].name} reading window.` : ''}` : '',
+    avgSurge !== null ? `<span class="ai-label">Morning Surge :</span> ${avgSurge > 0 ? `<span class="${avgSurge >= 20 ? 'ai-warn' : 'ai-ok'}">avg +${avgSurge} mmHg overnight rise${highSurgeCount > 0 ? ` (${highSurgeCount} day${highSurgeCount > 1 ? 's' : ''} ≥20 mmHg surge)` : ''}</span>` : `<span class="ai-ok">avg ${avgSurge} mmHg overnight</span>`}` : '',
+    highSurgeCount >= 3 ? `<span class="ai-warn">  ⚠ Frequent morning surges detected — mention to your physician.</span>` : '',
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
     `<span class="ai-head">  NOTABLE READINGS</span>`,
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
@@ -2147,15 +2184,14 @@ async function rrRenderClients() {
     const {data,error}=await sb.from('rr_data').select('*').eq('data_key','readings');
     if(error||!data||!data.length){el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">No clients yet.</div>';return;}
     const clients=data.filter(r=>r.user_key!=='__test__').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
-    const BPL={'Normal':'#22c55e','Elevated':'#eab308','Stage 1':'#f97316','Stage 2':'#ef4444','Crisis':'#7f1d1d'};
     el.innerHTML=clients.map(c=>{
       const readings=(c.value||[]).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
       const count=readings.length;
       const latest=readings[0];
       const lastDate=latest?new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
       const latestBP=latest?`${latest.sys}/${latest.dia} mmHg · HR ${latest.hr}`:'—';
-      const cat=latest?classifyBP(latest.sys,latest.dia):null;
-      const catColor=cat?BPL[cat]:'#94a3b8';
+      const cat=latest?classify(latest.sys,latest.dia):null;
+      const catColor=cat?DOT_C[cat.key]:'#94a3b8';
       return `<div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${catColor};">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
           <div style="font-size:0.95rem;font-weight:700;font-family:monospace;">${c.user_key}</div>
@@ -2164,7 +2200,7 @@ async function rrRenderClients() {
         <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--muted);flex-wrap:wrap;">
           <span>Latest: <strong style="color:${catColor};">${latestBP}</strong></span>
           <span>Last active: <strong style="color:var(--text);">${lastDate}</strong></span>
-          ${cat?`<span style="font-size:0.72rem;background:${catColor}20;color:${catColor};border-radius:4px;padding:1px 6px;font-weight:700;">${cat}</span>`:''}
+          ${cat?`<span style="font-size:0.72rem;background:${catColor}20;color:${catColor};border-radius:4px;padding:1px 6px;font-weight:700;">${cat.label}</span>`:''}
         </div>
         <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">Updated: ${new Date(c.updated_at).toLocaleString('en-PH')}</div>
       </div>`;
