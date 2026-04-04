@@ -1228,30 +1228,37 @@ function showExtractResults(parsed){
   }).join('');
   document.getElementById('extract-results').style.display='flex';
 }
+function fuzzyMatch(existing,extracted){
+  const a=existing.toLowerCase(), b=extracted.toLowerCase();
+  return a===b||a.includes(b)||b.includes(a);
+}
 async function applyExtracted(){
   if(!_extractedProjects.length) return;
-  const user=localStorage.getItem('pp_licensee')||'Admin';
   for(const p of _extractedProjects){
-    const existing=data.findIndex(d=>d.n.toLowerCase()===p.n.toLowerCase());
-    const id=existing>=0?data[existing].id:'p'+Date.now()+Math.random().toString(36).slice(2,6);
-    const entry={
-      id,
-      n:p.n,
-      s:p.s||'Planning',
-      r:p.r||'TBD',
-      o:p.o||'',
-      p:p.p||'★★★☆☆',
-      d:(p.done||[]).map(x=>({label:x,date:''})),
-      c:(p.current||[]).map(x=>({label:x,date:''})),
-      x:(p.next||[]).map(x=>({label:x,date:''})),
-      notes:p.notes||'',
-      deadline:''
-    };
-    if(existing>=0){
-      await logHistory(p.n,'[AI Extract]',data[existing].s,p.s);
-      data[existing]=entry;
+    const existingIdx=data.findIndex(d=>fuzzyMatch(d.n,p.n));
+    if(existingIdx>=0){
+      const old=data[existingIdx];
+      await logHistory(old.n,'[AI Extract]',old.s,p.s||old.s);
+      data[existingIdx]={
+        ...old,
+        s:p.s||old.s,
+        r:p.r&&p.r!=='TBD'?p.r:old.r,
+        o:p.o||old.o,
+        p:p.p||old.p,
+        d:p.done&&p.done.length?(p.done).map(x=>({label:x,date:''})):old.d,
+        c:p.current&&p.current.length?(p.current).map(x=>({label:x,date:''})):old.c,
+        x:p.next&&p.next.length?(p.next).map(x=>({label:x,date:''})):old.x,
+        notes:p.notes||old.notes,
+      };
     }else{
-      data.push(entry);
+      const id='p'+Date.now()+Math.random().toString(36).slice(2,6);
+      data.push({
+        id,n:p.n,s:p.s||'Planning',r:p.r||'TBD',o:p.o||'',p:p.p||'★★★☆☆',
+        d:(p.done||[]).map(x=>({label:x,date:''})),
+        c:(p.current||[]).map(x=>({label:x,date:''})),
+        x:(p.next||[]).map(x=>({label:x,date:''})),
+        notes:p.notes||'',deadline:''
+      });
       if(!_meta[id]) _meta[id]={createdAt:new Date().toISOString().slice(0,10)};
     }
   }
