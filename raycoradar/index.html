@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RaycoRadar — BP Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
     :root {
@@ -481,7 +482,7 @@
     <div class="radar-icon">📡</div>
     <div class="header-text">
       <h1>Rayco<span>Radar</span></h1>
-      <p>BLOOD PRESSURE MONITOR &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span></p>
+      <p>BLOOD PRESSURE MONITOR &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span> &nbsp;<span id="rr-sync-badge" style="display:none;font-size:0.6rem;background:rgba(14,165,233,0.2);border-radius:4px;padding:1px 5px;">☁️ synced</span></p>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
   </div>
@@ -722,6 +723,69 @@
 <script>
 'use strict';
 
+// ── SUPABASE SYNC ─────────────────────────────────────────
+const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+function rrUserKey(){return localStorage.getItem('rr_license_name')||'';}
+function showRRSyncBadge(){const el=document.getElementById('rr-sync-badge');if(el)el.style.display='inline';}
+
+async function rrPushToCloud(dataKey,value){
+  const uk=rrUserKey(); if(!uk) return;
+  try{ await sb.from('rr_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
+  catch(e){ console.warn('RR push error:',e); }
+}
+
+async function rrSyncFromCloud(){
+  const uk=rrUserKey(); if(!uk) return;
+  try{
+    const {data,error}=await sb.from('rr_data').select('*').eq('user_key',uk);
+    if(error||!data||!data.length) return;
+    const cloudR=data.find(r=>r.data_key==='readings')?.value||[];
+    const cloudS=data.find(r=>r.data_key==='settings')?.value||null;
+    const local=JSON.parse(localStorage.getItem('rr_readings')||'[]');
+    const localIds=new Set(local.map(r=>r.id));
+    const incoming=cloudR.filter(r=>!localIds.has(r.id));
+    if(incoming.length){
+      const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+      _readingsCache=merged;
+      localStorage.setItem('rr_readings',JSON.stringify(merged));
+    }
+    if(cloudS&&!localStorage.getItem('rr_settings2')){
+      _settingsCache=cloudS;
+      localStorage.setItem('rr_settings2',JSON.stringify(cloudS));
+    }
+    showRRSyncBadge(); renderAll();
+  }catch(e){ console.warn('RR sync error:',e); }
+}
+
+function rrSubscribeRealtime(){
+  const uk=rrUserKey(); if(!uk) return;
+  sb.channel('rr-'+uk)
+    .on('postgres_changes',{event:'*',schema:'public',table:'rr_data',filter:'user_key=eq.'+uk},payload=>{
+      const d=payload.new; if(!d) return;
+      if(d.data_key==='readings'){
+        const cloud=d.value||[];
+        const local=loadReadings();
+        const localIds=new Set(local.map(r=>r.id));
+        const incoming=cloud.filter(r=>!localIds.has(r.id));
+        if(incoming.length){
+          const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+          _readingsCache=merged;
+          localStorage.setItem('rr_readings',JSON.stringify(merged));
+          renderAll();
+        }
+      }
+      if(d.data_key==='settings'&&d.value){
+        _settingsCache=d.value;
+        localStorage.setItem('rr_settings2',JSON.stringify(d.value));
+      }
+      showRRSyncBadge();
+    })
+    .subscribe();
+}
+
 // ── LICENSE ───────────────────────────────────────────────
 // ╔══════════════════════════════════════════════════════════╗
 // ║  ASSIGN KEYS HERE — add  'KEY': 'Full Name'  pairs     ║
@@ -820,7 +884,7 @@ function loadSettings() {
   }
   return _settingsCache;
 }
-function persistSettings(s) { _settingsCache = s; localStorage.setItem('rr_settings2', JSON.stringify(s)); }
+function persistSettings(s) { _settingsCache = s; localStorage.setItem('rr_settings2', JSON.stringify(s)); rrPushToCloud('settings', s); }
 
 function saveSlots() {
   const s = loadSettings();
@@ -934,7 +998,7 @@ function loadReadings() {
   if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('rr_readings') || '[]');
   return _readingsCache;
 }
-function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('rr_readings', JSON.stringify(arr)); }
+function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('rr_readings', JSON.stringify(arr)); rrPushToCloud('readings', arr); }
 
 // ── DEMO DATA ─────────────────────────────────────────────
 // Demo arc: Jan 1 2026 → today — Stage 2 → Normal trend
@@ -2079,6 +2143,9 @@ function renderAll() {
   renderAll();
   checkReminders();
   setInterval(checkReminders, 60_000);
+  // Cloud sync
+  rrSyncFromCloud();
+  rrSubscribeRealtime();
 })();
 </script>
 </body>
