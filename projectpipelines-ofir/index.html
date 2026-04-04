@@ -190,6 +190,16 @@ tr:hover td{background:#1a1f26}
   .print-date{display:block!important}
 }
 
+/* === WARNINGS PANEL === */
+.warn-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:10px}
+.warn-item:last-child{margin-bottom:0}
+.warn-red{background:#2a0a0a;border-left:4px solid #ef4444}
+.warn-orange{background:#2a1500;border-left:4px solid #f97316}
+.warn-yellow{background:#1a1500;border-left:4px solid #f59e0b}
+.warn-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.warn-title{font-weight:700;color:#fff;margin-bottom:1px}
+.warn-sub{color:#888;font-size:9px}
+
 /* === PRINT MODAL === */
 .print-opt-btn{background:#242b32;border:1px solid #2a2f36;border-radius:8px;padding:12px 14px;color:#fff;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;width:100%;transition:background 0.15s}
 .print-opt-btn:hover{background:#0C447C;border-color:#0C447C}
@@ -289,6 +299,7 @@ tr:hover td{background:#1a1f26}
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
   </div>
+  <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
   <div id="priority-boxes"></div>
@@ -831,7 +842,45 @@ function renderTableBody(){
 }
 
 // ── OVERVIEW ───────────────────────────────────────────
-function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();refreshStagnant();}
+function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();refreshStagnant();renderWarnings();}
+function renderWarnings(){
+  const panel=document.getElementById('warnings-panel');
+  const items=[];
+
+  // Overdue deadlines
+  const overdue=data.filter(p=>p.deadline&&daysUntil(p.deadline)<0);
+  if(overdue.length){
+    overdue.forEach(p=>{
+      const d=Math.abs(daysUntil(p.deadline));
+      items.push({cls:'warn-red',icon:'🚨',title:`OVERDUE: ${p.n}`,sub:`Deadline was ${fmtDate(p.deadline)} — ${d} day${d!==1?'s':''} ago`,idx:data.indexOf(p)});
+    });
+  }
+
+  // Deadlines within 14 days
+  const soon=data.filter(p=>p.deadline&&daysUntil(p.deadline)>=0&&daysUntil(p.deadline)<=14);
+  if(soon.length){
+    soon.forEach(p=>{
+      const d=daysUntil(p.deadline);
+      items.push({cls:'warn-orange',icon:'⏰',title:`Due soon: ${p.n}`,sub:`Deadline in ${d} day${d!==1?'s':''} — ${fmtDate(p.deadline)}`,idx:data.indexOf(p)});
+    });
+  }
+
+  // Stagnant projects (no activity since last board meeting)
+  if(_board){
+    const stag=data.filter(p=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=_board.date;});
+    if(stag.length){
+      items.push({cls:'warn-yellow',icon:'⚠️',title:`${stag.length} project${stag.length!==1?'s':''} not moving since last board meeting`,sub:stag.map(p=>p.n).join(', '),idx:null});
+    }
+  }
+
+  if(!items.length){panel.style.display='none';return;}
+  panel.style.display='block';
+  panel.innerHTML=items.map(w=>`
+    <div class="warn-item ${w.cls}" ${w.idx!==null?`onclick="showTab('projects',document.querySelector('[data-tab=projects]'));detail(${w.idx})"`:''}>
+      <div class="warn-icon">${w.icon}</div>
+      <div><div class="warn-title">${w.title}</div><div class="warn-sub">${w.sub}</div></div>
+    </div>`).join('');
+}
 
 function refreshOverviewStats(){
   const total=data.length;
