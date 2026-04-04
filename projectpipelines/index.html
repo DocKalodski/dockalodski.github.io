@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProjectPipelines</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}
+.header{background:linear-gradient(135deg,#0C447C,#0F6E56);padding:1rem;text-align:center}
+.header h1{margin:0;font-size:20px}
+.header p{margin:0.25rem 0 0;font-size:12px;opacity:0.9}
+.tabs{display:flex;gap:4px;background:#1a1f26;padding:0.5rem;border-bottom:1px solid #2a2f36;flex-wrap:wrap}
+.tab-btn{padding:8px 12px;background:#242b32;border:none;color:#888;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.tab-btn.active{background:#0F6E56;color:#fff}
+.content{display:flex;flex:1;overflow:hidden}
+.tab{display:none;width:100%;overflow-y:auto;padding:1rem;flex-direction:column}
+.tab.active{display:flex}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
+.card{background:#1a1f26;padding:1rem;border-radius:6px;border-left:4px solid #0F6E56;text-align:center}
+.big{font-size:24px;font-weight:700;color:#0F6E56;margin-bottom:0.5rem}
+.small{font-size:10px;color:#888;text-transform:uppercase}
+.box{background:#1a1f26;border-radius:6px;padding:1rem;border-left:4px solid;margin-bottom:1rem}
+.box-h{font-size:12px;font-weight:600;margin-bottom:0.75rem;color:#fff}
+.item{font-size:10px;color:#ccc;margin-bottom:0.5rem;padding:0.5rem;background:#242b32;border-radius:4px;display:flex;justify-content:space-between}
+.item strong{color:#0F6E56}
+.item-r{font-size:9px;color:#888}
+.proj{background:#1a1f26;padding:0.75rem;border-radius:6px;border-left:4px solid #0C447C;margin-bottom:8px;cursor:pointer}
+.proj:active{background:#242b32;border-left-color:#0F6E56}
+.proj-h{font-size:11px;font-weight:600;color:#fff;margin-bottom:0.3rem}
+.proj-m{font-size:9px;color:#888}
+.detail{background:#1a1f26;border-radius:6px;border-left:4px solid #0F6E56;padding:1rem;margin-top:1rem;display:none}
+.detail.show{display:block}
+.detail-h{display:flex;justify-content:space-between;margin-bottom:0.75rem;border-bottom:1px solid #2a2f36;padding-bottom:0.5rem}
+.detail-n{font-size:13px;font-weight:700;color:#0F6E56}
+.close{background:none;border:none;color:#888;cursor:pointer;font-size:18px}
+.detail-m{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;font-size:10px}
+.detail-l{color:#0F6E56;font-weight:600;font-size:9px;text-transform:uppercase;margin-bottom:0.15rem}
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;font-size:9px}
+.step{background:#242b32;padding:0.5rem;border-radius:4px}
+.step-t{color:#0F6E56;font-weight:600;font-size:8px;text-transform:uppercase;margin-bottom:0.4rem}
+.step-i{color:#ccc;margin-bottom:0.3rem;padding-left:10px;position:relative}
+.step-i::before{content:'▸';position:absolute;left:0;color:#0F6E56;font-size:8px}
+.step-i.p::before{color:#BA7517}
+table{width:100%;border-collapse:collapse;font-size:10px}
+th{padding:8px;text-align:left;font-weight:600;color:#0F6E56;background:#242b32;border-bottom:2px solid #2a2f36}
+td{padding:8px;border-bottom:1px solid #2a2f36;color:#ccc;cursor:pointer}
+tr:active{background:#1a1f26}
+.tag{background:#0C447C;color:#fff;padding:2px 6px;border-radius:3px;font-size:8px;font-weight:600}
+.wrapper{display:flex;flex-direction:column;height:100vh}
+.board-bar{background:#1a1f26;border:1px solid #2a2f36;border-radius:6px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.board-bar-info{flex:1;font-size:10px;color:#ccc;}
+.board-bar-info strong{color:#0F6E56;display:block;font-size:11px;}
+.upload-btn{background:#242b32;color:#0F6E56;border:1px solid #0F6E56;border-radius:4px;padding:6px 10px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.meeting-input{background:#242b32;color:#ccc;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;color-scheme:dark;flex:1;}
+.as-of{font-size:8px;color:#0F6E56;margin-top:3px;font-style:italic;}
+.stagnant{border-left-color:#ef4444!important;}
+.stag-badge{font-size:8px;background:#7f1d1d;color:#fca5a5;border-radius:3px;padding:1px 5px;margin-left:6px;}
+.hist-item{padding:8px 10px;border-bottom:1px solid #2a2f36;font-size:10px;}
+.hist-who{color:#0F6E56;font-weight:600;}
+.hist-proj{color:#38bdf8;}
+.hist-time{color:#555;font-size:9px;float:right;}
+.hist-detail{color:#888;margin-top:2px;}
+.role-badge{font-size:8px;padding:1px 6px;border-radius:3px;margin-left:6px;background:#1a3a2a;color:#0F6E56;}
+#loading-bar{position:fixed;top:0;left:0;right:0;height:3px;background:#0F6E56;z-index:99999;display:none;}
+#lock-overlay{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0c1445,#1a2875);display:flex;align-items:center;justify-content:center;}
+#lock-overlay.hidden{display:none;}
+.lock-box{background:#1a2133;border:1px solid #2a3a5c;border-radius:14px;padding:28px 24px;max-width:320px;width:90%;text-align:center;}
+.lock-box h2{color:#38bdf8;font-size:1.1rem;margin-bottom:6px;}
+.lock-box p{font-size:11px;color:#94a3b8;margin-bottom:16px;}
+.lock-box input{width:100%;padding:10px;background:#0f172a;border:2px solid #334155;border-radius:8px;color:#f1f5f9;font-size:1rem;font-family:monospace;letter-spacing:2px;text-align:center;text-transform:uppercase;outline:none;margin-bottom:8px;}
+.lock-box input:focus{border-color:#38bdf8;}
+.lock-box input.err{border-color:#ef4444;}
+.lock-err{font-size:11px;color:#ef4444;min-height:16px;margin-bottom:10px;}
+.lock-btn{width:100%;padding:11px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="lock-overlay">
+  <div class="lock-box">
+    <div style="font-size:2rem;margin-bottom:8px;">🔐</div>
+    <h2>ProjectPipelines</h2>
+    <p>Enter your license key to activate.<br>You only need to do this once.</p>
+    <input type="text" id="lock-input" placeholder="Enter license key" maxlength="30"
+      oninput="this.value=this.value.toUpperCase()"
+      onkeydown="if(event.key==='Enter')ppActivate()">
+    <div class="lock-err" id="lock-err"></div>
+    <button class="lock-btn" onclick="ppActivate()">Activate</button>
+  </div>
+</div>
+
+<div class="wrapper">
+<div class="header">
+<h1>ProjectPipelines</h1>
+<p>OFIR Consulting Corp · <span id="pp-licensee">by Doc Kalodski</span></p>
+</div>
+<div class="tabs">
+<button class="tab-btn active" onclick="show('overview')">📊 Overview</button>
+<button class="tab-btn" onclick="show('projects')">📋 Projects</button>
+<button class="tab-btn" onclick="show('table')">🗂️ Table</button>
+<button class="tab-btn" onclick="show('history')">📜 History</button>
+</div>
+<div class="content">
+
+<!-- OVERVIEW -->
+<div id="overview" class="tab active">
+<div class="board-bar">
+  <div class="board-bar-info">
+    <strong>📋 Board Report</strong>
+    <span id="board-info">No report uploaded yet</span>
+  </div>
+  <label class="upload-btn">⬆ Upload Report<input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)"></label>
+</div>
+<div class="grid">
+<div class="card"><div class="big">11</div><div class="small">Total</div></div>
+<div class="card"><div class="big">₱237M+</div><div class="small">Revenue</div></div>
+<div class="card"><div class="big">1</div><div class="small">In Progress</div></div>
+<div class="card"><div class="big">3</div><div class="small">Bid Submitted</div></div>
+<div class="card"><div class="big">3</div><div class="small">Waiting</div></div>
+<div class="card"><div class="big">$2.5M</div><div class="small">Financing</div></div>
+</div>
+<h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
+<div class="box" style="border-left-color:#0F6E56">
+<div class="box-h">🏆 MUST WIN (★★★★★)</div>
+<div class="item"><div><strong>La India Nicaragua</strong> | $4-5M | In Progress | ★★★★★</div><div class="item-r">Witco/FSmidth</div></div>
+</div>
+<div class="box" style="border-left-color:#4CAF50">
+<div class="box-h">💰 HIGH VALUE (★★★★★)</div>
+<div class="item"><div><strong>APEX Mining</strong> | ~₱60k | Bid | ★★★★★</div><div class="item-r">Howlin</div></div>
+<div class="item"><div><strong>TVI Surigao</strong> | TBD | Bid | ★★★★★</div><div class="item-r">Jake</div></div>
+<div class="item"><div><strong>Pasar Leyte</strong> | TBD | Bid | ★★★★★</div><div class="item-r">Jake</div></div>
+</div>
+<div class="box" style="border-left-color:#BA7517">
+<div class="box-h">⚠️ MONITOR (★★★★+)</div>
+<div class="item"><div><strong>Hallmark</strong> | ~₱1B | Planning | ★★★★☆</div><div class="item-r">Rolly</div></div>
+<div class="item"><div><strong>PGMPI Ag</strong> | TBD | Planning | ★★★★☆</div><div class="item-r">Abel</div></div>
+<div class="item"><div><strong>PGMPI Dz</strong> | TBD | Planning | ★★★★☆</div><div class="item-r">OFIR</div></div>
+<div class="item"><div><strong>Kingking</strong> | TBD | Pending | ★★★☆☆</div><div class="item-r">OFIR</div></div>
+<div class="item"><div><strong>Brisbane</strong> | TBD | Waiting | ★★★☆☆</div><div class="item-r">O2</div></div>
+<div class="item"><div><strong>Khan Altai</strong> | TBD | Waiting | ★★★☆☆</div><div class="item-r">O2</div></div>
+<div class="item"><div><strong>Far Southeast</strong> | TBD | Waiting | ★★★☆☆</div><div class="item-r">Oscar</div></div>
+</div>
+<div class="box" style="border-left-color:#ef4444" id="stagnant-box">
+<div class="box-h">🚨 NOT MOVING (30+ days)</div>
+<div id="stagnant-list"><div style="font-size:10px;color:#888;">Open projects to start tracking activity.</div></div>
+</div>
+</div>
+
+<!-- PROJECTS -->
+<div id="projects" class="tab">
+<div class="proj" onclick="detail(0)"><div class="proj-h">La India Nicaragua</div><div class="proj-m" id="pm-0">In Progress | $4-5M | ★★★★★</div></div>
+<div class="proj" onclick="detail(1)"><div class="proj-h">APEX Mining</div><div class="proj-m" id="pm-1">Bid | ~₱60k | ★★★★★</div></div>
+<div class="proj" onclick="detail(2)"><div class="proj-h">TVI Surigao</div><div class="proj-m" id="pm-2">Bid | TBD | ★★★★★</div></div>
+<div class="proj" onclick="detail(3)"><div class="proj-h">Pasar Leyte</div><div class="proj-m" id="pm-3">Bid | TBD | ★★★★★</div></div>
+<div class="proj" onclick="detail(4)"><div class="proj-h">Hallmark Mining</div><div class="proj-m" id="pm-4">Planning | ~₱1B | ★★★★☆</div></div>
+<div class="proj" onclick="detail(5)"><div class="proj-h">PGMPI Aglubang</div><div class="proj-m" id="pm-5">Planning | TBD | ★★★★☆</div></div>
+<div class="proj" onclick="detail(6)"><div class="proj-h">PGMPI Dizon</div><div class="proj-m" id="pm-6">Planning | TBD | ★★★★☆</div></div>
+<div class="proj" onclick="detail(7)"><div class="proj-h">Kingking</div><div class="proj-m" id="pm-7">Pending | TBD | ★★★☆☆</div></div>
+<div class="proj" onclick="detail(8)"><div class="proj-h">Brisbane</div><div class="proj-m" id="pm-8">Waiting | TBD | ★★★☆☆</div></div>
+<div class="proj" onclick="detail(9)"><div class="proj-h">Khan Altai</div><div class="proj-m" id="pm-9">Waiting | TBD | ★★★☆☆</div></div>
+<div class="proj" onclick="detail(10)"><div class="proj-h">Far Southeast</div><div class="proj-m" id="pm-10">Waiting | TBD | ★★★☆☆</div></div>
+<div id="detail" class="detail">
+<div class="detail-h"><div class="detail-n" id="dn">La India Nicaragua</div><button class="close" onclick="close_detail()">✕</button></div>
+<div class="detail-m">
+<div><span class="detail-l">Status</span><div id="ds">In Progress</div></div>
+<div><span class="detail-l">Revenue</span><div id="dr">$4-5M</div></div>
+<div><span class="detail-l">Owner</span><div id="do">Witco</div></div>
+<div><span class="detail-l">Probability</span><div id="dp">★★★★★</div></div>
+</div>
+<div class="steps">
+<div class="step"><div class="step-t">✓ Done</div><div id="dd"></div></div>
+<div class="step"><div class="step-t">▶ Current</div><div id="dc"></div></div>
+<div class="step"><div class="step-t">→ Next</div><div id="dn2"></div></div>
+</div>
+<div class="doc-section" style="margin-top:12px;padding-top:10px;border-top:1px solid #2a2f36;">
+  <div class="detail-l" style="margin-bottom:6px;">📅 Last Meeting / Activity</div>
+  <div id="last-touched" style="font-size:10px;color:#888;margin-bottom:8px;">Not yet tracked</div>
+  <input type="date" id="meeting-date" class="meeting-input" title="Override: set last meeting date" onchange="handleMeetingDate(this.value)" style="width:100%;">
+</div>
+</div>
+</div>
+
+<!-- TABLE -->
+<div id="table" class="tab">
+<table>
+<tr><th>Project</th><th>Status</th><th>Revenue</th><th>Prob</th><th>Last Update</th></tr>
+<tr onclick="goto(0)"><td><b>La India</b></td><td id="ts-0"><span class="tag">In Progress</span></td><td>$4-5M</td><td>★★★★★</td><td id="tu-0">—</td></tr>
+<tr onclick="goto(1)"><td><b>APEX</b></td><td id="ts-1"><span class="tag">Bid</span></td><td>~₱60k</td><td>★★★★★</td><td id="tu-1">—</td></tr>
+<tr onclick="goto(2)"><td><b>TVI</b></td><td id="ts-2"><span class="tag">Bid</span></td><td>TBD</td><td>★★★★★</td><td id="tu-2">—</td></tr>
+<tr onclick="goto(3)"><td><b>Pasar</b></td><td id="ts-3"><span class="tag">Bid</span></td><td>TBD</td><td>★★★★★</td><td id="tu-3">—</td></tr>
+<tr onclick="goto(4)"><td><b>Hallmark</b></td><td id="ts-4"><span class="tag">Planning</span></td><td>~₱1B</td><td>★★★★☆</td><td id="tu-4">—</td></tr>
+<tr onclick="goto(5)"><td><b>PGMPI Ag</b></td><td id="ts-5"><span class="tag">Planning</span></td><td>TBD</td><td>★★★★☆</td><td id="tu-5">—</td></tr>
+<tr onclick="goto(6)"><td><b>PGMPI Dz</b></td><td id="ts-6"><span class="tag">Planning</span></td><td>TBD</td><td>★★★★☆</td><td id="tu-6">—</td></tr>
+<tr onclick="goto(7)"><td><b>Kingking</b></td><td id="ts-7"><span class="tag">Pending</span></td><td>TBD</td><td>★★★☆☆</td><td id="tu-7">—</td></tr>
+<tr onclick="goto(8)"><td><b>Brisbane</b></td><td id="ts-8"><span class="tag">Waiting</span></td><td>TBD</td><td>★★★☆☆</td><td id="tu-8">—</td></tr>
+<tr onclick="goto(9)"><td><b>Khan</b></td><td id="ts-9"><span class="tag">Waiting</span></td><td>TBD</td><td>★★★☆☆</td><td id="tu-9">—</td></tr>
+<tr onclick="goto(10)"><td><b>Far SE</b></td><td id="ts-10"><span class="tag">Waiting</span></td><td>TBD</td><td>★★★☆☆</td><td id="tu-10">—</td></tr>
+</table>
+</div>
+
+<!-- HISTORY -->
+<div id="history" class="tab">
+<div style="font-size:10px;color:#555;margin-bottom:8px;">Newest changes first · all editors · all projects</div>
+<div id="history-list"><div style="color:#555;font-size:10px;padding:12px;">Loading history…</div></div>
+</div>
+
+</div>
+</div>
+<div id="loading-bar"></div>
+
+<script>
+const data=[
+{n:"La India Nicaragua",s:"In Progress",r:"$4-5M",o:"Witco/FSmidth",p:"★★★★★",d:["Design","Sourcing","Contractor","Budget"],c:["Fabrication","Financing"],x:["Secure funding","Fabrication","Installation"]},
+{n:"APEX Mining",s:"Bid Submitted",r:"~₱60k",o:"Howlin/Dave",p:"★★★★★",d:["Bid","PNID","Design","Bid done"],c:["Evaluation"],x:["Award","Contract","Execution"]},
+{n:"TVI Surigao",s:"Bid Submitted",r:"TBD",o:"Jake Foronda",p:"★★★★★",d:["Invitation","Evaluation","Estimate"],c:["Awaiting"],x:["Award","Contract","Execution"]},
+{n:"Pasar Leyte",s:"Bid Submitted",r:"TBD",o:"Jake Foronda",p:"★★★★★",d:["Opportunity","Feasibility"],c:["Awaiting"],x:["Award","Survey","Recovery"]},
+{n:"Hallmark Mining",s:"Planning",r:"~₱1B",o:"Rolly Cruz",p:"★★★★☆",d:["Ore found","Investor"],c:["Diligence","NDA"],x:["Finalize","Register","Approval"]},
+{n:"PGMPI Aglubang",s:"Planning",r:"TBD",o:"Abel",p:"★★★★☆",d:["Opportunity"],c:["Scoping"],x:["Study","Plan","Investor"]},
+{n:"PGMPI Dizon",s:"Planning",r:"TBD",o:"OFIR Holdings",p:"★★★★☆",d:["Contact"],c:["Scoping"],x:["Study","Modeling","Investor"]},
+{n:"Kingking",s:"Proposal Pending",r:"TBD",o:"OFIR",p:"★★★☆☆",d:["Opportunity"],c:["OVERDUE"],x:["SUBMIT","Present","Negotiate"]},
+{n:"Brisbane",s:"Waiting Feedback",r:"TBD",o:"O2 Mining",p:"★★★☆☆",d:["Contact"],c:["Awaiting"],x:["Scope","Check","Proposal"]},
+{n:"Khan Altai",s:"Waiting Feedback",r:"TBD",o:"O2 Mining",p:"★★★☆☆",d:["Proposal"],c:["NO RESPONSE"],x:["Followup","Feedback","Renegotiate"]},
+{n:"Far Southeast",s:"Waiting Feedback",r:"TBD",o:"Oscar/Lepanto",p:"★★★☆☆",d:["Project ID"],c:["Drilling"],x:["Clarify","Drilling","Study"]}
+];
+// ════════════════════════════════════════════════════════
+// SUPABASE CONFIG — paste your values here
+// ════════════════════════════════════════════════════════
+const SB_URL = 'https://psudkrlyxulfakqbdblt.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
+// ════════════════════════════════════════════════════════
+
+// ── LICENSE + ROLES ────────────────────────────────────
+// Add  'KEY': { name, role }  pairs below
+// Roles: 'admin' (Doc only) | 'uploader' | 'viewer'
+const PP_LICENSES = {
+  '007':            { name:'Doc Kalodski', role:'admin'    },  // golden key
+  'OFIR-2026-0101': { name:'OFIR Team',   role:'uploader' },
+  'BETATESTER-1234':{ name:'Beta Tester', role:'viewer'   },
+  // 'KEY': { name:'Full Name', role:'uploader' },
+};
+function ppMatch(k){const c=k.trim().toUpperCase().replace(/-/g,'');for(const[key,obj]of Object.entries(PP_LICENSES)){if(key.replace(/-/g,'').toUpperCase()===c)return obj;}return null;}
+function getRole(){const k=localStorage.getItem('pp_license');const m=k?ppMatch(k):null;return m?m.role:'none';}
+function isAdmin(){return getRole()==='admin';}
+function canUpload(){return getRole()==='admin'||getRole()==='uploader';}
+function ppActivate(){const raw=document.getElementById('lock-input').value;const obj=ppMatch(raw);const err=document.getElementById('lock-err');const inp=document.getElementById('lock-input');if(!obj){inp.classList.add('err');err.textContent='⛔ Invalid key — contact Doc Kalodski.';return;}localStorage.setItem('pp_license',raw.trim().toUpperCase());localStorage.setItem('pp_licensee',obj.name);localStorage.setItem('pp_role',obj.role);location.reload();}
+function ppCheck(){const k=localStorage.getItem('pp_license');const obj=k?ppMatch(k):null;if(obj){document.getElementById('lock-overlay').classList.add('hidden');document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;document.getElementById('pp-licensee').appendChild(rb);return true;}document.getElementById('lock-overlay').classList.remove('hidden');return false;}
+if(!ppCheck())throw new Error('not licensed');
+
+// ── SUPABASE DATA LAYER ────────────────────────────────
+const sb = supabase.createClient(SB_URL, SB_KEY);
+let _meta={}, _board=null;
+
+async function initData(){
+  const {data}=await sb.from('pp_data').select('*');
+  for(const row of data||[]){
+    if(row.key==='meta')  _meta =row.value||{};
+    if(row.key==='board') _board=row.value||null;
+  }
+  refreshBoardBar(); refreshCards(); refreshStagnant();
+  await loadHistoryFromDB();
+}
+
+sb.channel('pp_rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},   ()=>initData())
+  .on('postgres_changes',{event:'INSERT',schema:'public',table:'pp_history'},()=>loadHistoryFromDB())
+  .subscribe();
+
+function loadMeta(){return _meta;}
+async function saveMeta(m){_meta=m; await sb.from('pp_data').upsert({key:'meta',value:m});}
+function loadBoard(){return _board;}
+async function saveBoard(b){_board=b; await sb.from('pp_data').upsert({key:'board',value:b});}
+
+async function logHistory(proj,field,oldVal,newVal){
+  const user=localStorage.getItem('pp_licensee')||'Unknown';
+  await sb.from('pp_history').insert({user,proj:proj||'(global)',field,old_val:oldVal||'—',new_val:newVal||'—'});
+}
+async function loadHistoryFromDB(){
+  const {data}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).limit(50);
+  renderHistory(data||[]);
+}
+// ──────────────────────────────────────────────────────
+
+let currentProj = 0;
+
+function fmtDate(iso){if(!iso)return'';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}
+function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);}
+
+function refreshBoardBar(){
+  const b=loadBoard();
+  const el=document.getElementById('board-info');
+  if(b) el.textContent=`${b.name} · ${fmtDate(b.date)}`;
+  else el.textContent='No report uploaded yet';
+}
+
+function refreshStagnant(){
+  const meta=loadMeta();
+  const board=loadBoard();
+  const list=document.getElementById('stagnant-list');
+  if(!board){
+    list.innerHTML='<div style="font-size:10px;color:#888;">Upload a board report above to start tracking movement.</div>';
+    return;
+  }
+  const cutoff=board.date;
+  const stag=data.map((p,i)=>({p,i,m:meta[i]||{}})).filter(({m})=>{
+    const ref=m.meetingDate||m.lastTouched;
+    return !ref||ref<=cutoff; // no activity since last board meeting
+  });
+  if(!stag.length){list.innerHTML='<div style="font-size:10px;color:#4CAF50;">✓ All projects moved since last board meeting.</div>';return;}
+  list.innerHTML=stag.map(({p,i,m})=>{
+    const ref=m.meetingDate||m.lastTouched;
+    const days=ref?daysSince(ref):null;
+    return `<div class="item" onclick="goto(${i})" style="cursor:pointer;border-left:3px solid #ef4444;">
+      <div><strong>${p.n}</strong> | ${p.s}</div>
+      <div class="item-r" style="color:#fca5a5;">${days!==null?days+' days idle':'no activity'}</div>
+    </div>`;
+  }).join('');
+}
+
+function refreshCards(){
+  const meta=loadMeta();
+  const board=loadBoard();
+  const cutoff=board?board.date:null;
+  const boardSub=board?`<div style="font-size:8px;color:#888;margin-top:2px;">as of ${fmtDate(board.date)} · ${board.name}</div>`:'';
+  data.forEach((p,i)=>{
+    const m=meta[i]||{};
+    const ref=m.meetingDate||m.lastTouched;
+    const days=ref?daysSince(ref):null;
+    const isStag=cutoff?(ref?ref<=cutoff:true):false;
+    const stagBadge=isStag?`<span class="stag-badge">🔴 no movement${days!==null?' · '+days+'d':''}</span>`:'';
+    // Project card
+    const card=document.getElementById('pm-'+i);
+    if(card) card.innerHTML=`${p.s} | ${p.r} | ${p.p}`
+      +(ref?`<div class="as-of">last activity: ${fmtDate(ref)}</div>`:'')
+      +stagBadge;
+    // Table status cell — compact
+    const cell=document.getElementById('ts-'+i);
+    if(cell) cell.innerHTML=`<span class="tag">${p.s}</span>${isStag?' 🔴':''}`;
+    // Table last-update cell — individual activity OR board report date
+    const upd=document.getElementById('tu-'+i);
+    const lastUpd=ref||( board?board.date:null);
+    if(upd) upd.textContent=lastUpd?fmtDate(lastUpd):'—';
+  });
+}
+
+function show(t){document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));document.getElementById(t).classList.add('active');event.target.classList.add('active')}
+
+function detail(i){
+  currentProj=i;
+  const p=data[i];
+  // Auto-mark as touched today
+  const meta=loadMeta();
+  if(!meta[i])meta[i]={};
+  if(!meta[i].lastTouched)meta[i].lastTouched=new Date().toISOString().slice(0,10);
+  saveMeta(meta);
+
+  const board=loadBoard();
+  document.getElementById('dn').textContent=p.n;
+  document.getElementById('ds').innerHTML=p.s+(board?`<div style="font-size:8px;color:#888;margin-top:3px;">as of ${fmtDate(board.date)} · based on ${board.name}</div>`:'');
+  document.getElementById('dr').textContent=p.r;
+  document.getElementById('do').textContent=p.o;
+  document.getElementById('dp').textContent=p.p;
+  document.getElementById('dd').innerHTML=p.d.map(x=>`<div class="step-i">${x}</div>`).join('');
+  document.getElementById('dc').innerHTML=p.c.map(x=>`<div class="step-i">${x}</div>`).join('');
+  document.getElementById('dn2').innerHTML=p.x.map(x=>`<div class="step-i p">${x}</div>`).join('');
+  const m=meta[i];
+  const ref=m.meetingDate||m.lastTouched;
+  document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
+  document.getElementById('meeting-date').value=m.meetingDate||'';
+  const det=document.getElementById('detail');
+  document.querySelectorAll('.proj')[i].insertAdjacentElement('afterend',det);
+  det.classList.add('show');
+  refreshCards();
+  refreshStagnant();
+}
+
+function handleBoardUpload(input){
+  if(!input.files.length||!canUpload())return;
+  const old=_board?_board.name:'none';
+  const b={name:input.files[0].name,date:new Date().toISOString().slice(0,10)};
+  saveBoard(b);
+  logHistory('(global)','Board Report',old,b.name);
+}
+
+function handleMeetingDate(val){
+  if(!canUpload())return;
+  const meta=loadMeta();
+  if(!meta[currentProj])meta[currentProj]={};
+  const old=meta[currentProj].meetingDate||'—';
+  meta[currentProj].meetingDate=val;
+  saveMeta(meta);
+  logHistory(data[currentProj].n,'Meeting Date',old,val);
+  const m=meta[currentProj];
+  const ref=m.meetingDate||m.lastTouched;
+  document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
+}
+
+function renderHistory(d){
+  const el=document.getElementById('history-list');if(!el)return;
+  const entries=Object.values(d).sort((a,b)=>b.ts-a.ts);
+  if(!entries.length){el.innerHTML='<div style="color:#555;font-size:10px;padding:12px;">No changes recorded yet.</div>';return;}
+  el.innerHTML=entries.map(e=>{
+    const dt=new Date(e.created_at||e.ts||Date.now());
+    const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="hist-item">
+      <span class="hist-time">${when}</span>
+      <span class="hist-who">${e.user}</span>
+      <span style="color:#555"> · </span><span class="hist-proj">${e.proj}</span>
+      <div class="hist-detail">${e.field}: <span style="color:#ef4444;">${e.old_val||e.oldVal}</span> → <span style="color:#4CAF50;">${e.new_val||e.newVal}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function close_detail(){document.getElementById('detail').classList.remove('show');}
+function goto(i){show('projects');detail(i);}
+
+// Hide upload controls for viewers
+if(!canUpload()){
+  document.querySelectorAll('.upload-btn').forEach(el=>el.style.display='none');
+  document.getElementById('meeting-date').style.display='none';
+}
+initData(); // Supabase: load data + start real-time
+</script>
+</body>
+</html>
