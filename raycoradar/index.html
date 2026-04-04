@@ -499,6 +499,7 @@
   <button type="button" class="active" onclick="switchTab('dash', this)">🏠 Dashboard</button>
   <button type="button" onclick="switchTab('analysis', this)">🤖 Analysis</button>
   <button type="button" onclick="switchTab('settings', this)">⚙️ Settings</button>
+  <button type="button" id="rr-clients-tab-btn" style="display:none;" onclick="switchTab('clients', this)">👥 Clients</button>
 </nav>
 
 <!-- ════════════════════════════════════════════════
@@ -633,6 +634,14 @@
 </div>
 
 <!-- hidden print container -->
+<!-- ══════════ CLIENTS (DEV ONLY) ══════════ -->
+<div id="tab-clients" class="tab">
+  <div class="card">
+    <div class="card-title">👥 Client Overview</div>
+    <div id="rr-clients-list"><div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading…</div></div>
+  </div>
+</div>
+
 <div id="print-report"></div>
 
 <!-- ── Slot Time Picker Modal ── -->
@@ -728,7 +737,8 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-function rrUserKey(){return localStorage.getItem('rr_license_key')||'';}
+function rrUserKey(){const k=localStorage.getItem('rr_license_key')||'';return k==='007'?'RR-2026-DOCS-0303':k;}
+function rrIsDev(){return localStorage.getItem('rr_license_key')==='007';}
 function showRRSyncBadge(){const el=document.getElementById('rr-sync-badge');if(el)el.style.display='inline';}
 
 async function rrPushToCloud(dataKey,value){
@@ -2100,6 +2110,7 @@ function switchTab(id, btn) {
     if (idx>=0) navBtns[idx].classList.add('active');
   }
   if (id==='analysis') renderAnalysis();
+  if (id==='clients') rrRenderClients();
   if (id==='settings') renderSlotList();
 }
 
@@ -2107,6 +2118,41 @@ function renderAll() {
   renderDashboard();
   const active = document.querySelector('.tab.active');
   if (active?.id==='tab-analysis') renderAnalysis();
+}
+
+// ── CLIENTS (DEV) ─────────────────────────────────────────
+async function rrRenderClients() {
+  const el=document.getElementById('rr-clients-list'); if(!el) return;
+  el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading clients…</div>';
+  try {
+    const {data,error}=await sb.from('rr_data').select('*').eq('data_key','readings');
+    if(error||!data||!data.length){el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">No clients yet.</div>';return;}
+    const clients=data.filter(r=>r.user_key!=='__test__').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+    const BPL={'Normal':'#22c55e','Elevated':'#eab308','Stage 1':'#f97316','Stage 2':'#ef4444','Crisis':'#7f1d1d'};
+    el.innerHTML=clients.map(c=>{
+      const readings=(c.value||[]).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      const count=readings.length;
+      const latest=readings[0];
+      const lastDate=latest?new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
+      const latestBP=latest?`${latest.sys}/${latest.dia} mmHg · HR ${latest.hr}`:'—';
+      const cat=latest?classifyBP(latest.sys,latest.dia):null;
+      const catColor=cat?BPL[cat]:'#94a3b8';
+      return `<div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${catColor};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:0.95rem;font-weight:700;font-family:monospace;">${c.user_key}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">${count} readings</div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--muted);flex-wrap:wrap;">
+          <span>Latest: <strong style="color:${catColor};">${latestBP}</strong></span>
+          <span>Last active: <strong style="color:var(--text);">${lastDate}</strong></span>
+          ${cat?`<span style="font-size:0.72rem;background:${catColor}20;color:${catColor};border-radius:4px;padding:1px 6px;font-weight:700;">${cat}</span>`:''}
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">Updated: ${new Date(c.updated_at).toLocaleString('en-PH')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML=`<div style="color:#ef4444;font-size:0.9rem;padding:16px;">Error: ${e.message}</div>`;
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────
@@ -2143,6 +2189,8 @@ function renderAll() {
   renderAll();
   checkReminders();
   setInterval(checkReminders, 60_000);
+  // Show dev-only clients tab
+  if (rrIsDev()) { const b=document.getElementById('rr-clients-tab-btn'); if(b) b.style.display=''; }
   // Cloud sync
   rrSyncFromCloud();
   rrSubscribeRealtime();
