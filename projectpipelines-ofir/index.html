@@ -284,6 +284,7 @@ tr:hover td{background:#1a1f26}
       <span style="font-size:9px;color:#888">Date:</span>
       <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
+    <button class="upload-btn" id="dedup-btn" onclick="openDedupModal()" style="display:none;color:#f97316;border-color:#f97316">🧹 Clean Duplicates</button>
     <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
@@ -469,6 +470,18 @@ tr:hover td{background:#1a1f26}
 
 </div></div>
 <div id="loading-bar"></div>
+
+<!-- DEDUP MODAL -->
+<div id="dedup-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1a1f26;border:1px solid #2a2f36;border-radius:12px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:14px;font-weight:800;color:#f97316">🧹 Clean Duplicate Projects</div>
+    <div id="dedup-body"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="dedup-confirm-btn" class="extract-btn" onclick="applyDedup()" style="background:#f97316;display:none">✅ Remove Duplicates</button>
+      <button class="extract-cancel" onclick="closeDedupModal()">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- EXTRACT MODAL -->
 <div id="extract-overlay" class="hidden">
@@ -747,6 +760,7 @@ function rebuildDOM(){
   renderTableBody();
   document.getElementById('upload-label').style.display=canEdit()?'':'none';
   document.getElementById('extract-btn').style.display=isAdmin()?'':'none';
+  document.getElementById('dedup-btn').style.display=isAdmin()?'':'none';
   document.getElementById('meeting-date').style.display=canEdit()?'':'none';
   document.getElementById('btn-edit').style.display=isAdmin()?'':'none';
   document.getElementById('btn-del').style.display=isAdmin()?'':'none';
@@ -1121,6 +1135,60 @@ async function deleteReport(i){
   _reports.splice(i,1);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   renderReports();
+}
+
+// ── DEDUPLICATION ──────────────────────────────────────
+let _dedupGroups=[];
+function findDuplicates(){
+  const seen=[];
+  const groups=[];
+  data.forEach((p,i)=>{
+    const matched=seen.find(g=>fuzzyMatch(g[0].n,p.n));
+    if(matched) matched.push({...p,_idx:i});
+    else seen.push([{...p,_idx:i}]);
+  });
+  return seen.filter(g=>g.length>1);
+}
+function openDedupModal(){
+  _dedupGroups=findDuplicates();
+  const body=document.getElementById('dedup-body');
+  const btn=document.getElementById('dedup-confirm-btn');
+  if(!_dedupGroups.length){
+    body.innerHTML='<div style="color:#4CAF50;font-size:11px;text-align:center;padding:16px">✓ No duplicates found — pipeline is clean!</div>';
+    btn.style.display='none';
+  }else{
+    body.innerHTML=`<div style="font-size:10px;color:#888;margin-bottom:8px">Found <strong style="color:#f97316">${_dedupGroups.length} duplicate group(s)</strong>. The first entry in each group will be kept; the rest will be removed.</div>`+
+    _dedupGroups.map(group=>`
+      <div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:8px;border-left:3px solid #f97316">
+        <div style="font-size:10px;font-weight:700;color:#f97316;margin-bottom:6px">${group.length} entries named "${group[0].n}"</div>
+        ${group.map((p,gi)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #1a1f26;font-size:9px;color:${gi===0?'#4CAF50':'#ef4444'}">
+            <span>${gi===0?'✓ KEEP':'✕ REMOVE'}</span>
+            <span style="flex:1;color:#ccc">${p.n}</span>
+            <span style="color:#555">${p.s} · ${p.r||'TBD'} · ${p.o||'—'}</span>
+          </div>`).join('')}
+      </div>`).join('');
+    btn.style.display='';
+  }
+  document.getElementById('dedup-overlay').style.display='flex';
+}
+function closeDedupModal(){
+  document.getElementById('dedup-overlay').style.display='none';
+}
+async function applyDedup(){
+  const toRemoveIdx=new Set();
+  _dedupGroups.forEach(group=>{
+    // keep the one with the most data (most done+current+next items), fall back to first
+    const scored=group.map(p=>({p,score:(p.d||[]).length+(p.c||[]).length+(p.x||[]).length+(p.notes?1:0)}));
+    scored.sort((a,b)=>b.score-a.score);
+    const keepId=scored[0].p.id;
+    group.forEach(p=>{if(p.id!==keepId) toRemoveIdx.add(p.id);});
+  });
+  data=data.filter(p=>!toRemoveIdx.has(p.id));
+  await saveProjects();
+  rebuildDOM();refreshAll();buildFilterOwners();
+  closeDedupModal();
+  alert(`✅ Removed ${toRemoveIdx.size} duplicate(s). Pipeline is now clean.`);
 }
 
 // ── GROQ EXTRACT ───────────────────────────────────────
