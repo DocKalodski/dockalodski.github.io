@@ -46,11 +46,6 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .tab.active{display:flex}
 
 /* === OVERVIEW WIDGETS === */
-.recent-strip{background:#1a1f26;border-radius:6px;border-left:4px solid #38bdf8;padding:9px 12px;margin-bottom:10px}
-.recent-strip-title{font-size:9px;color:#38bdf8;text-transform:uppercase;font-weight:700;margin-bottom:5px}
-.recent-row{font-size:9px;color:#888;padding:3px 0;border-bottom:1px solid #242b32;display:flex;gap:5px;flex-wrap:wrap}
-.recent-row:last-child{border-bottom:none}
-.recent-row strong{color:#ccc}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
 .card{background:#1a1f26;padding:0.9rem;border-radius:6px;border-left:4px solid #0F6E56;text-align:center}
 .big{font-size:22px;font-weight:700;color:#0F6E56;margin-bottom:4px}
@@ -175,7 +170,7 @@ tr:hover td{background:#1a1f26}
 @media print{
   #lock-overlay,#loading-bar,.tabs,.filter-bar,.header-actions,.board-bar,
   .detail,.add-proj-btn,.comment-section,.edit-btn,.del-btn,.close,
-  .upload-btn,.hdr-btn,#install-btn,.recent-strip,
+  .upload-btn,.hdr-btn,#install-btn,
   .box,h3,#stat-grid{display:none!important}
   body,html{overflow:visible!important;height:auto!important;background:#fff!important;color:#000!important}
   .wrapper{height:auto!important;overflow:visible!important}
@@ -280,7 +275,6 @@ tr:hover td{background:#1a1f26}
 
 <!-- OVERVIEW -->
 <div id="overview" class="tab active">
-  <div id="recent-strip" style="display:none"></div>
   <div class="board-bar">
     <div class="board-bar-info">
       <strong>📋 Board Report</strong>
@@ -674,7 +668,7 @@ async function logHistory(proj,field,oldV,newV){
 }
 async function loadHistory(){
   const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).limit(50);
-  _histRows=rows||[];renderHistory(_histRows);renderRecentStrip(_histRows);
+  _histRows=rows||[];renderHistory(_histRows);
 }
 sb.channel('pp_rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>{if(document.getElementById('det-edit').style.display!=='none')return;initData();})
@@ -894,17 +888,6 @@ function refreshStagnant(){
   list.innerHTML=stag.map(({p,i})=>{
     const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;const days=ref?daysSince(ref):null;
     return`<div class="item" onclick="goto(${i})" style="border-left:3px solid #ef4444"><div><strong>${p.n}</strong> | ${p.s}</div><div class="item-r" style="color:#fca5a5">${days!==null?days+'d idle':'no activity'}</div></div>`;
-  }).join('');
-}
-function renderRecentStrip(rows){
-  const el=document.getElementById('recent-strip');
-  const last3=rows.slice(0,3);
-  if(!last3.length){el.style.display='none';return;}
-  el.style.display='block';
-  el.innerHTML=`<div class="recent-strip-title">🕐 Recent Changes</div>`+last3.map(e=>{
-    const dt=new Date(e.created_at);
-    const when=dt.toLocaleDateString('en-PH',{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
-    return`<div class="recent-row"><span style="color:#38bdf8;flex-shrink:0">${when}</span><strong>${e.user}</strong><span>·</span><strong>${e.proj}</strong><span style="color:#555">— ${e.field}</span></div>`;
   }).join('');
 }
 
