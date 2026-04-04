@@ -277,6 +277,7 @@
   <button type="button" class="active" onclick="switchTab('dash',this)">🏠 Dashboard</button>
   <button type="button" onclick="switchTab('analysis',this)">📊 Analysis</button>
   <button type="button" onclick="switchTab('settings',this)">⚙️ Settings</button>
+  <button type="button" id="clients-tab-btn" style="display:none;" onclick="switchTab('clients',this)">👥 Clients</button>
 </nav>
 
 <!-- ══════════ DASHBOARD ══════════ -->
@@ -396,6 +397,15 @@
   <div class="brand-footer">WeightWatcher v1.0 · by Doc Kalodski</div>
 </div>
 
+<!-- ══════════ CLIENTS (DEV ONLY) ══════════ -->
+<div id="tab-clients" class="tab">
+  <div class="card">
+    <div class="card-title">👥 Client Overview</div>
+    <div id="clients-list"><div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading…</div></div>
+  </div>
+  <div class="brand-footer">WeightWatcher · Developer View · Doc Kalodski</div>
+</div>
+
 <div id="print-report"></div>
 
 <!-- Time Picker Modal -->
@@ -485,7 +495,8 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-function getUserKey(){return localStorage.getItem('ww_license_key')||'';}
+function getUserKey(){const k=localStorage.getItem('ww_license_key')||'';return k==='007'?'WW-2026-DOC-0101':k;}
+function isDev(){return localStorage.getItem('ww_license_key')==='007';}
 function showSyncBadge(){const el=document.getElementById('sync-badge');if(el)el.style.display='inline';}
 
 async function pushToCloud(dataKey,value){
@@ -1310,6 +1321,39 @@ function switchTab(id,btn) {
   if (btn) btn.classList.add('active');
   if (id==='analysis') renderAnalysis();
   if (id==='settings') renderSettingsForm();
+  if (id==='clients') renderClients();
+}
+
+async function renderClients() {
+  const el=document.getElementById('clients-list'); if(!el) return;
+  el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading clients…</div>';
+  try {
+    const {data,error}=await sb.from('ww_data').select('*').eq('data_key','readings');
+    if(error||!data||!data.length){el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">No clients yet.</div>';return;}
+    // Filter out test entries
+    const clients=data.filter(r=>r.user_key!=='__test__').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+    el.innerHTML=clients.map(c=>{
+      const readings=(c.value||[]).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      const count=readings.length;
+      const latest=readings[0];
+      const latestDisp=latest?`${toDisplay(latest.wt).toFixed(1)} ${latest.type?'·'+TYPE_ICON[latest.type]:''}`:'—';
+      const lastDate=latest?new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
+      const keyLabel=c.user_key;
+      return `<div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid var(--accent);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:0.95rem;font-weight:700;font-family:monospace;">${keyLabel}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">${count} readings</div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--muted);">
+          <span>Latest: <strong style="color:var(--text);">${latestDisp}</strong></span>
+          <span>Last active: <strong style="color:var(--text);">${lastDate}</strong></span>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">Updated: ${new Date(c.updated_at).toLocaleString('en-PH')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML=`<div style="color:#ef4444;font-size:0.9rem;padding:16px;">Error: ${e.message}</div>`;
+  }
 }
 function renderSettingsForm() {
   const p=loadProfile();
@@ -1339,6 +1383,8 @@ function renderAll() {
   renderAll();
   checkReminder();
   setInterval(checkReminder,60000);
+  // Show dev-only clients tab
+  if (isDev()) { const b=document.getElementById('clients-tab-btn'); if(b) b.style.display=''; }
   // Cloud sync
   syncFromCloud();
   subscribeRealtime();
