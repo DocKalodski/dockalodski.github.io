@@ -280,6 +280,11 @@
   <button type="button" id="clients-tab-btn" style="display:none;" onclick="switchTab('clients',this)">👥 Clients</button>
 </nav>
 
+<!-- Beta banner -->
+<div id="beta-banner" style="display:none;background:#fef9c3;border-left:4px solid #f59e0b;padding:9px 16px;font-size:0.83rem;color:#78350f;text-align:center;">
+  👋 You're on the shared beta key — ask Doc Kalodski for your own key so your data stays yours!
+</div>
+
 <!-- ══════════ DASHBOARD ══════════ -->
 <div id="tab-dash" class="tab active">
   <div class="card" id="log-now-card" style="padding:14px;margin-bottom:14px;">
@@ -599,6 +604,8 @@ function checkLicense() {
     document.getElementById('lock-overlay').classList.add('hidden');
     const el=document.getElementById('licensee-name'); if(el) el.textContent=name;
     const sl=document.getElementById('settings-licensed-to'); if(sl) sl.textContent='Licensed to '+name;
+    const bb=document.getElementById('beta-banner');
+    if(bb) bb.style.display = (localStorage.getItem('ww_license_key')==='WW-BETA-APR2026') ? '' : 'none';
     return true;
   }
   localStorage.removeItem('ww_license_key');
