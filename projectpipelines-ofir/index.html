@@ -1149,17 +1149,52 @@ async function loadReports(){
   renderReports();
   document.getElementById('report-add-btn').style.display=canEdit()?'':'none';
 }
+function parseDateFromFilename(name){
+  // matches: Oct 17 2025 / October 17 2025 / 2025-10-17 / 2025_10_17 / 10-17-2025 / 17 Oct 2025 etc.
+  const clean=name.replace(/[_]/g,' ');
+  const patterns=[
+    /(\d{4})[-\/\s](\d{1,2})[-\/\s](\d{1,2})/,           // 2025-10-17
+    /(\d{1,2})[-\/\s](\d{1,2})[-\/\s](\d{4})/,            // 10-17-2025
+    /(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i,  // 17 Oct 2025
+    /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})[,\s]+(\d{4})/i, // Oct 17, 2025
+  ];
+  const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  for(const p of patterns){
+    const m=clean.match(p);
+    if(!m) continue;
+    let y,mo,d;
+    if(typeof m[1]==='string'&&isNaN(m[1])){
+      mo=months[m[1].slice(0,3).toLowerCase()];d=+m[2];y=+m[3];
+    } else if(typeof m[2]==='string'&&isNaN(m[2])){
+      d=+m[1];mo=months[m[2].slice(0,3).toLowerCase()];y=+m[3];
+    } else if(+m[1]>31){
+      y=+m[1];mo=+m[2];d=+m[3];
+    } else {
+      mo=+m[1];d=+m[2];y=+m[3];
+    }
+    const dt=new Date(y,mo-1,d);
+    if(!isNaN(dt)) return dt;
+  }
+  return null;
+}
 function renderReports(){
   const el=document.getElementById('reports-list');
   if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Click ⬆ Add Report to upload your first board meeting report.</div>';return;}
-  el.innerHTML=[..._reports].reverse().map((r,ri)=>{
-    const i=_reports.length-1-ri;
+  // sort by date parsed from filename, newest first; fallback to upload date
+  const sorted=[..._reports.map((r,i)=>({r,i}))].sort((a,b)=>{
+    const da=parseDateFromFilename(a.r.name)||new Date(a.r.date);
+    const db=parseDateFromFilename(b.r.name)||new Date(b.r.date);
+    return db-da;
+  });
+  el.innerHTML=sorted.map(({r,i})=>{
+    const fileDate=parseDateFromFilename(r.name);
+    const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
     return`<div style="background:#1a1f26;border-radius:6px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-left:4px solid #0C447C">
       <div style="flex:1">
         <div style="font-size:11px;font-weight:700;color:#fff">📄 ${r.name}</div>
-        <div style="font-size:9px;color:#888;margin-top:2px">${r.date} · Added by ${r.addedBy}</div>
+        <div style="font-size:9px;color:#888;margin-top:2px">${displayDate} · Added by ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50">✓ Extracted ${r.extractedAt}</span>`:''}</div>
       </div>
-      ${isAdmin()?`<button onclick="deleteReport(${i})" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:4px" title="Delete">🗑</button>`:''}
+      ${canEdit()?`<button onclick="deleteReport(${i})" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:4px" title="Delete">🗑</button>`:''}
     </div>`;
   }).join('');
 }
@@ -1334,13 +1369,19 @@ let _currentExtractIdx=null;
 function showReportPicker(){
   const picker=document.getElementById('extract-report-picker');
   picker.style.display='block';
-  document.getElementById('extract-report-list').innerHTML=[..._reports].reverse().map((r,ri)=>{
-    const i=_reports.length-1-ri;
+  const sorted=[..._reports.map((r,i)=>({r,i}))].sort((a,b)=>{
+    const da=parseDateFromFilename(a.r.name)||new Date(a.r.date);
+    const db=parseDateFromFilename(b.r.name)||new Date(b.r.date);
+    return db-da;
+  });
+  document.getElementById('extract-report-list').innerHTML=sorted.map(({r,i})=>{
     const done=!!r.extractedAt;
+    const fileDate=parseDateFromFilename(r.name);
+    const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
     return`<div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-left:3px solid ${done?'#0F6E56':'#0C447C'};opacity:${done?'0.8':'1'}" onclick="runExtractFromReport(${i})">
       <div>
         <div style="font-size:11px;font-weight:700;color:#fff">📄 ${r.name}</div>
-        <div style="font-size:9px;color:#888;margin-top:1px">${r.date} · ${r.addedBy}</div>
+        <div style="font-size:9px;color:#888;margin-top:1px">${displayDate} · ${r.addedBy}</div>
         ${done?`<div style="font-size:8px;color:#4CAF50;margin-top:2px">✓ Extracted on ${r.extractedAt}</div>`:''}
       </div>
       <span style="font-size:${done?'9':'10'}px;color:${done?'#555':'#38bdf8'};font-weight:600">${done?'Re-extract':'Extract →'}</span>
