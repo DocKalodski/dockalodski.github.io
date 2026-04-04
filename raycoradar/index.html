@@ -710,7 +710,10 @@
     </div>
     <input type="hidden" id="in-datetime" value="">
   </div>
-  <button type="button" class="btn btn-primary" id="submit-btn" onclick="saveReading()">✚ Log This Reading</button>
+  <div style="display:flex;gap:10px;">
+    <button type="button" class="btn-sm" onclick="cancelEdit()">← Back</button>
+    <button type="button" class="btn btn-primary" id="submit-btn" style="flex:1;" onclick="saveReading()">✚ Log This Reading</button>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════════════════
@@ -1605,7 +1608,10 @@ function renderCalendarOnly() {
         <span class="cavg">${avgS}/${avgD}</span>
       </div>
       <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">
-        <div style="font-size:0.65rem;font-weight:700;margin-bottom:6px;">${dayLabel}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.65rem;font-weight:700;">${dayLabel}</div>
+          <button type="button" class="btn-icon" style="font-size:0.8rem;min-height:28px;min-width:28px;padding:4px;" onclick="document.getElementById('${detId}').classList.remove('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'))">✕</button>
+        </div>
         ${dr.map(r=>calRowHTML(r,detId)).join('')}
         ${calAddBtn(detId, dayDateISO)}
       </div>`;
@@ -1614,7 +1620,10 @@ function renderCalendarOnly() {
         <span class="cday">${d}</span>
       </div>
       <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">
-        <div style="font-size:0.65rem;font-weight:700;margin-bottom:6px;">${dayLabel}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.65rem;font-weight:700;">${dayLabel}</div>
+          <button type="button" class="btn-icon" style="font-size:0.8rem;min-height:28px;min-width:28px;padding:4px;" onclick="document.getElementById('${detId}').classList.remove('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'))">✕</button>
+        </div>
         <div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px;">No readings logged this day.</div>
         ${calAddBtn(detId, dayDateISO)}
       </div>`;
