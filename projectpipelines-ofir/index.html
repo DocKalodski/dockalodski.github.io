@@ -792,7 +792,7 @@ function rebuildDOM(){
   document.getElementById('extract-btn').style.display=isAdmin()?'':'none';
   if(isAdmin()) updateDedupBadge();
   document.getElementById('meeting-date').style.display=canEdit()?'':'none';
-  document.getElementById('btn-edit').style.display=isAdmin()?'':'none';
+  document.getElementById('btn-edit').style.display=canEdit()?'':'none';
   document.getElementById('btn-del').style.display=isAdmin()?'':'none';
   document.getElementById('comment-input-row').style.display=canEdit()?'flex':'none';
   const pl=document.getElementById('projects-list');
