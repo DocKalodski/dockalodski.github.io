@@ -485,7 +485,7 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-function getUserKey(){return localStorage.getItem('ww_license_name')||'';}
+function getUserKey(){return localStorage.getItem('ww_license_key')||'';}
 function showSyncBadge(){const el=document.getElementById('sync-badge');if(el)el.style.display='inline';}
 
 async function pushToCloud(dataKey,value){
