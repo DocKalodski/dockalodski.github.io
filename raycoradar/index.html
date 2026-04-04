@@ -25,7 +25,6 @@
     [data-theme="dark"] .advisory  { background:#431407; color:#fed7aa; }
     [data-theme="dark"] .good-news { background:#052e16; color:#bbf7d0; }
     [data-theme="dark"] .stat-box  { background:#0f172a; }
-    [data-theme="dark"] #beta-bar  { background: linear-gradient(90deg,#4c1d95,#0369a1); }
     [data-theme="dark"] .date-header { background:#1e293b; }
     [data-theme="dark"] .date-header:hover { background:#334155; }
     [data-theme="dark"] .cal-row   { background:#1e293b; }
@@ -56,12 +55,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 18px; line-height: 1.6; }
 
-    /* ── Beta Banner ──────────────────────────── */
-    #beta-bar {
-      background: linear-gradient(90deg, #7c3aed, #0ea5e9);
-      color: white; font-size: 0.7rem; font-weight: 600;
-      text-align: center; padding: 5px 16px; letter-spacing: 0.5px;
-    }
 
     /* ── Header ───────────────────────────────── */
     header {
@@ -458,9 +451,6 @@
 </head>
 <body>
 
-<!-- ── Beta Banner ──────────────────────────────── -->
-<div id="beta-bar">🧪 RaycoRadar Beta &nbsp;·&nbsp; April 2026 &nbsp;·&nbsp; Ends April 30</div>
-
 <!-- ── License Lock Overlay ──────────────────────── -->
 <div id="lock-overlay">
   <div class="lock-box">
@@ -544,15 +534,15 @@
 
   <!-- Getting Started notice -->
   <div class="card" style="background:#eff6ff;border-color:#bfdbfe;">
-    <div class="card-title" style="color:#1d4ed8;">👋 Welcome to RaycoRadar Beta</div>
+    <div class="card-title" style="color:#1d4ed8;">👋 Welcome to RaycoRadar</div>
     <p style="font-size:0.8rem;color:#1e40af;line-height:1.6;margin-bottom:8px;">
       <strong>Your app is pre-loaded with 3 months of sample data</strong> so you can explore all the features right away — the chart, trends, and analysis report.
     </p>
     <p style="font-size:0.8rem;color:#1e40af;line-height:1.6;margin-bottom:8px;">
-      When you're ready to track your <em>real</em> BP readings, go to <strong>Your Data → Erase Demo Data</strong> below and start fresh.
+      When you're ready to track your <em>real</em> BP readings, go to <strong>Your Data → Erase All</strong> below and start fresh.
     </p>
     <p style="font-size:0.75rem;color:#3b82f6;line-height:1.5;">
-      📍 Data is saved on <strong>this device only</strong> — it does not sync to the cloud. Use <strong>Save to Spreadsheet</strong> to back up your readings.
+      ☁️ Data syncs across all your devices automatically. Use <strong>Save to Spreadsheet</strong> to export a copy for your doctor.
     </p>
   </div>
 
@@ -633,9 +623,18 @@
       <div><div class="setting-label">🔑 License</div><div class="setting-sub" id="settings-licensed-to">—</div></div>
       <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
     </div>
+    <div class="setting-row">
+      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">RaycoRadar v1.2 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
+    </div>
   </div>
 
-  <div class="brand-footer">RaycoRadar Beta v1.1 · by Doc Kalodski · Beta ends April 30, 2026</div>
+  <div class="card">
+    <div class="card-title">💊 Current Medications</div>
+    <p style="font-size:0.76rem;color:var(--muted);margin-bottom:10px;">List any medications you're taking (e.g. Amlodipine 5mg, Losartan 50mg). This appears on your printed report.</p>
+    <textarea id="s-meds" rows="3" oninput="saveMedications()" placeholder="e.g. Amlodipine 5mg — once daily&#10;Losartan 50mg — once daily" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
+  </div>
+
+  <div class="brand-footer">RaycoRadar v1.2 · by Doc Kalodski</div>
 </div>
 
 <!-- hidden print container -->
@@ -913,6 +912,7 @@ function loadSettings() {
   return _settingsCache;
 }
 function persistSettings(s) { _settingsCache = s; localStorage.setItem('rr_settings2', JSON.stringify(s)); rrPushToCloud('settings', s); }
+function saveMedications() { const s=loadSettings(); s.medications=document.getElementById('s-meds').value; persistSettings(s); }
 
 function saveSlots() {
   const s = loadSettings();
@@ -1183,6 +1183,7 @@ function printReport() {
       <span><strong>Total Readings:</strong> ${readings.length}</span>
       <span><strong>Date Range:</strong> ${fmt(first)} – ${fmt(last)}</span>
       ${avg7Sys ? `<span><strong>7-Day Avg:</strong> ${avg7Sys}/${avg7Dia} mmHg &nbsp;(${classify(avg7Sys,avg7Dia).label})</span>` : ''}
+      ${loadSettings().medications ? `<span><strong>Medications:</strong> ${loadSettings().medications.replace(/\n/g,', ')}</span>` : ''}
     </div>
     <table class="pr-table">
       <thead><tr><th>Date</th><th>Time</th><th>BP (mmHg)</th><th>HR</th><th>Slot</th><th>Status</th><th>Notes</th></tr></thead>
@@ -2198,7 +2199,9 @@ async function rrRenderClients() {
   const savedLarge = localStorage.getItem('rr_large') || '0';
   document.documentElement.setAttribute('data-large', savedLarge);
 
-  document.getElementById('s-notif').checked = loadSettings().notifications;
+  const _s = loadSettings();
+  document.getElementById('s-notif').checked = _s.notifications;
+  document.getElementById('s-meds').value = _s.medications || '';
   populateSlotDropdown();
 
   // Auto-seed demo on first open
