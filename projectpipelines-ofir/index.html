@@ -284,8 +284,7 @@ tr:hover td{background:#1a1f26}
       <span style="font-size:9px;color:#888">Date:</span>
       <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
-    <button class="upload-btn" id="extract-btn" onclick="document.getElementById('extract-file-input').click()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
-    <input type="file" id="extract-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleExtractFile(this.files[0])">
+    <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
@@ -450,9 +449,14 @@ tr:hover td{background:#1a1f26}
 
 <!-- REPORTS REPOSITORY -->
 <div id="reports" class="tab">
-  <div style="margin-bottom:12px">
-    <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Board Meeting Reports</div>
-    <div style="font-size:9px;color:#555;margin-top:3px">Reports are added automatically when you use 🤖 Extract Projects</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Board Meeting Reports</div>
+      <div style="font-size:9px;color:#555;margin-top:2px">Upload reports here first, then use 🤖 Extract Projects to update the pipeline</div>
+    </div>
+    <label class="upload-btn" id="report-add-btn" style="display:none;cursor:pointer">⬆ Add Report
+      <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleReportUpload(this.files[0])">
+    </label>
   </div>
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
@@ -469,28 +473,44 @@ tr:hover td{background:#1a1f26}
 <!-- EXTRACT MODAL -->
 <div id="extract-overlay" class="hidden">
   <div class="extract-box">
-    <div class="extract-title">🤖 Extract Projects</div>
+    <div class="extract-title">🤖 Extract Projects from Report</div>
+
+    <!-- No reports yet -->
+    <div id="extract-no-reports" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:2rem;margin-bottom:8px">📁</div>
+      <div style="font-size:12px;color:#ccc;font-weight:600">No reports in repository yet</div>
+      <div style="font-size:10px;color:#555;margin-top:6px;margin-bottom:14px">Go to the Reports tab and upload your board meeting report first.</div>
+      <button class="extract-btn" onclick="closeExtractModal();showTab('reports',document.querySelector('[data-tab=reports]'))">Go to Reports →</button>
+    </div>
+
+    <!-- Report picker -->
+    <div id="extract-report-picker" style="display:none">
+      <div style="font-size:10px;color:#888;margin-bottom:8px">Select a report to extract from:</div>
+      <div id="extract-report-list"></div>
+    </div>
+
     <div id="extract-status" style="font-size:10px;color:#38bdf8;text-align:center;display:none;padding:8px"></div>
     <div id="extract-err"></div>
+
     <div id="extract-results" class="extract-results">
-      <div style="font-size:11px;font-weight:700;color:#0F6E56;border-top:1px solid #2a2f36;padding-top:10px">
-        📋 Review before saving
-      </div>
+      <div style="font-size:11px;font-weight:700;color:#0F6E56;border-top:1px solid #2a2f36;padding-top:10px">📋 Review before saving</div>
       <div id="extract-items-list"></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="extract-btn" onclick="applyExtracted()" style="background:#0F6E56">✅ Apply to Pipeline</button>
-        <button class="extract-cancel" onclick="closeExtractModal()">Cancel</button>
+        <button class="extract-cancel" onclick="resetExtract()">← Back</button>
       </div>
     </div>
+
     <div id="extract-groq-key-section" style="display:none">
       <div class="extract-sub">One-time setup: enter your free Groq API key. <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">Get key here</a>.</div>
       <div class="extract-key-row" style="margin-top:8px">
         <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
-        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Extract</button>
+        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Continue</button>
       </div>
       <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
     </div>
-    <div style="text-align:right;margin-top:4px">
+
+    <div style="text-align:right;margin-top:8px">
       <button class="extract-cancel" onclick="closeExtractModal()">Close</button>
     </div>
   </div>
@@ -1041,21 +1061,48 @@ async function loadReports(){
   const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
   _reports=(rows&&rows[0]?rows[0].value:[])||[];
   renderReports();
+  document.getElementById('report-add-btn').style.display=isAdmin()?'':'none';
 }
 function renderReports(){
   const el=document.getElementById('reports-list');
-  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports uploaded yet.</div>';return;}
+  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Click ⬆ Add Report to upload your first board meeting report.</div>';return;}
   el.innerHTML=[..._reports].reverse().map((r,ri)=>{
     const i=_reports.length-1-ri;
     return`<div style="background:#1a1f26;border-radius:6px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;border-left:4px solid #0C447C">
       <div style="flex:1">
-        <div style="font-size:11px;font-weight:700;color:#fff">${r.name}</div>
+        <div style="font-size:11px;font-weight:700;color:#fff">📄 ${r.name}</div>
         <div style="font-size:9px;color:#888;margin-top:2px">${r.date} · Added by ${r.addedBy}</div>
-        ${r.notes?`<div style="font-size:9px;color:#aaa;margin-top:3px">${r.notes}</div>`:''}
       </div>
       ${isAdmin()?`<button onclick="deleteReport(${i})" style="background:none;border:none;color:#555;cursor:pointer;font-size:14px;padding:4px" title="Delete">🗑</button>`:''}
     </div>`;
   }).join('');
+}
+async function handleReportUpload(file){
+  if(!file||!isAdmin()) return;
+  const statusEl=document.getElementById('extract-status');
+  const errEl=document.getElementById('extract-err');
+  // Read text from file
+  let text='';
+  try{
+    text=await readFileText(file);
+    if(!text.trim()) throw new Error('Could not extract text. Try a different format.');
+  }catch(e){
+    alert('⛔ '+e.message);
+    document.getElementById('report-file-input').value='';
+    return;
+  }
+  // Save metadata + text to repository
+  const date=new Date().toISOString().slice(0,10);
+  const addedBy=localStorage.getItem('pp_licensee')||'Admin';
+  const entry={name:file.name,date,addedBy,text};
+  const existing=_reports.findIndex(r=>r.name===file.name);
+  if(existing>=0) _reports[existing]=entry;
+  else _reports.push(entry);
+  await sb.from('pp_data').upsert({key:'reports',value:_reports});
+  handleBoardUpload({files:[file]});
+  renderReports();
+  document.getElementById('report-file-input').value='';
+  alert(`✅ "${file.name}" added to repository. Use 🤖 Extract Projects to update the pipeline.`);
 }
 async function deleteReport(i){
   if(!isAdmin()||!confirm('Remove this report from the repository?')) return;
@@ -1068,36 +1115,6 @@ async function deleteReport(i){
 function groqKey(){return localStorage.getItem('pp_groq_key')||'';}
 let _extractedProjects=[];
 
-function openExtractModal(pendingFile){
-  document.getElementById('extract-overlay').classList.remove('hidden');
-  resetExtract();
-  if(!groqKey()){
-    document.getElementById('extract-groq-key-section').style.display='block';
-    document.getElementById('extract-groq-key-section')._pendingFile=pendingFile||null;
-  } else if(pendingFile){
-    handleExtractFile(pendingFile);
-  }
-}
-function saveGroqKey(){
-  const k=document.getElementById('groq-key-input').value.trim();
-  if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
-  localStorage.setItem('pp_groq_key',k);
-  const pending=document.getElementById('extract-groq-key-section')._pendingFile;
-  document.getElementById('extract-groq-key-section').style.display='none';
-  if(pending) handleExtractFile(pending);
-}
-function closeExtractModal(){
-  document.getElementById('extract-overlay').classList.add('hidden');
-  document.getElementById('extract-file-input').value='';
-}
-function resetExtract(){
-  _extractedProjects=[];
-  document.getElementById('extract-results').style.display='none';
-  document.getElementById('extract-err').innerHTML='';
-  document.getElementById('extract-groq-key-section').style.display='none';
-  const st=document.getElementById('extract-status');
-  st.textContent='';st.style.display='none';
-}
 async function readFileText(file){
   const ext=file.name.split('.').pop().toLowerCase();
   if(ext==='txt'){
@@ -1124,35 +1141,67 @@ async function readFileText(file){
   }
   throw new Error('Unsupported file type. Use PDF, Word (.docx), or .txt');
 }
-async function handleExtractFile(file){
-  if(!file) return;
-  if(!groqKey()){openExtractModal(file);return;}
-  openExtractModal();
-  const errEl=document.getElementById('extract-err');
-  const statusEl=document.getElementById('extract-status');
-  statusEl.style.display='block';
-  statusEl.textContent='📄 Reading '+file.name+'…';
-  // Save to Reports repository
-  const date=new Date().toISOString().slice(0,10);
-  const addedBy=localStorage.getItem('pp_licensee')||'Admin';
-  if(!_reports.find(r=>r.name===file.name&&r.date===date)){
-    _reports.push({name:file.name,date,addedBy,notes:''});
-    await sb.from('pp_data').upsert({key:'reports',value:_reports});
-    renderReports();
-    handleBoardUpload({files:[file]});
-  }
-  let text='';
-  try{
-    text=await readFileText(file);
-    if(!text.trim()) throw new Error('Could not extract text from this file. Try a different format.');
-  }catch(e){
-    errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
-    statusEl.style.display='none';
+function openExtractModal(){
+  document.getElementById('extract-overlay').classList.remove('hidden');
+  resetExtract();
+  if(!groqKey()){
+    document.getElementById('extract-groq-key-section').style.display='block';
     return;
   }
-  statusEl.textContent='⚡ Sending to Groq AI…';
+  // Show report picker
+  if(!_reports.length){
+    document.getElementById('extract-no-reports').style.display='block';
+  }else{
+    showReportPicker();
+  }
+}
+function showReportPicker(){
+  const picker=document.getElementById('extract-report-picker');
+  picker.style.display='block';
+  document.getElementById('extract-report-list').innerHTML=[..._reports].reverse().map((r,ri)=>{
+    const i=_reports.length-1-ri;
+    return`<div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-left:3px solid #0C447C" onclick="runExtractFromReport(${i})">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#fff">📄 ${r.name}</div>
+        <div style="font-size:9px;color:#888;margin-top:1px">${r.date} · ${r.addedBy}</div>
+      </div>
+      <span style="font-size:10px;color:#38bdf8;font-weight:600">Extract →</span>
+    </div>`;
+  }).join('');
+}
+function saveGroqKey(){
+  const k=document.getElementById('groq-key-input').value.trim();
+  if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
+  localStorage.setItem('pp_groq_key',k);
+  document.getElementById('extract-groq-key-section').style.display='none';
+  if(!_reports.length) document.getElementById('extract-no-reports').style.display='block';
+  else showReportPicker();
+}
+function closeExtractModal(){
+  document.getElementById('extract-overlay').classList.add('hidden');
+}
+function resetExtract(){
+  _extractedProjects=[];
+  document.getElementById('extract-results').style.display='none';
+  document.getElementById('extract-err').innerHTML='';
+  document.getElementById('extract-groq-key-section').style.display='none';
+  document.getElementById('extract-no-reports').style.display='none';
+  document.getElementById('extract-report-picker').style.display='none';
+  const st=document.getElementById('extract-status');
+  st.textContent='';st.style.display='none';
+}
+async function runExtractFromReport(i){
+  const report=_reports[i];
+  if(!report||!report.text){
+    document.getElementById('extract-err').innerHTML='<div class="extract-err">⛔ No text stored for this report. Delete it and re-upload from the Reports tab.</div>';
+    return;
+  }
+  document.getElementById('extract-report-picker').style.display='none';
+  const statusEl=document.getElementById('extract-status');
+  const errEl=document.getElementById('extract-err');
+  statusEl.style.display='block';
+  statusEl.textContent='⚡ Sending "'+report.name+'" to Groq AI…';
   const key=groqKey();
-  if(!key){errEl.innerHTML='<div class="extract-err">⛔ No Groq key found. Reload and enter your key.</div>';statusEl.style.display='none';return;}
   const prompt=`You are a project data extractor for OFIR Consulting Corporation's project pipeline tracker.
 
 Extract ALL projects mentioned in this board meeting report.
@@ -1170,7 +1219,7 @@ For each project return a JSON object with these exact keys:
 Return ONLY a valid JSON array. No explanation, no markdown, no code blocks.
 
 Report:
-${text.slice(0,12000)}`;
+${report.text.slice(0,12000)}`;
   try{
     const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
@@ -1184,11 +1233,12 @@ ${text.slice(0,12000)}`;
     const parsed=JSON.parse(clean);
     if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in this document.');
     _extractedProjects=parsed;
-    statusEl.textContent=`✓ Found ${parsed.length} project(s) — review below`;
+    statusEl.textContent=`✓ Found ${parsed.length} project(s) from "${report.name}"`;
     showExtractResults(parsed);
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
+    showReportPicker();
   }
 }
 function showExtractResults(parsed){
