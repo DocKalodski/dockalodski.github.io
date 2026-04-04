@@ -8,7 +8,7 @@
 <style>
 body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}
 .header{background:linear-gradient(135deg,#0C447C,#0F6E56);padding:1rem;text-align:center}
-.header h1{margin:0;font-size:20px}
+.header h1{margin:0;font-size:18px;line-height:1.3}
 .header p{margin:0.25rem 0 0;font-size:12px;opacity:0.9}
 .tabs{display:flex;gap:4px;background:#1a1f26;padding:0.5rem;border-bottom:1px solid #2a2f36;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -26,8 +26,17 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .item{font-size:10px;color:#ccc;margin-bottom:0.5rem;padding:0.5rem;background:#242b32;border-radius:4px;display:flex;justify-content:space-between;cursor:pointer}
 .item strong{color:#0F6E56}
 .item-r{font-size:9px;color:#888}
-.proj{background:#1a1f26;padding:0.75rem;border-radius:6px;border-left:4px solid #0C447C;margin-bottom:8px;cursor:pointer}
-.proj:active{background:#242b32;border-left-color:#0F6E56}
+.proj{background:#1a1f26;padding:0.75rem;border-radius:6px;border-left:4px solid #0C447C;margin-bottom:8px;cursor:pointer;transition:border-left-color 0.15s}
+.proj:active{background:#242b32}
+.proj.s-active{border-left-color:#0F6E56}
+.proj.s-bid{border-left-color:#38bdf8}
+.proj.s-planning{border-left-color:#BA7517}
+.proj.s-waiting{border-left-color:#555}
+.proj.s-done{border-left-color:#4CAF50}
+.proj.s-stag{border-left-color:#ef4444}
+.notes-view{font-size:10px;color:#888;margin-top:10px;padding-top:10px;border-top:1px solid #2a2f36;white-space:pre-wrap;line-height:1.5}
+.notes-label{color:#0F6E56;font-size:9px;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.loading-msg{text-align:center;padding:2rem;color:#555;font-size:11px}
 .proj-h{font-size:11px;font-weight:600;color:#fff;margin-bottom:0.3rem}
 .proj-m{font-size:9px;color:#888}
 .detail{background:#1a1f26;border-radius:6px;border-left:4px solid #0F6E56;padding:1rem;margin-top:1rem;display:none}
@@ -133,11 +142,15 @@ tr:hover{background:#1a1f26}
       <strong>📋 Board Report</strong>
       <span id="board-info">No report uploaded yet</span>
     </div>
+    <div id="board-date-wrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+      <span style="font-size:9px;color:#888">Report date:</span>
+      <input type="date" id="board-date-override" class="meeting-input" style="width:130px" onchange="handleBoardDateOverride(this.value)">
+    </div>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
   </div>
-  <div class="grid" id="stat-grid"></div>
+  <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
   <div id="priority-boxes"></div>
   <div class="box" style="border-left-color:#ef4444">
@@ -175,6 +188,10 @@ tr:hover{background:#1a1f26}
         <div class="detail-l" style="margin-bottom:6px">📅 Last Meeting / Activity</div>
         <div id="last-touched" style="font-size:10px;color:#888;margin-bottom:8px">Not yet tracked</div>
         <input type="date" id="meeting-date" class="meeting-input" onchange="handleMeetingDate(this.value)" style="display:none">
+      </div>
+      <div id="notes-view-wrap" style="display:none">
+        <div class="notes-label">📝 Notes / Remarks</div>
+        <div class="notes-view" id="notes-view"></div>
       </div>
     </div>
     <!-- Edit mode (admin only) -->
@@ -257,6 +274,10 @@ tr:hover{background:#1a1f26}
         </div>
       </div>
 
+      <div class="ef-row">
+        <div class="ef-label">📝 Notes / Remarks</div>
+        <textarea class="ef-input" id="ef-notes" rows="3" placeholder="Board meeting notes, client updates, action items…" style="resize:vertical;line-height:1.5"></textarea>
+      </div>
       <button class="ef-save" onclick="saveEdit()">💾 Save Changes</button>
       <button class="ef-cancel" onclick="toggleEdit()">Cancel</button>
     </div>
@@ -377,7 +398,11 @@ async function loadHistoryFromDB(){
 }
 
 sb.channel('pp_rt')
-  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>initData())
+  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>{
+    // Don't wipe DOM if admin is mid-edit
+    if(document.getElementById('det-edit').style.display!=='none') return;
+    initData();
+  })
   .on('postgres_changes',{event:'INSERT',schema:'public',table:'pp_history'},()=>loadHistoryFromDB())
   .subscribe();
 
@@ -390,6 +415,11 @@ function rebuildDOM(){
       <div class="proj-h">${p.n}</div>
       <div class="proj-m" id="pm-${i}">${p.s} | ${p.r} | ${p.p}</div>
     </div>`).join('');
+  // Apply status colors (refreshCards will fine-tune stagnant)
+  data.forEach((p,i)=>{
+    const el=document.getElementById('proj-'+i);
+    if(el){el.className='proj '+statusClass(p.s,false);}
+  });
   if(isAdmin()){
     const btn=document.createElement('button');
     btn.className='add-proj-btn';btn.textContent='+ Add Project';btn.onclick=addProject;
@@ -398,7 +428,7 @@ function rebuildDOM(){
   // Table
   document.getElementById('table-body').innerHTML=data.map((p,i)=>`
     <tr onclick="goto(${i})">
-      <td><b>${p.n.split(' ').slice(0,2).join(' ')}</b></td>
+      <td><b>${p.n}</b></td>
       <td id="ts-${i}"><span class="tag">${p.s}</span></td>
       <td>${p.r}</td><td>${p.p}</td>
       <td id="tu-${i}">—</td>
@@ -453,6 +483,10 @@ function refreshPriorityBoxes(){
 function refreshBoardBar(){
   const el=document.getElementById('board-info');
   el.textContent=_board?`${_board.name} · ${fmtDate(_board.date)}`:'No report uploaded yet';
+  const wrap=document.getElementById('board-date-wrap');
+  if(wrap) wrap.style.display=(_board&&canUpload())?'flex':'none';
+  const odi=document.getElementById('board-date-override');
+  if(odi&&_board) odi.value=_board.date||'';
 }
 
 function refreshCards(){
@@ -462,6 +496,8 @@ function refreshCards(){
     const days=ref?daysSince(ref):null;
     const isStag=_board?(ref?ref<=_board.date:true):false;
     const badge=isStag?`<span class="stag-badge">🔴 no movement${days!==null?' · '+days+'d':''}</span>`:'';
+    const projEl=document.getElementById('proj-'+i);
+    if(projEl) projEl.className='proj '+statusClass(p.s,isStag);
     const card=document.getElementById('pm-'+i);
     if(card) card.innerHTML=`${p.s} | ${p.r} | ${p.p}`+(ref?`<div class="as-of">last activity: ${fmtDate(ref)}</div>`:'')+badge;
     const cell=document.getElementById('ts-'+i);
@@ -487,6 +523,14 @@ function refreshStagnant(){
 // ── HELPERS ──────────────────────────────────────────────
 function fmtDate(iso){if(!iso)return'';const d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}
 function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);}
+function statusClass(s,isStag){
+  if(isStag) return 's-stag';
+  if(/progress/i.test(s))  return 's-active';
+  if(/bid|proposal/i.test(s)) return 's-bid';
+  if(/planning/i.test(s))  return 's-planning';
+  if(/complet/i.test(s))   return 's-done';
+  return 's-waiting';
+}
 
 // ── TABS ─────────────────────────────────────────────────
 function showTab(t,btn){
@@ -514,6 +558,10 @@ function detail(i){
   const ref=m.meetingDate||m.lastTouched;
   document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
   document.getElementById('meeting-date').value=m.meetingDate||'';
+  // Notes
+  const nv=document.getElementById('notes-view');
+  const nvw=document.getElementById('notes-view-wrap');
+  if(nv&&nvw){nv.textContent=p.notes||'';nvw.style.display=p.notes?'block':'none';}
   // Ensure view mode
   document.getElementById('det-view').style.display='';
   document.getElementById('det-edit').style.display='none';
@@ -585,6 +633,7 @@ function toggleEdit(){
     // Probability — match star value only
     const probSel=document.getElementById('ef-prob');
     probSel.value=p.p.startsWith('★')?p.p.slice(0,5):'★★★☆☆';
+    document.getElementById('ef-notes').value=p.notes||'';
     // Tags — normalize to {label,date} objects
     _tags.done=normItems(p.d);_tags.current=normItems(p.c);_tags.next=normItems(p.x);
     tagRender('done');tagRender('current');tagRender('next');
@@ -609,6 +658,7 @@ async function saveEdit(){
     d:[..._tags.done],
     c:[..._tags.current],
     x:[..._tags.next],
+    notes:document.getElementById('ef-notes').value.trim(),
   };
   for(const[label,key]of[['Name','n'],['Status','s'],['Revenue','r'],['Owner','o'],['Probability','p']]){
     if(old[key]!==newP[key]) await logHistory(old.n,label,old[key],newP[key]);
@@ -620,7 +670,7 @@ async function saveEdit(){
 
 function addProject(){
   const id='p'+Date.now();
-  data.push({id,n:'New Project',s:'Planning',r:'TBD',o:'',p:'★★★☆☆',d:[],c:[],x:[]});
+  data.push({id,n:'New Project',s:'Planning',r:'TBD',o:'',p:'★★★☆☆',d:[],c:[],x:[],notes:''});
   saveProjects();
   rebuildDOM();refreshAll();
   detail(data.length-1);
@@ -647,9 +697,18 @@ function goto(i){
 function handleBoardUpload(input){
   if(!input.files.length||!canUpload())return;
   const old=_board?_board.name:'none';
-  const b={name:input.files[0].name,date:new Date().toISOString().slice(0,10)};
+  const existingDate=_board?_board.date:new Date().toISOString().slice(0,10);
+  const b={name:input.files[0].name,date:existingDate};
   saveBoard(b);
   logHistory('(global)','Board Report',old,b.name);
+}
+function handleBoardDateOverride(val){
+  if(!val||!_board||!canUpload())return;
+  const old=_board.date;
+  _board.date=val;
+  saveBoard(_board);
+  logHistory('(global)','Board Date',old,val);
+  refreshAll();
 }
 
 function handleMeetingDate(val){
