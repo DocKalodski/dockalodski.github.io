@@ -50,8 +50,21 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .ef-label{color:#0F6E56;font-size:9px;text-transform:uppercase;font-weight:600;margin-bottom:4px}
 .ef-input{width:100%;background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:7px 8px;font-size:11px;box-sizing:border-box;font-family:system-ui}
 .ef-input:focus{outline:none;border-color:#0F6E56}
+.ef-select{width:100%;background:#242b32;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:7px 8px;font-size:11px;box-sizing:border-box;font-family:system-ui;cursor:pointer}
+.ef-select:focus{outline:none;border-color:#0F6E56}
 .ef-save{background:#0F6E56;color:#fff;border:none;border-radius:4px;padding:8px 16px;font-size:11px;font-weight:700;cursor:pointer}
 .ef-cancel{background:#242b32;color:#888;border:none;border-radius:4px;padding:8px 12px;font-size:11px;cursor:pointer;margin-left:6px}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:5px;background:#242b32;border:1px solid #2a2f36;border-radius:4px;padding:6px 8px;min-height:34px}
+.tag-chip{background:#0C447C;color:#fff;border-radius:3px;padding:2px 6px;font-size:10px;display:flex;align-items:center;gap:4px;cursor:default}
+.tag-chip span{cursor:pointer;color:#94a3b8;font-size:12px;line-height:1}
+.tag-chip span:hover{color:#ef4444}
+.tag-add-row{display:flex;gap:5px;margin-top:5px}
+.tag-add-input{flex:1;background:#1a1f26;color:#fff;border:1px solid #2a2f36;border-radius:4px;padding:5px 8px;font-size:10px;font-family:system-ui}
+.tag-add-input:focus{outline:none;border-color:#0F6E56}
+.tag-add-date{background:#1a1f26;color:#888;border:1px solid #2a2f36;border-radius:4px;padding:5px 6px;font-size:10px;font-family:system-ui;color-scheme:dark;width:120px}
+.tag-add-date:focus{outline:none;border-color:#0F6E56}
+.tag-add-btn{background:#0F6E56;color:#fff;border:none;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:700}
+.step-date{color:#555;font-size:8px;margin-left:4px}
 .add-proj-btn{background:#0C447C;color:#fff;border:none;border-radius:6px;padding:10px;font-size:11px;font-weight:600;cursor:pointer;width:100%;margin-top:4px}
 table{width:100%;border-collapse:collapse;font-size:10px}
 th{padding:8px;text-align:left;font-weight:600;color:#0F6E56;background:#242b32;border-bottom:2px solid #2a2f36}
@@ -167,13 +180,83 @@ tr:hover{background:#1a1f26}
     <!-- Edit mode (admin only) -->
     <div id="det-edit" style="display:none">
       <div class="ef-row"><div class="ef-label">Project Name</div><input class="ef-input" id="ef-name" type="text"></div>
-      <div class="ef-row"><div class="ef-label">Status</div><input class="ef-input" id="ef-status" type="text" placeholder="In Progress, Bid Submitted, Planning…"></div>
+
+      <div class="ef-row">
+        <div class="ef-label">Status</div>
+        <select class="ef-select" id="ef-status" onchange="efOtherToggle('ef-status','ef-status-other')">
+          <option value="In Progress">In Progress</option>
+          <option value="Bid Submitted">Bid Submitted</option>
+          <option value="Proposal Pending">Proposal Pending</option>
+          <option value="Planning">Planning</option>
+          <option value="Waiting Feedback">Waiting Feedback</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Completed">Completed</option>
+          <option value="__other__">Other (type below)…</option>
+        </select>
+        <input class="ef-input" id="ef-status-other" type="text" placeholder="Custom status…" style="display:none;margin-top:5px">
+      </div>
+
       <div class="ef-row"><div class="ef-label">Revenue</div><input class="ef-input" id="ef-revenue" type="text" placeholder="e.g. ₱60k, $4-5M, TBD"></div>
-      <div class="ef-row"><div class="ef-label">Owner</div><input class="ef-input" id="ef-owner" type="text"></div>
-      <div class="ef-row"><div class="ef-label">Probability</div><input class="ef-input" id="ef-prob" type="text" placeholder="★★★★★"></div>
-      <div class="ef-row"><div class="ef-label">Done (comma-separated)</div><input class="ef-input" id="ef-done" type="text"></div>
-      <div class="ef-row"><div class="ef-label">Current (comma-separated)</div><input class="ef-input" id="ef-current" type="text"></div>
-      <div class="ef-row"><div class="ef-label">Next Steps (comma-separated)</div><input class="ef-input" id="ef-next" type="text"></div>
+
+      <div class="ef-row">
+        <div class="ef-label">Owner</div>
+        <select class="ef-select" id="ef-owner" onchange="efOtherToggle('ef-owner','ef-owner-other')">
+          <option value="Doc Kalodski">Doc Kalodski</option>
+          <option value="Witco/FSmidth">Witco/FSmidth</option>
+          <option value="Howlin/Dave">Howlin/Dave</option>
+          <option value="Jake Foronda">Jake Foronda</option>
+          <option value="Rolly Cruz">Rolly Cruz</option>
+          <option value="Abel">Abel</option>
+          <option value="OFIR Holdings">OFIR Holdings</option>
+          <option value="OFIR">OFIR</option>
+          <option value="O2 Mining">O2 Mining</option>
+          <option value="Oscar/Lepanto">Oscar/Lepanto</option>
+          <option value="__other__">Other (type below)…</option>
+        </select>
+        <input class="ef-input" id="ef-owner-other" type="text" placeholder="Custom owner…" style="display:none;margin-top:5px">
+      </div>
+
+      <div class="ef-row">
+        <div class="ef-label">Probability</div>
+        <select class="ef-select" id="ef-prob">
+          <option value="★★★★★">★★★★★ — Must Win</option>
+          <option value="★★★★☆">★★★★☆ — High</option>
+          <option value="★★★☆☆">★★★☆☆ — Monitor</option>
+          <option value="★★☆☆☆">★★☆☆☆ — Low</option>
+          <option value="★☆☆☆☆">★☆☆☆☆ — Very Low</option>
+        </select>
+      </div>
+
+      <div class="ef-row">
+        <div class="ef-label">✓ Done</div>
+        <div class="tag-wrap" id="ef-done-chips"></div>
+        <div class="tag-add-row">
+          <input class="tag-add-input" id="ef-done-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('done')}">
+          <input class="tag-add-date" id="ef-done-date" type="date">
+          <button class="tag-add-btn" onclick="tagAdd('done')">+</button>
+        </div>
+      </div>
+
+      <div class="ef-row">
+        <div class="ef-label">▶ Current</div>
+        <div class="tag-wrap" id="ef-current-chips"></div>
+        <div class="tag-add-row">
+          <input class="tag-add-input" id="ef-current-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('current')}">
+          <input class="tag-add-date" id="ef-current-date" type="date">
+          <button class="tag-add-btn" onclick="tagAdd('current')">+</button>
+        </div>
+      </div>
+
+      <div class="ef-row">
+        <div class="ef-label">→ Next Steps</div>
+        <div class="tag-wrap" id="ef-next-chips"></div>
+        <div class="tag-add-row">
+          <input class="tag-add-input" id="ef-next-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('next')}">
+          <input class="tag-add-date" id="ef-next-date" type="date">
+          <button class="tag-add-btn" onclick="tagAdd('next')">+</button>
+        </div>
+      </div>
+
       <button class="ef-save" onclick="saveEdit()">💾 Save Changes</button>
       <button class="ef-cancel" onclick="toggleEdit()">Cancel</button>
     </div>
@@ -424,9 +507,10 @@ function detail(i){
   document.getElementById('dr').textContent=p.r;
   document.getElementById('do').textContent=p.o;
   document.getElementById('dp').textContent=p.p;
-  document.getElementById('dd').innerHTML=p.d.map(x=>`<div class="step-i">${x}</div>`).join('');
-  document.getElementById('dc').innerHTML=p.c.map(x=>`<div class="step-i">${x}</div>`).join('');
-  document.getElementById('dn2').innerHTML=p.x.map(x=>`<div class="step-i p">${x}</div>`).join('');
+  const renderItem=(x,cls)=>{const o=typeof x==='string'?{label:x,date:''}:x;return`<div class="${cls}">${o.label}${o.date?`<span class="step-date">${fmtDate(o.date)}</span>`:''}</div>`;};
+  document.getElementById('dd').innerHTML=normItems(p.d).map(x=>renderItem(x,'step-i')).join('');
+  document.getElementById('dc').innerHTML=normItems(p.c).map(x=>renderItem(x,'step-i')).join('');
+  document.getElementById('dn2').innerHTML=normItems(p.x).map(x=>renderItem(x,'step-i p')).join('');
   const ref=m.meetingDate||m.lastTouched;
   document.getElementById('last-touched').textContent=ref?`Last activity: ${fmtDate(ref)} (${daysSince(ref)} days ago)`:'Not yet tracked';
   document.getElementById('meeting-date').value=m.meetingDate||'';
@@ -441,18 +525,69 @@ function detail(i){
   det.classList.add('show');
 }
 
+// ── TAG CHIP HELPERS ─────────────────────────────────────
+// Items stored as {label, date} objects; date is optional string 'YYYY-MM-DD'
+const _tags={done:[],current:[],next:[]};
+
+function normItems(arr){
+  return(arr||[]).map(x=>typeof x==='string'?{label:x,date:''}:x);
+}
+
+function tagRender(key){
+  const wrap=document.getElementById('ef-'+key+'-chips');
+  if(!wrap)return;
+  wrap.innerHTML=_tags[key].map((v,i)=>`<div class="tag-chip">${v.label}${v.date?` <span style="color:#94a3b8;font-size:8px">· ${fmtDate(v.date)}</span>`:''}<span onclick="_tags['${key}'].splice(${i},1);tagRender('${key}')">×</span></div>`).join('');
+}
+function tagAdd(key){
+  const inp=document.getElementById('ef-'+key+'-input');
+  const dateInp=document.getElementById('ef-'+key+'-date');
+  const val=inp.value.trim();
+  if(!val)return;
+  _tags[key].push({label:val,date:dateInp.value||''});
+  inp.value='';dateInp.value='';
+  tagRender(key);
+}
+function efOtherToggle(selId,inputId){
+  const sel=document.getElementById(selId);
+  const inp=document.getElementById(inputId);
+  inp.style.display=sel.value==='__other__'?'':'none';
+  if(sel.value==='__other__') inp.focus();
+}
+function efSelectVal(selId,otherId){
+  const sel=document.getElementById(selId);
+  if(sel.value==='__other__'){
+    const v=document.getElementById(otherId).value.trim();
+    return v||'';
+  }
+  return sel.value;
+}
+function efSelectSet(selId,otherId,val){
+  const sel=document.getElementById(selId);
+  let found=false;
+  for(const opt of sel.options){if(opt.value===val){sel.value=val;found=true;break;}}
+  if(!found){
+    sel.value='__other__';
+    document.getElementById(otherId).value=val;
+    document.getElementById(otherId).style.display='';
+  } else {
+    document.getElementById(otherId).style.display='none';
+  }
+}
+
 function toggleEdit(){
   const viewing=document.getElementById('det-edit').style.display==='none';
   if(viewing){
     const p=data[currentProj];
     document.getElementById('ef-name').value=p.n;
-    document.getElementById('ef-status').value=p.s;
+    efSelectSet('ef-status','ef-status-other',p.s);
     document.getElementById('ef-revenue').value=p.r;
-    document.getElementById('ef-owner').value=p.o;
-    document.getElementById('ef-prob').value=p.p;
-    document.getElementById('ef-done').value=p.d.join(', ');
-    document.getElementById('ef-current').value=p.c.join(', ');
-    document.getElementById('ef-next').value=p.x.join(', ');
+    efSelectSet('ef-owner','ef-owner-other',p.o);
+    // Probability — match star value only
+    const probSel=document.getElementById('ef-prob');
+    probSel.value=p.p.startsWith('★')?p.p.slice(0,5):'★★★☆☆';
+    // Tags — normalize to {label,date} objects
+    _tags.done=normItems(p.d);_tags.current=normItems(p.c);_tags.next=normItems(p.x);
+    tagRender('done');tagRender('current');tagRender('next');
     document.getElementById('det-view').style.display='none';
     document.getElementById('det-edit').style.display='';
     document.getElementById('btn-edit').textContent='👁 View';
@@ -465,16 +600,15 @@ function toggleEdit(){
 
 async function saveEdit(){
   const i=currentProj;const old=data[i];
-  const split=s=>s.split(',').map(x=>x.trim()).filter(Boolean);
   const newP={...old,
     n:document.getElementById('ef-name').value.trim()||old.n,
-    s:document.getElementById('ef-status').value.trim()||old.s,
+    s:efSelectVal('ef-status','ef-status-other')||old.s,
     r:document.getElementById('ef-revenue').value.trim()||old.r,
-    o:document.getElementById('ef-owner').value.trim()||old.o,
-    p:document.getElementById('ef-prob').value.trim()||old.p,
-    d:split(document.getElementById('ef-done').value),
-    c:split(document.getElementById('ef-current').value),
-    x:split(document.getElementById('ef-next').value),
+    o:efSelectVal('ef-owner','ef-owner-other')||old.o,
+    p:document.getElementById('ef-prob').value||old.p,
+    d:[..._tags.done],
+    c:[..._tags.current],
+    x:[..._tags.next],
   };
   for(const[label,key]of[['Name','n'],['Status','s'],['Revenue','r'],['Owner','o'],['Probability','p']]){
     if(old[key]!==newP[key]) await logHistory(old.n,label,old[key],newP[key]);
