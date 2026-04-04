@@ -32,7 +32,6 @@
     [data-theme="dark"] .date-header:hover { background:#334155; }
     [data-theme="dark"] .cal-row    { background:#1e293b; }
     [data-theme="dark"] .month-card { background:#1e293b; }
-    [data-theme="dark"] #wt-time-sheet { background:#1e293b; }
 
     [data-large="1"] body, [data-large="1"] { font-size: 21px; }
     [data-large="1"] .stat-box .slabel { font-size: 0.82rem; }
@@ -176,10 +175,6 @@
     .toggle input:checked + .toggle-slider { background:var(--accent); }
     .toggle input:checked + .toggle-slider:before { transform:translateX(20px); }
 
-    /* Time modal */
-    #wt-time-modal { display:none; position:fixed; inset:0; z-index:300; }
-    #wt-time-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.45); }
-    #wt-time-sheet { position:absolute; bottom:0; left:0; right:0; background:var(--card); border-radius:20px 20px 0 0; padding:20px 20px 36px; }
 
     /* Lock */
     #lock-overlay { position:fixed; inset:0; z-index:9999; background:linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%); display:flex; align-items:center; justify-content:center; }
@@ -319,7 +314,7 @@
   <div class="card" style="background:#ecfdf5;border-color:#6ee7b7;">
     <div class="card-title" style="color:#065f46;">👋 Welcome to WeightWatcher</div>
     <p style="font-size:0.8rem;color:#047857;line-height:1.6;margin-bottom:8px;">Set your <strong>height and target weight</strong> below to unlock BMI tracking and goal progress.</p>
-    <p style="font-size:0.75rem;color:#10b981;line-height:1.5;">📍 Data is saved on <strong>this device only</strong>. Use <strong>Save to Spreadsheet</strong> to back up your readings.</p>
+    <p style="font-size:0.75rem;color:#10b981;line-height:1.5;">☁️ Data syncs across all your devices automatically. Use <strong>Save to Spreadsheet</strong> to export a copy for your doctor.</p>
   </div>
 
   <div class="card">
@@ -398,8 +393,11 @@
       <div><div class="setting-label">🔑 License</div><div class="setting-sub" id="settings-licensed-to">—</div></div>
       <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
     </div>
+    <div class="setting-row">
+      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">WeightWatcher v1.1 · by Doc Kalodski · WHO BMI Classifications · Cloud sync via Supabase</div></div>
+    </div>
   </div>
-  <div class="brand-footer">WeightWatcher v1.0 · by Doc Kalodski</div>
+  <div class="brand-footer">WeightWatcher v1.1 · by Doc Kalodski</div>
 </div>
 
 <!-- ══════════ CLIENTS (DEV ONLY) ══════════ -->
@@ -413,23 +411,6 @@
 
 <div id="print-report"></div>
 
-<!-- Time Picker Modal -->
-<div id="wt-time-modal">
-  <div id="wt-time-overlay" onclick="closeTimePicker()"></div>
-  <div id="wt-time-sheet">
-    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Set Reminder Time</div>
-    <div class="drum-row" style="margin-bottom:16px;">
-      <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="tp-hour"></div></div></div>
-      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
-      <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="tp-min"></div></div></div>
-      <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="tp-ampm"></div></div></div>
-    </div>
-    <div style="display:flex;gap:10px;">
-      <button type="button" class="btn-sm" onclick="closeTimePicker()">Cancel</button>
-      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmTime()">✓ Set Time</button>
-    </div>
-  </div>
-</div>
 
 <!-- Inline Log Form -->
 <div id="inline-form">
@@ -938,25 +919,6 @@ function prefillDate(isoDateTime, triggerEl) {
   if (drumMonth) { setDateDrums(new Date(isoDateTime)); syncDatetime(); }
 }
 
-// ── TIME PICKER (reminder) ────────────────────────────────
-let tpHour=null,tpMin=null,tpAmpm=null;
-function openTimePicker() {
-  const p=loadProfile(); const [h24,m]=(p.reminderTime||'06:00').split(':').map(Number);
-  const ap=h24>=12?1:0,h12=h24%12||12;
-  document.getElementById('wt-time-modal').style.display='block';
-  if (!tpHour) { tpHour=initDrumArr('tp-hour',DT_HOURS,h12-1,null); tpMin=initDrumArr('tp-min',DT_MINS,m,null); tpAmpm=initDrumArr('tp-ampm',DT_AMPM,ap,null); }
-  else { tpHour.setIdx(h12-1); tpMin.setIdx(m); tpAmpm.setIdx(ap); }
-}
-function closeTimePicker() { document.getElementById('wt-time-modal').style.display='none'; }
-function confirmTime() {
-  const h12=tpHour.getIdx()+1,m=tpMin.getIdx(),ap=tpAmpm.getIdx();
-  let h24=h12; if(ap===1&&h12<12) h24=h12+12; if(ap===0&&h12===12) h24=0;
-  const pad=n=>String(n).padStart(2,'0'); const timeStr=`${pad(h24)}:${pad(m)}`;
-  const p=loadProfile(); p.reminderTime=timeStr; _profileCache=p; localStorage.setItem('ww_profile',JSON.stringify(p));
-  document.getElementById('reminder-time-btn').textContent=fmt12(timeStr); closeTimePicker();
-}
-function fmt12(hhmm) { const [h,m]=hhmm.split(':').map(Number); const ap=h>=12?'PM':'AM',h12=h%12||12; return `${h12}:${String(m).padStart(2,'0')} ${ap}`; }
-function toMin(hhmm) { const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
 
 // ── REMINDER ──────────────────────────────────────────────
 let _reminderDismissed=false;
