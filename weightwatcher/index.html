@@ -610,11 +610,18 @@ function loadProfile() {
 function saveProfile() {
   const p=loadProfile();
   const oldUnit=p.unit;
+  const newUnit=document.getElementById('s-unit').value;
   p.height  = parseFloat(document.getElementById('s-height').value)||0;
-  p.target  = parseFloat(document.getElementById('s-target').value)||0;
-  p.unit    = document.getElementById('s-unit').value;
+  p.unit    = newUnit;
   p.reminders = document.getElementById('s-reminders').checked;
-  if (oldUnit !== p.unit) drumsReady=false;
+  const tEl=document.getElementById('s-target');
+  let rawTarget=parseFloat(tEl.value)||0;
+  if (oldUnit!==newUnit&&rawTarget>0) {
+    rawTarget=oldUnit==='kg'?+(rawTarget*2.20462).toFixed(1):+(rawTarget/2.20462).toFixed(1);
+    tEl.value=rawTarget;
+  }
+  p.target=rawTarget;
+  if (oldUnit!==newUnit) drumsReady=false;
   _profileCache=p;
   localStorage.setItem('ww_profile',JSON.stringify(p));
   pushToCloud('profile',p);
@@ -702,10 +709,10 @@ function clearAllData() {
 function exportCSV() {
   const r=loadReadings(); if (!r.length) { alert('No data to export.'); return; }
   const p=loadProfile();
-  const header=['Date','Time',`Weight (${p.unit})`,'BMI','Status','Notes'];
+  const header=['Date','Time','Type',`Weight (${p.unit})`,'BMI','Status','Notes'];
   const rows=r.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).map(rd=>{
     const dt=new Date(rd.timestamp); const b=bmi(rd.wt); const c=classifyBMI(b);
-    return [dt.toLocaleDateString('en-PH'),dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),toDisplay(rd.wt),b||'',c?c.label:'',rd.notes||''];
+    return [dt.toLocaleDateString('en-PH'),dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),TYPE_LABEL[rd.type||'other'],toDisplay(rd.wt),b||'',c?c.label:'',rd.notes||''];
   });
   const csv=[header,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');
@@ -741,11 +748,12 @@ function printReport() {
   const p=loadProfile(); const fmt=d=>new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
   const rows=sorted.map(r=>{
     const dt=new Date(r.timestamp); const b=bmi(r.wt); const c=classifyBMI(b);
-    return `<tr><td>${fmt(r.timestamp)}</td><td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td><td><strong>${toDisplay(r.wt)} ${p.unit}</strong></td><td>${b||'—'}</td><td>${c?c.label:'—'}</td><td>${r.notes||''}</td></tr>`;
+    return `<tr><td>${fmt(r.timestamp)}</td><td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td><td>${TYPE_ICON[r.type||'other']} ${TYPE_LABEL[r.type||'other']}</td><td><strong>${toDisplay(r.wt)} ${p.unit}</strong></td><td>${b||'—'}</td><td>${c?c.label:'—'}</td><td>${r.notes||''}</td></tr>`;
   }).join('');
+  const profLine=[p.height?`Height: ${p.height} cm`:'',p.target?`Target: ${p.target.toFixed(1)} ${p.unit}`:''].filter(Boolean).join(' · ');
   document.getElementById('print-report').innerHTML=`
-    <div class="pr-header"><h2>⚖️ WeightWatcher — Weight Report</h2><p>Printed: ${now.toLocaleString('en-PH')} · by Doc Kalodski</p></div>
-    <table class="pr-table"><thead><tr><th>Date</th><th>Time</th><th>Weight</th><th>BMI</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="pr-header"><h2>⚖️ WeightWatcher — Weight Report</h2><p>${profLine?profLine+' · ':''} Printed: ${now.toLocaleString('en-PH')} · by Doc Kalodski</p></div>
+    <table class="pr-table"><thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Weight</th><th>BMI</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
     <p class="pr-footer">For personal monitoring only. Consult a physician for medical advice.</p>`;
   window.print();
 }
@@ -921,7 +929,7 @@ function prefillDate(isoDateTime, triggerEl) {
 
 
 // ── REMINDER ──────────────────────────────────────────────
-let _reminderDismissed=false;
+let _reminderDismissed=sessionStorage.getItem('ww_rem_dismissed')==='1';
 function checkReminder() {
   const p=loadProfile(); if (!p.reminders||_reminderDismissed) return;
   const readings=loadReadings(); const now=new Date();
@@ -936,12 +944,14 @@ function checkReminder() {
     banner.classList.add('show');
   } else banner.classList.remove('show');
 }
-function dismissReminder() { _reminderDismissed=true; document.getElementById('reminder-banner').classList.remove('show'); }
+function dismissReminder() { _reminderDismissed=true; sessionStorage.setItem('ww_rem_dismissed','1'); document.getElementById('reminder-banner').classList.remove('show'); }
 
 // ── STREAK ────────────────────────────────────────────────
 function calcStreak(readings) {
-  const now=new Date(); let streak=0;
-  for (let i=0;i<365;i++) {
+  const now=new Date();
+  const hasToday=readings.some(r=>new Date(r.timestamp).toDateString()===now.toDateString());
+  let streak=0;
+  for (let i=hasToday?0:1;i<366;i++) {
     const d=new Date(now); d.setDate(d.getDate()-i);
     if (readings.some(r=>new Date(r.timestamp).toDateString()===d.toDateString())) streak++;
     else break;
@@ -1157,12 +1167,19 @@ function renderChart() {
   const readings=loadReadings();
   if (!readings.length) { container.innerHTML=`<div class="empty-state"><div class="big">📈</div><p>No data yet.</p></div>`; return; }
   const sorted=readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-  const nDays=chartView==='7d'?7:chartView==='30d'?30:91;
-  const now=new Date(); const points=[];
-  for (let d=nDays-1;d>=0;d--) {
-    const day=new Date(now); day.setDate(day.getDate()-d);
+  const now=new Date(); const points=[]; let dates=[];
+  if (chartView==='all') {
+    const seen=new Set();
+    sorted.forEach(r=>{const ds=new Date(r.timestamp).toDateString();if(!seen.has(ds)){seen.add(ds);dates.push(new Date(r.timestamp));}});
+  } else {
+    const nDays=chartView==='7d'?7:chartView==='30d'?30:91;
+    for (let d=nDays-1;d>=0;d--){const day=new Date(now);day.setDate(day.getDate()-d);dates.push(day);}
+  }
+  dates.forEach(day=>{
     const dayR=sorted.filter(r=>new Date(r.timestamp).toDateString()===day.toDateString());
-    const label=day.toLocaleDateString('en-PH',nDays<=7?{weekday:'short',month:'short',day:'numeric'}:{month:'short',day:'numeric'});
+    const useLong=chartView==='7d';
+    const useYear=chartView==='all'&&dates.length>90;
+    const label=day.toLocaleDateString('en-PH',useLong?{weekday:'short',month:'short',day:'numeric'}:useYear?{month:'short',year:'2-digit'}:{month:'short',day:'numeric'});
     if (dayR.length) {
       // Use wake readings as baseline (true body weight); fall back to all readings
       const wakeR=dayR.filter(r=>r.type==='wake');
@@ -1171,9 +1188,9 @@ function renderChart() {
       const b=bmi(baseWt); const bc=classifyBMI(b);
       points.push({label,wt:toDisplay(baseWt),color:bc?WT_COLOR[bc.key]:WT_COLOR.none,count:dayR.length});
     } else { points.push({label,wt:null,color:'transparent',count:0}); }
-  }
+  });
   const p=loadProfile();
-  const targetDisp=p.target>0?toDisplay(p.unit==='lbs'?p.target:p.target):null;
+  const targetDisp=p.target>0?p.target:null;
   const ctx=document.getElementById('wt-chart').getContext('2d');
   if (chartInstance) { chartInstance.destroy(); chartInstance=null; }
   const datasets=[{
@@ -1240,6 +1257,34 @@ function renderAnalysis() {
     avg30?`<span class="ai-label">30-Day Avg  :</span> ${fmtWt(avg30)}`:'',
     `<span class="ai-label">Rate        :</span> <span class="${rate!==null&&rate>0.3?'ai-warn':rate!==null&&rate<-0.1?'ai-ok':'ai-label'}">${rateWord}</span>`,
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  BY READING TYPE</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    ...(()=>{
+      const groups={};
+      ['wake','eat','sleep','other'].forEach(t=>{
+        const g=readings.filter(r=>(r.type||'other')===t);
+        if(g.length) groups[t]={avg:g.reduce((a,r)=>a+r.wt,0)/g.length,count:g.length};
+      });
+      const allSrt=readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+      let sDeltas=[],eDeltas=[];
+      for(let i=1;i<allSrt.length;i++){
+        const prev=allSrt[i-1],curr=allSrt[i];
+        const d=+(toDisplay(curr.wt)-toDisplay(prev.wt)).toFixed(1);
+        if(prev.type==='sleep'&&curr.type==='wake') sDeltas.push(d);
+        if(prev.type!=='eat'&&curr.type==='eat') eDeltas.push(d);
+      }
+      const avgS=sDeltas.length?+(sDeltas.reduce((a,b)=>a+b,0)/sDeltas.length).toFixed(1):null;
+      const avgE=eDeltas.length?+(eDeltas.reduce((a,b)=>a+b,0)/eDeltas.length).toFixed(1):null;
+      return [
+        groups.wake  ?`<span class="ai-label">🌅 Wake Avg   :</span> ${fmtWt(groups.wake.avg)}  (${groups.wake.count} readings)`:' No wake readings yet — log one after waking up.',
+        groups.eat   ?`<span class="ai-label">🍽️ After Eat  :</span> ${fmtWt(groups.eat.avg)}  (${groups.eat.count} readings)`:'',
+        groups.sleep ?`<span class="ai-label">😴 Bedtime    :</span> ${fmtWt(groups.sleep.avg)}  (${groups.sleep.count} readings)`:'',
+        groups.other ?`<span class="ai-label">📍 Other      :</span> ${fmtWt(groups.other.avg)}  (${groups.other.count} readings)`:'',
+        avgS!==null?`<span class="ai-label">Sleep Effect :</span> <span class="${avgS<=0?'ai-ok':'ai-warn'}">${avgS>0?'+':''}${avgS} ${unitStr()} avg overnight (sleep→wake)</span>`:'  Log sleep + wake pairs to see your sleep effect.',
+        avgE!==null?`<span class="ai-label">Eat Effect   :</span> <span class="${avgE>=0?'ai-warn':'ai-ok'}">${avgE>0?'+':''}${avgE} ${unitStr()} avg after eating</span>`:'',
+      ].filter(Boolean);
+    })(),
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
     `<span class="ai-head">  GOAL TRACKING</span>`,
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
     targetKg?`<span class="ai-label">Target      :</span> ${fmtWt(targetKg)}`:`  No target set — add one in Settings.`,
@@ -1264,6 +1309,7 @@ function renderAnalysis() {
         <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
         <button type="button" class="${chartView==='30d'?'active':''}" onclick="setChartView('30d',this)">30 Days</button>
         <button type="button" class="${chartView==='3m'?'active':''}" onclick="setChartView('3m',this)">3 Months</button>
+        <button type="button" class="${chartView==='all'?'active':''}" onclick="setChartView('all',this)">All</button>
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div style="display:flex;gap:16px;margin-top:10px;font-size:0.85rem;">
