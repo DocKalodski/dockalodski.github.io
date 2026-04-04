@@ -103,7 +103,7 @@ tr:hover{background:#1a1f26}
 <div class="wrapper">
 <div class="header">
   <h1>ProjectPipelines-OFIR</h1>
-  <p>OFIR Consulting Corp · <span id="pp-licensee">by Doc Kalodski</span></p>
+  <p>OFIR Consulting Corp · <span id="pp-licensee">by Doc Kalodski</span> · <span onclick="ppLogout()" style="cursor:pointer;opacity:0.5;font-size:10px;text-decoration:underline">change key</span></p>
 </div>
 <div class="tabs">
   <button class="tab-btn active" data-tab="overview"  onclick="showTab('overview',this)">📊 Overview</button>
@@ -229,6 +229,7 @@ function getRole(){const k=localStorage.getItem('pp_license');const m=k?ppMatch(
 function isAdmin(){return getRole()==='admin';}
 function canUpload(){return getRole()==='admin'||getRole()==='editor';}
 
+function ppLogout(){localStorage.removeItem('pp_license');localStorage.removeItem('pp_licensee');location.reload();}
 function ppActivate(){
   const raw=document.getElementById('lock-input').value;
   const obj=ppMatch(raw);
