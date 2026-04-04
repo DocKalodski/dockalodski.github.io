@@ -284,7 +284,8 @@ tr:hover td{background:#1a1f26}
       <span style="font-size:9px;color:#888">Date:</span>
       <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
-    <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
+    <button class="upload-btn" id="extract-btn" onclick="document.getElementById('extract-file-input').click()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
+    <input type="file" id="extract-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleExtractFile(this.files[0])">
     <label class="upload-btn" id="upload-label">⬆ Upload Report
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
@@ -449,10 +450,9 @@ tr:hover td{background:#1a1f26}
 
 <!-- REPORTS REPOSITORY -->
 <div id="reports" class="tab">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <div style="margin-bottom:12px">
     <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Board Meeting Reports</div>
-    <button class="upload-btn" id="report-upload-label-btn" style="display:none" onclick="document.getElementById('report-file-input').click()">⬆ Add Report</button>
-    <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleReportAdd(this)">
+    <div style="font-size:9px;color:#555;margin-top:3px">Reports are added automatically when you use 🤖 Extract Projects</div>
   </div>
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
@@ -469,45 +469,28 @@ tr:hover td{background:#1a1f26}
 <!-- EXTRACT MODAL -->
 <div id="extract-overlay" class="hidden">
   <div class="extract-box">
-    <div class="extract-title">🤖 Extract Projects from Board Report</div>
-
-    <!-- Key setup — shown only once -->
-    <div id="groq-key-section" style="display:none">
-      <div class="extract-sub">One-time setup: enter your free Groq API key. <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">Get key here</a> (free, takes 1 min).</div>
-      <div class="extract-key-row" style="margin-top:8px">
-        <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
-        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Continue</button>
-      </div>
-      <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
-    </div>
-
-    <!-- Drop zone — shown when key exists -->
-    <div id="extract-dropzone" style="display:none;border:2px dashed #2a2f36;border-radius:8px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color 0.15s"
-      onclick="document.getElementById('extract-file-input').click()"
-      ondragover="event.preventDefault();this.style.borderColor='#38bdf8'"
-      ondragleave="this.style.borderColor='#2a2f36'"
-      ondrop="event.preventDefault();this.style.borderColor='#2a2f36';handleExtractFile(event.dataTransfer.files[0])">
-      <div style="font-size:2rem;margin-bottom:8px">📄</div>
-      <div style="font-size:12px;font-weight:700;color:#ccc">Drop your board report here</div>
-      <div style="font-size:10px;color:#555;margin-top:4px">or click to browse · PDF, Word, TXT</div>
-      <input type="file" id="extract-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleExtractFile(this.files[0])">
-    </div>
-
-    <div id="extract-status" style="font-size:10px;color:#38bdf8;text-align:center;display:none;padding:12px"></div>
+    <div class="extract-title">🤖 Extract Projects</div>
+    <div id="extract-status" style="font-size:10px;color:#38bdf8;text-align:center;display:none;padding:8px"></div>
     <div id="extract-err"></div>
-
     <div id="extract-results" class="extract-results">
       <div style="font-size:11px;font-weight:700;color:#0F6E56;border-top:1px solid #2a2f36;padding-top:10px">
-        📋 Extracted Projects — Review before saving
+        📋 Review before saving
       </div>
       <div id="extract-items-list"></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="extract-btn" onclick="applyExtracted()" style="background:#0F6E56">✅ Apply to Pipeline</button>
-        <button class="extract-cancel" onclick="resetExtract()">Try Another File</button>
+        <button class="extract-cancel" onclick="closeExtractModal()">Cancel</button>
       </div>
     </div>
-
-    <div style="text-align:right">
+    <div id="extract-groq-key-section" style="display:none">
+      <div class="extract-sub">One-time setup: enter your free Groq API key. <a href="https://console.groq.com/keys" target="_blank" style="color:#38bdf8">Get key here</a>.</div>
+      <div class="extract-key-row" style="margin-top:8px">
+        <input class="extract-key-input" id="groq-key-input" type="password" placeholder="gsk_…" autocomplete="off">
+        <button class="extract-cancel" onclick="saveGroqKey()" style="color:#38bdf8;border-color:#38bdf8">Save & Extract</button>
+      </div>
+      <div id="groq-key-status" style="font-size:9px;color:#555;margin-top:3px"></div>
+    </div>
+    <div style="text-align:right;margin-top:4px">
       <button class="extract-cancel" onclick="closeExtractModal()">Close</button>
     </div>
   </div>
@@ -1058,7 +1041,6 @@ async function loadReports(){
   const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
   _reports=(rows&&rows[0]?rows[0].value:[])||[];
   renderReports();
-  document.getElementById('report-upload-label-btn').style.display=isAdmin()?'':'none';
 }
 function renderReports(){
   const el=document.getElementById('reports-list');
@@ -1075,20 +1057,6 @@ function renderReports(){
     </div>`;
   }).join('');
 }
-async function handleReportAdd(input){
-  if(!input.files.length||!isAdmin()) return;
-  const f=input.files[0];
-  const name=f.name;
-  const date=new Date().toISOString().slice(0,10);
-  const addedBy=localStorage.getItem('pp_licensee')||'Admin';
-  const notes=prompt(`Notes for "${name}" (optional):`,'')||'';
-  _reports.push({name,date,addedBy,notes});
-  await sb.from('pp_data').upsert({key:'reports',value:_reports});
-  // also update board bar
-  handleBoardUpload({files:[f]});
-  renderReports();
-  input.value='';
-}
 async function deleteReport(i){
   if(!isAdmin()||!confirm('Remove this report from the repository?')) return;
   _reports.splice(i,1);
@@ -1100,30 +1068,35 @@ async function deleteReport(i){
 function groqKey(){return localStorage.getItem('pp_groq_key')||'';}
 let _extractedProjects=[];
 
-function openExtractModal(){
+function openExtractModal(pendingFile){
   document.getElementById('extract-overlay').classList.remove('hidden');
-  const hasKey=!!groqKey();
-  document.getElementById('groq-key-section').style.display=hasKey?'none':'block';
-  document.getElementById('extract-dropzone').style.display=hasKey?'block':'none';
   resetExtract();
+  if(!groqKey()){
+    document.getElementById('extract-groq-key-section').style.display='block';
+    document.getElementById('extract-groq-key-section')._pendingFile=pendingFile||null;
+  } else if(pendingFile){
+    handleExtractFile(pendingFile);
+  }
 }
 function saveGroqKey(){
   const k=document.getElementById('groq-key-input').value.trim();
   if(!k){document.getElementById('groq-key-status').textContent='⛔ Key is empty';return;}
   localStorage.setItem('pp_groq_key',k);
-  document.getElementById('groq-key-section').style.display='none';
-  document.getElementById('extract-dropzone').style.display='block';
+  const pending=document.getElementById('extract-groq-key-section')._pendingFile;
+  document.getElementById('extract-groq-key-section').style.display='none';
+  if(pending) handleExtractFile(pending);
 }
 function closeExtractModal(){
   document.getElementById('extract-overlay').classList.add('hidden');
+  document.getElementById('extract-file-input').value='';
 }
 function resetExtract(){
   _extractedProjects=[];
   document.getElementById('extract-results').style.display='none';
   document.getElementById('extract-err').innerHTML='';
+  document.getElementById('extract-groq-key-section').style.display='none';
   const st=document.getElementById('extract-status');
   st.textContent='';st.style.display='none';
-  if(groqKey()) document.getElementById('extract-dropzone').style.display='block';
 }
 async function readFileText(file){
   const ext=file.name.split('.').pop().toLowerCase();
@@ -1153,12 +1126,21 @@ async function readFileText(file){
 }
 async function handleExtractFile(file){
   if(!file) return;
+  if(!groqKey()){openExtractModal(file);return;}
+  openExtractModal();
   const errEl=document.getElementById('extract-err');
   const statusEl=document.getElementById('extract-status');
-  errEl.innerHTML='';
   statusEl.style.display='block';
-  statusEl.textContent='📄 Reading file…';
-  document.getElementById('extract-dropzone').style.display='none';
+  statusEl.textContent='📄 Reading '+file.name+'…';
+  // Save to Reports repository
+  const date=new Date().toISOString().slice(0,10);
+  const addedBy=localStorage.getItem('pp_licensee')||'Admin';
+  if(!_reports.find(r=>r.name===file.name&&r.date===date)){
+    _reports.push({name:file.name,date,addedBy,notes:''});
+    await sb.from('pp_data').upsert({key:'reports',value:_reports});
+    renderReports();
+    handleBoardUpload({files:[file]});
+  }
   let text='';
   try{
     text=await readFileText(file);
@@ -1166,7 +1148,6 @@ async function handleExtractFile(file){
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
-    document.getElementById('extract-dropzone').style.display='block';
     return;
   }
   statusEl.textContent='⚡ Sending to Groq AI…';
@@ -1208,7 +1189,6 @@ ${text.slice(0,12000)}`;
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
-    document.getElementById('extract-dropzone').style.display='block';
   }
 }
 function showExtractResults(parsed){
