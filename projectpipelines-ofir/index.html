@@ -248,30 +248,33 @@ tr:hover{background:#1a1f26}
         <div class="ef-label">✓ Done</div>
         <div class="tag-wrap" id="ef-done-chips"></div>
         <div class="tag-add-row">
-          <input class="tag-add-input" id="ef-done-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('done')}">
+          <select class="ef-select" id="ef-done-sel" onchange="tagSelChange('done')" style="flex:1"></select>
           <input class="tag-add-date" id="ef-done-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('done')">+</button>
         </div>
+        <input class="tag-add-input" id="ef-done-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('done')}">
       </div>
 
       <div class="ef-row">
         <div class="ef-label">▶ Current</div>
         <div class="tag-wrap" id="ef-current-chips"></div>
         <div class="tag-add-row">
-          <input class="tag-add-input" id="ef-current-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('current')}">
+          <select class="ef-select" id="ef-current-sel" onchange="tagSelChange('current')" style="flex:1"></select>
           <input class="tag-add-date" id="ef-current-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('current')">+</button>
         </div>
+        <input class="tag-add-input" id="ef-current-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('current')}">
       </div>
 
       <div class="ef-row">
         <div class="ef-label">→ Next Steps</div>
         <div class="tag-wrap" id="ef-next-chips"></div>
         <div class="tag-add-row">
-          <input class="tag-add-input" id="ef-next-input" type="text" placeholder="Add item…" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('next')}">
+          <select class="ef-select" id="ef-next-sel" onchange="tagSelChange('next')" style="flex:1"></select>
           <input class="tag-add-date" id="ef-next-date" type="date">
           <button class="tag-add-btn" onclick="tagAdd('next')">+</button>
         </div>
+        <input class="tag-add-input" id="ef-next-other" type="text" placeholder="Type custom step…" style="display:none;margin-top:5px" onkeydown="if(event.key==='Enter'){event.preventDefault();tagAdd('next')}">
       </div>
 
       <div class="ef-row">
@@ -573,6 +576,45 @@ function detail(i){
   det.classList.add('show');
 }
 
+// ── STEP DROPDOWN OPTIONS ────────────────────────────────
+const STEP_GROUPS=[
+  {label:'🔍 Opportunity & Business Dev', opts:[
+    'Opportunity Identified','Initial Contact','NDA Signed','Site Visit',
+    'Feasibility Study','Scoping','Estimation / Costing','Due Diligence']},
+  {label:'📄 Proposal & Bidding', opts:[
+    'Proposal Preparation','Bid Submitted','Awaiting Evaluation',
+    'Under Evaluation','Negotiation','Re-bid / Revised Proposal']},
+  {label:'🏆 Award & Mobilization', opts:[
+    'Award Received','Letter of Intent','Contract Signing',
+    'Mobilization','Kick-off Meeting']},
+  {label:'⚙️ Execution', opts:[
+    'Design','Detailed Engineering','Procurement / Sourcing',
+    'Contractor Engagement','Fabrication','Financing / Funding',
+    'Construction','Installation','Commissioning','Testing & Inspection']},
+  {label:'✅ Closure', opts:[
+    'Deliverable Submission','Final Report','Client Acceptance',
+    'Punch-list / Snagging','Follow-up','Completed']},
+  {label:'📋 Monitoring', opts:[
+    'Awaiting Client Feedback','Awaiting Permit','Awaiting Funding',
+    'Regulatory Submission','Investor Presentation','Board Presentation']},
+  {label:'⚠️ Blockers', opts:[
+    'On Hold','No Response','Overdue / Delayed',
+    'Budget Issue','Client-side Delay','Force Majeure']},
+];
+
+function buildStepSelects(){
+  const placeholder='<option value="">— Select step —</option>';
+  const groups=STEP_GROUPS.map(g=>
+    `<optgroup label="${g.label}">${g.opts.map(o=>`<option value="${o}">${o}</option>`).join('')}</optgroup>`
+  ).join('');
+  const other='<option value="__other__">✏️ Other (type below)…</option>';
+  const html=placeholder+groups+other;
+  ['done','current','next'].forEach(k=>{
+    const s=document.getElementById('ef-'+k+'-sel');
+    if(s) s.innerHTML=html;
+  });
+}
+
 // ── TAG CHIP HELPERS ─────────────────────────────────────
 // Items stored as {label, date} objects; date is optional string 'YYYY-MM-DD'
 const _tags={done:[],current:[],next:[]};
@@ -586,13 +628,25 @@ function tagRender(key){
   if(!wrap)return;
   wrap.innerHTML=_tags[key].map((v,i)=>`<div class="tag-chip">${v.label}${v.date?` <span style="color:#94a3b8;font-size:8px">· ${fmtDate(v.date)}</span>`:''}<span onclick="_tags['${key}'].splice(${i},1);tagRender('${key}')">×</span></div>`).join('');
 }
+
+function tagSelChange(key){
+  const sel=document.getElementById('ef-'+key+'-sel');
+  const other=document.getElementById('ef-'+key+'-other');
+  if(!other)return;
+  other.style.display=sel.value==='__other__'?'':'none';
+  if(sel.value==='__other__') other.focus();
+}
+
 function tagAdd(key){
-  const inp=document.getElementById('ef-'+key+'-input');
+  const sel=document.getElementById('ef-'+key+'-sel');
+  const other=document.getElementById('ef-'+key+'-other');
   const dateInp=document.getElementById('ef-'+key+'-date');
-  const val=inp.value.trim();
+  const val=sel.value==='__other__'?(other?other.value.trim():''):sel.value;
   if(!val)return;
   _tags[key].push({label:val,date:dateInp.value||''});
-  inp.value='';dateInp.value='';
+  sel.value='';
+  if(other){other.value='';other.style.display='none';}
+  dateInp.value='';
   tagRender(key);
 }
 function efOtherToggle(selId,inputId){
@@ -634,6 +688,7 @@ function toggleEdit(){
     const probSel=document.getElementById('ef-prob');
     probSel.value=p.p.startsWith('★')?p.p.slice(0,5):'★★★☆☆';
     document.getElementById('ef-notes').value=p.notes||'';
+    buildStepSelects();
     // Tags — normalize to {label,date} objects
     _tags.done=normItems(p.d);_tags.current=normItems(p.c);_tags.next=normItems(p.x);
     tagRender('done');tagRender('current');tagRender('next');
