@@ -49,9 +49,6 @@ body{margin:0;padding:0;background:#0f1419;color:#fff;font-family:system-ui;over
 .recent-row{font-size:9px;color:#888;padding:3px 0;border-bottom:1px solid #242b32;display:flex;gap:5px;flex-wrap:wrap}
 .recent-row:last-child{border-bottom:none}
 .recent-row strong{color:#ccc}
-.owner-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
-.owner-chip{background:#242b32;color:#888;border:1px solid #2a2f36;border-radius:12px;padding:3px 10px;font-size:9px;cursor:pointer;font-weight:600}
-.owner-chip.active{background:#0C447C;color:#fff;border-color:#0C447C}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
 .card{background:#1a1f26;padding:0.9rem;border-radius:6px;border-left:4px solid #0F6E56;text-align:center}
 .big{font-size:22px;font-weight:700;color:#0F6E56;margin-bottom:4px}
@@ -176,7 +173,7 @@ tr:hover td{background:#1a1f26}
 @media print{
   #lock-overlay,#loading-bar,.tabs,.filter-bar,.header-actions,.board-bar,
   .detail,.add-proj-btn,.comment-section,.edit-btn,.del-btn,.close,
-  .upload-btn,.hdr-btn,#install-btn,.recent-strip,.owner-chips,
+  .upload-btn,.hdr-btn,#install-btn,.recent-strip,
   .box,h3,#stat-grid{display:none!important}
   body,html{overflow:visible!important;height:auto!important;background:#fff!important;color:#000!important}
   .wrapper{height:auto!important;overflow:visible!important}
@@ -265,7 +262,6 @@ tr:hover td{background:#1a1f26}
       <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
     </label>
   </div>
-  <div id="owner-chips" class="owner-chips" style="display:none"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
   <div id="priority-boxes"></div>
@@ -499,7 +495,7 @@ function installApp(){if(_installPrompt){_installPrompt.prompt();_installPrompt.
 // ── STATE ──────────────────────────────────────────────
 const sb=supabase.createClient(SB_URL,SB_KEY);
 let data=[], _meta={}, _board=null, _histRows=[], currentProj=0, currentProjOpen=null;
-let _filteredIdx=null, _sortCol='', _sortDir=1, _ownerFilter='';
+let _filteredIdx=null, _sortCol='', _sortDir=1;
 
 // ── DATA ───────────────────────────────────────────────
 async function initData(){
@@ -521,7 +517,7 @@ async function initData(){
     else data=DEFAULT_PROJECTS;
   }
   const wasOpen=currentProjOpen;
-  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
+  rebuildDOM();refreshAll();buildFilterOwners();
   if(wasOpen!==null&&wasOpen<data.length) detail(wasOpen);
   await loadHistory();
 }
@@ -695,19 +691,6 @@ function renderTableBody(){
 }
 
 // ── OVERVIEW ───────────────────────────────────────────
-function buildOwnerChips(){
-  const owners=[...new Set(data.map(p=>p.o).filter(Boolean))].sort();
-  const bar=document.getElementById('owner-chips');
-  bar.style.display=owners.length?'flex':'none';
-  bar.innerHTML='<span class="owner-chip active" onclick="setOwnerFilter(\'\',this)">All</span>'+
-    owners.map(o=>`<span class="owner-chip" onclick="setOwnerFilter('${o.replace(/'/g,"\\'")}',this)">${o}</span>`).join('');
-}
-function setOwnerFilter(owner,el){
-  _ownerFilter=owner;
-  document.querySelectorAll('.owner-chip').forEach(c=>c.classList.remove('active'));
-  if(el)el.classList.add('active');
-  refreshPriorityBoxes();refreshStagnant();
-}
 function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();refreshStagnant();}
 
 function refreshOverviewStats(){
@@ -725,7 +708,7 @@ function refreshOverviewStats(){
     <div class="card" style="border-left-color:${sc}"><div class="big" style="color:${sc}">${stag}</div><div class="small">Not Moving</div></div>`;
 }
 function refreshPriorityBoxes(){
-  const src=_ownerFilter?data.filter(p=>p.o===_ownerFilter):data;
+  const src=data;
   const must=src.filter(p=>p.p==='★★★★★'&&/progress/i.test(p.s));
   const high=src.filter(p=>p.p==='★★★★★'&&!/progress/i.test(p.s));
   const mon=src.filter(p=>p.p==='★★★★☆'||p.p==='★★★☆☆');
@@ -759,7 +742,7 @@ function refreshStagnant(){
   const list=document.getElementById('stagnant-list');
   if(!_board){list.innerHTML='<div style="font-size:10px;color:#888">Upload a board report to start tracking.</div>';return;}
   const cut=_board.date;
-  const src=(_ownerFilter?data.map((p,i)=>({p,i})).filter(({p})=>p.o===_ownerFilter):data.map((p,i)=>({p,i})));
+  const src=data.map((p,i)=>({p,i}));
   const stag=src.filter(({p})=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;});
   if(!stag.length){list.innerHTML='<div style="font-size:10px;color:#4CAF50">✓ All projects moved since last board meeting.</div>';return;}
   list.innerHTML=stag.map(({p,i})=>{
@@ -919,7 +902,7 @@ async function saveEdit(){
   }
   data[i]=newP;
   await saveProjects();
-  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();detail(i);
+  rebuildDOM();refreshAll();buildFilterOwners();detail(i);
 }
 function addProject(){
   const id='p'+Date.now();
@@ -927,7 +910,7 @@ function addProject(){
   if(!_meta[id])_meta[id]={};
   _meta[id].createdAt=new Date().toISOString().slice(0,10);
   saveProjects();saveMeta();
-  rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
+  rebuildDOM();refreshAll();buildFilterOwners();
   detail(data.length-1);toggleEdit();
 }
 async function deleteProj(){
@@ -936,7 +919,7 @@ async function deleteProj(){
   data.splice(currentProj,1);
   await saveProjects();
   await logHistory(name,'(deleted)','present','removed');
-  closeDetail();rebuildDOM();refreshAll();buildOwnerChips();buildFilterOwners();
+  closeDetail();rebuildDOM();refreshAll();buildFilterOwners();
 }
 function closeDetail(){document.getElementById('detail').classList.remove('show');currentProjOpen=null;}
 function goto(i){clearFilters();const btn=document.querySelector('[data-tab="projects"]');showTab('projects',btn);detail(i);}
