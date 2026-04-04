@@ -505,6 +505,11 @@
 ════════════════════════════════════════════════ -->
 <div id="tab-dash" class="tab active">
 
+  <!-- Log Now Button -->
+  <div class="card" id="log-now-card" style="padding:14px;margin-bottom:14px;">
+    <button type="button" class="btn btn-primary" onclick="openSheet(this.closest('.card'))">✚ Log a Reading</button>
+  </div>
+
   <!-- 7-Day Summary Card -->
   <div id="dash-summary-card" class="card" style="margin-bottom:14px;"></div>
 
@@ -640,7 +645,10 @@
       <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-min"></div></div></div>
       <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-ampm"></div></div></div>
     </div>
-    <button type="button" class="btn btn-primary" onclick="confirmSlotTime()">✓ Confirm Time</button>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn-sm" onclick="closeSlotTimePicker()">Cancel</button>
+      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmSlotTime()">✓ Confirm Time</button>
+    </div>
   </div>
 </div>
 
@@ -650,7 +658,10 @@
     <span style="flex:1;">✏️ Editing this reading</span>
     <button id="cancel-edit" onclick="cancelEdit()">Cancel</button>
   </div>
-  <div class="card-title" id="sheet-title">🩺 New Record</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div class="card-title" id="sheet-title" style="margin-bottom:0;">🩺 New Record</div>
+    <button type="button" class="btn-icon" onclick="cancelEdit()" title="Close">✕</button>
+  </div>
   <div class="drum-row">
     <div class="drum-col">
       <div class="drum-label">Systolic</div>
@@ -798,12 +809,15 @@ const DEFAULT_SLOTS = [
   { id:'s3', emoji:'🌙', name:'After Dinner',    time:'18:00' },
 ];
 
+let _settingsCache = null;
 function loadSettings() {
-  const raw = localStorage.getItem('rr_settings2');
-  if (raw) return JSON.parse(raw);
-  return { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
+  if (!_settingsCache) {
+    const raw = localStorage.getItem('rr_settings2');
+    _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
+  }
+  return _settingsCache;
 }
-function persistSettings(s) { localStorage.setItem('rr_settings2', JSON.stringify(s)); }
+function persistSettings(s) { _settingsCache = s; localStorage.setItem('rr_settings2', JSON.stringify(s)); }
 
 function saveSlots() {
   const s = loadSettings();
@@ -912,8 +926,12 @@ function toggleNotifications() {
 }
 
 // ── STORAGE ───────────────────────────────────────────────
-function loadReadings() { return JSON.parse(localStorage.getItem('rr_readings') || '[]'); }
-function saveReadings(arr) { localStorage.setItem('rr_readings', JSON.stringify(arr)); }
+let _readingsCache = null;
+function loadReadings() {
+  if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('rr_readings') || '[]');
+  return _readingsCache;
+}
+function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('rr_readings', JSON.stringify(arr)); }
 
 // ── DEMO DATA ─────────────────────────────────────────────
 // Demo arc: Jan 1 2026 → today — Stage 2 → Normal trend
@@ -961,7 +979,6 @@ function buildDemoReadings() {
 
 function loadDemoData() {
   if (!confirm('Replace all data with a 3-month demo dataset?')) return;
-  localStorage.removeItem('rr_readings');
   saveReadings(buildDemoReadings());
   renderAll();
   alert('Demo data loaded — 3 months of BP readings.');
@@ -969,7 +986,7 @@ function loadDemoData() {
 
 function clearAllData() {
   if (!confirm('Delete ALL readings? Cannot be undone.')) return;
-  localStorage.removeItem('rr_readings'); renderAll();
+  saveReadings([]); renderAll();
 }
 
 function exportBackup() {
@@ -1002,7 +1019,7 @@ function importBackup(input) {
       saveReadings(merged);
       // Import settings only if this device has none yet
       if (backup.settings && !localStorage.getItem('rr_settings2')) {
-        localStorage.setItem('rr_settings2', JSON.stringify(backup.settings));
+        persistSettings(backup.settings);
       }
       renderAll();
       alert(`Imported ${backup.readings.length} readings. Total now: ${merged.length}.`);
@@ -1260,14 +1277,9 @@ function saveReading() {
   if (isNaN(sys)||isNaN(dia)||sys<60||dia<40) { alert('Enter valid systolic and diastolic values.'); return; }
 
   // Determine timestamp
-  let ts;
-  if (true) {
-    const dtVal = document.getElementById('in-datetime').value;
-    if (!dtVal) { alert('Select a date and time.'); return; }
-    ts = new Date(dtVal).toISOString();
-  } else {
-    ts = new Date().toISOString();
-  }
+  const dtVal = document.getElementById('in-datetime').value;
+  if (!dtVal) { alert('Select a date and time.'); return; }
+  const ts = new Date(dtVal).toISOString();
 
   // Determine slot
   let slotId = document.getElementById('in-slot').value;
@@ -1386,7 +1398,7 @@ function saveCalInline(fid, readingId) {
   } else {
     readings.push({id:Date.now(),sys,dia,hr,notes,slotId:slot,timestamp:new Date(dt).toISOString()});
   }
-  localStorage.setItem('rr_readings',JSON.stringify(readings));
+  saveReadings(readings);
   renderCalendarOnly();
   renderDashboard();
 }
@@ -1412,10 +1424,17 @@ function renderDashSummary() {
   if (!el) return;
   const now = new Date();
   const cut7 = new Date(now); cut7.setDate(cut7.getDate() - 7);
-  const week7 = loadReadings().filter(r => new Date(r.timestamp) >= cut7);
+  const allR = loadReadings();
+  const week7 = allR.filter(r => new Date(r.timestamp) >= cut7);
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const sd = new Date(now); sd.setDate(sd.getDate() - i);
+    if (allR.some(r => new Date(r.timestamp).toDateString() === sd.toDateString())) streak++;
+    else break;
+  }
 
   if (!week7.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:12px;">No readings in the last 7 days</div>';
+    el.innerHTML = `<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:12px;">No readings in the last 7 days${streak > 0 ? ` · 🔥 ${streak}-day streak` : ''}</div>`;
     return;
   }
 
@@ -1451,6 +1470,7 @@ function renderDashSummary() {
       <div style="font-size:0.78rem;color:var(--muted);margin:4px 0 6px;">mmHg · 7-day average · ${week7.length} readings</div>
       ${avgHr ? `<div style="font-size:1rem;color:#8b5cf6;font-weight:700;margin-bottom:8px;">❤️ avg ${avgHr} bpm &nbsp;·&nbsp; <span style="color:#ef4444;">↑${highHr}</span> &nbsp;·&nbsp; <span style="color:#22c55e;">↓${lowHr}</span></div>` : ''}
       ${badgeHTML(avgSys, avgDia)}
+      ${streak > 1 ? `<div style="font-size:0.85rem;color:#f97316;font-weight:700;margin-top:6px;">🔥 ${streak}-day streak</div>` : ''}
     </div>
     <div class="summary-grid" style="margin-bottom:12px;">
       <div class="stat-box" style="border-left:4px solid #ef4444;">
@@ -1566,13 +1586,14 @@ function renderCalendarOnly() {
   const firstDow   = new Date(calYear,calMonth,1).getDay();
   const daysInMo   = new Date(calYear,calMonth+1,0).getDate();
   const dowLabels  = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const nowForISO  = new Date();
 
   let cells = dowLabels.map(d=>`<div class="cal-dow">${d}</div>`).join('');
   for(let i=0;i<firstDow;i++) cells+=`<div class="cal-cell empty"></div>`;
   for(let d=1;d<=daysInMo;d++){
     const dr=dayMap[d];
     const detId=`cd-${calYear}-${calMonth}-${d}`;
-    const dayDateISO = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T07:00`;
+    const dayDateISO = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(nowForISO.getHours()).padStart(2,'0')}:${String(nowForISO.getMinutes()).padStart(2,'0')}`;
     const toggleFn = `(()=>{const det=document.getElementById('${detId}');const open=det.classList.toggle('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));if(open)this.classList.add('selected');else this.classList.remove('selected');})()`;
     const dayLabel = new Date(calYear,calMonth,d).toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
     if(dr){
@@ -1678,6 +1699,7 @@ function groupByWeek(readings) {
 function renderChart() {
   const readings = loadReadings();
   const container = document.getElementById('chart-container');
+  if (!container) return;
   if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="bp-chart"></canvas>';
 
   if (!readings.length) {
@@ -1884,12 +1906,33 @@ function renderAnalysis() {
     `<span class="ai-line">──────────────────────────────────────────────────</span>`,
   ].filter(l=>l).join('\n');
 
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   el.innerHTML = `
+    <div class="card">
+      <div class="card-title">📈 BP Trend</div>
+      <div class="chart-toggle">
+        <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
+        <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
+      </div>
+      <div class="chart-canvas-wrap" id="chart-container"></div>
+      <div class="legend-row" style="margin-top:12px;">
+        <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#ef4444;font-weight:700;">Systolic</span></label>
+        <label><input type="checkbox" id="toggle-dia" checked onchange="renderChart()"> <span style="color:#3b82f6;font-weight:700;">Diastolic</span></label>
+        <label><input type="checkbox" id="toggle-hr" onchange="renderChart()"> <span style="color:#8b5cf6;font-weight:700;">Heart Rate</span></label>
+      </div>
+      <div class="zone-legend" style="margin-top:10px;">
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal &lt;120/80</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90</div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">🤖 Analysis Report</div>
       <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Rule-based clinical pattern analysis · AHA 2017 Guidelines</p>
       <div class="ai-report">${report}</div>
     </div>`;
+  renderChart();
 }
 
 // ── REMINDERS ─────────────────────────────────────────────
