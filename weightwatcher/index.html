@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeightWatcherer — Scale Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --normal:  #22c55e; --over:   #eab308;
+      --obese1:  #f97316; --obese2: #ef4444;
+      --under:   #6366f1;
+      --bg:      #f8fafc; --card:   #ffffff;
+      --border:  #e2e8f0; --text:   #1e293b;
+      --muted:   #4b5563; --accent: #10b981;
+      --radius:  12px;
+    }
+    [data-theme="dark"] {
+      --bg:     #0f172a; --card:   #1e293b;
+      --border: #334155; --text:   #f1f5f9;
+      --muted:  #94a3b8; --accent: #34d399;
+    }
+    [data-theme="dark"] .advisory    { background:#431407; color:#fed7aa; }
+    [data-theme="dark"] .good-news   { background:#052e16; color:#bbf7d0; }
+    [data-theme="dark"] .stat-box    { background:#0f172a; }
+    [data-theme="dark"] nav          { background:#1e293b; }
+    [data-theme="dark"] #inline-form { background:#1e293b; }
+    [data-theme="dark"] .drum-wrap::after { background: linear-gradient(to bottom,#1e293b 0%,rgba(30,41,59,0.75) 22%,transparent 38%,transparent 62%,rgba(30,41,59,0.75) 78%,#1e293b 100%); }
+    [data-theme="dark"] .cal-day-detail { background:#0f172a; }
+    [data-theme="dark"] .date-header { background:#1e293b; }
+    [data-theme="dark"] .date-header:hover { background:#334155; }
+    [data-theme="dark"] .cal-row    { background:#1e293b; }
+    [data-theme="dark"] .month-card { background:#1e293b; }
+    [data-theme="dark"] #wt-time-sheet { background:#1e293b; }
+
+    [data-large="1"] body, [data-large="1"] { font-size: 21px; }
+    [data-large="1"] .stat-box .slabel { font-size: 0.82rem; }
+    [data-large="1"] .stat-box .ssub   { font-size: 0.84rem; }
+    [data-large="1"] .badge            { font-size: 1rem; padding: 7px 16px; }
+    [data-large="1"] nav button        { font-size: 1.15rem; }
+
+    #theme-btn { background:none; border:none; cursor:pointer; font-size:1.4rem; padding:6px; border-radius:8px; color:white; margin-left:auto; min-width:44px; min-height:44px; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:18px; line-height:1.6; }
+
+    /* Header */
+    header { background:linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%); color:white; padding:14px 20px 12px; position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(0,0,0,0.3); }
+    .header-inner { display:flex; align-items:center; gap:14px; }
+    .scale-icon { width:38px; height:38px; background:rgba(52,211,153,0.2); border:2px solid rgba(52,211,153,0.5); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; }
+    .header-text h1 { font-size:1.2rem; font-weight:800; }
+    .header-text h1 span { color:#6ee7b7; }
+    .header-text p { font-size:0.68rem; opacity:0.5; margin-top:1px; }
+
+    /* Reminder */
+    #reminder-banner { background:#fef3c7; border-left:4px solid #f59e0b; padding:10px 16px; font-size:0.84rem; display:none; align-items:center; gap:10px; }
+    #reminder-banner.show { display:flex; }
+    #reminder-banner span { flex:1; }
+    #reminder-dismiss { background:none; border:none; cursor:pointer; font-size:1rem; padding:2px 8px; color:#92400e; font-weight:700; }
+
+    /* Nav */
+    nav { display:flex; background:var(--card); border-bottom:1px solid var(--border); overflow-x:auto; }
+    nav button { flex:1; padding:17px 8px; border:none; background:none; cursor:pointer; font-size:1.05rem; font-weight:700; color:var(--muted); border-bottom:4px solid transparent; white-space:nowrap; transition:all 0.15s; min-width:80px; min-height:58px; }
+    nav button.active { color:var(--accent); border-bottom-color:var(--accent); }
+    nav button:hover:not(.active) { color:var(--text); background:var(--bg); }
+
+    /* Tabs / Cards */
+    .tab { display:none; padding:16px; max-width:800px; margin:0 auto; padding-bottom:50px; }
+    .tab.active { display:block; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:14px; }
+    .card-title { font-size:0.88rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:14px; }
+
+    /* Drum Pickers */
+    .drum-row { display:flex; gap:6px; margin-bottom:16px; align-items:flex-start; }
+    .drum-col { flex:1; text-align:center; min-width:0; }
+    .drum-label { font-size:0.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; }
+    .drum-wrap { position:relative; height:300px; overflow:hidden; border-radius:16px; border:1.5px solid var(--border); }
+    .drum-scroll { height:100%; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; -ms-overflow-style:none; padding:120px 0; }
+    .drum-scroll::-webkit-scrollbar { display:none; }
+    .drum-item { height:60px; scroll-snap-align:center; display:flex; align-items:center; justify-content:center; font-size:0.95rem; font-weight:400; color:rgba(30,41,59,0.18); user-select:none; -webkit-user-select:none; }
+    .drum-item.drum-adj { font-size:1.5rem; font-weight:600; color:rgba(30,41,59,0.42); }
+    .drum-item.drum-sel { font-size:2.5rem; font-weight:800; color:var(--text); }
+    .drum-wrap::before { content:''; position:absolute; left:6%; right:6%; top:calc(50% - 30px); height:60px; background:rgba(16,185,129,0.08); border:2px solid rgba(16,185,129,0.38); border-radius:12px; pointer-events:none; z-index:2; }
+    .drum-wrap::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,#ffffff 0%,rgba(255,255,255,0.75) 22%,transparent 38%,transparent 62%,rgba(255,255,255,0.75) 78%,#ffffff 100%); pointer-events:none; z-index:1; }
+    .drum-sep { display:flex; align-items:center; padding-top:168px; font-size:2rem; font-weight:300; color:var(--muted); flex-shrink:0; }
+
+    /* Buttons */
+    .btn { padding:16px 22px; border-radius:10px; border:none; cursor:pointer; font-size:1.05rem; font-weight:700; transition:all 0.15s; }
+    .btn-primary { background:var(--accent); color:white; width:100%; }
+    .btn-primary:hover { background:#059669; }
+    .btn-primary.editing { background:#7c3aed; }
+    .btn-primary.editing:hover { background:#6d28d9; }
+    .btn-sm { background:none; border:2px solid var(--border); color:var(--muted); font-size:1rem; padding:12px 20px; border-radius:8px; cursor:pointer; min-height:52px; font-weight:600; }
+    .btn-sm:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-danger { background:none; border:1.5px solid #fee2e2; color:#ef4444; font-size:1rem; padding:12px 20px; border-radius:8px; cursor:pointer; min-height:52px; font-weight:600; }
+    .btn-danger:hover { background:#fee2e2; }
+    .btn-icon { background:none; border:none; cursor:pointer; padding:10px; font-size:1.15rem; border-radius:8px; color:var(--muted); transition:all 0.12s; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+    .btn-icon:hover { background:var(--bg); color:var(--text); }
+    .btn-icon.del:hover { background:#fee2e2; color:#ef4444; }
+
+    /* Badges */
+    .badge { display:inline-block; padding:6px 14px; border-radius:20px; font-size:0.92rem; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; }
+    .badge-under  { background:#ede9fe; color:#4c1d95; }
+    .badge-normal { background:#dcfce7; color:#166534; }
+    .badge-over   { background:#fef9c3; color:#854d0e; }
+    .badge-obese1 { background:#ffedd5; color:#9a3412; }
+    .badge-obese2 { background:#fee2e2; color:#991b1b; }
+
+    /* Calendar */
+    .month-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:8px; }
+    .month-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .month-nav-title { font-size:1rem; font-weight:800; color:var(--text); }
+    .month-nav-btn { background:var(--bg); border:1px solid var(--border); border-radius:8px; width:30px; height:30px; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; }
+    .month-nav-btn:hover { background:#e2e8f0; }
+    .month-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .cal-dow { font-size:0.65rem; text-align:center; color:var(--muted); font-weight:700; padding:4px 0; }
+    .cal-cell { aspect-ratio:1; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:transform 0.1s,box-shadow 0.1s; min-height:40px; }
+    .cal-cell:hover { transform:scale(1.12); box-shadow:0 2px 8px rgba(0,0,0,0.15); }
+    .cal-cell.empty { background:transparent; cursor:default; pointer-events:none; }
+    .cal-cell.has-data { font-weight:700; color:white; }
+    .cal-cell.has-data .cday { font-size:0.8rem; font-weight:800; line-height:1; }
+    .cal-cell.has-data .cwt { font-size:0.42rem; opacity:0.9; line-height:1.3; }
+    .cal-cell.no-data { background:var(--bg); color:var(--muted); }
+    .cal-cell.no-data .cday { font-size:0.75rem; font-weight:400; }
+    .cal-cell.selected { outline:3px solid var(--accent); outline-offset:2px; }
+    .cal-day-detail { display:none; background:#f1f5f9; border-radius:10px; padding:10px; margin-top:8px; }
+    .cal-day-detail.open { display:block; }
+    .cal-row { display:block; padding:14px 16px 12px; border-left:5px solid var(--border); margin-bottom:8px; border-radius:0 12px 12px 0; background:var(--card); box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+    .cr-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .cr-time { font-size:0.95rem; color:var(--muted); font-weight:600; }
+    .cr-actions { display:flex; gap:2px; margin-right:-6px; }
+    .cr-wt { font-size:2rem; font-weight:800; color:var(--text); line-height:1; }
+    .cr-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:6px; }
+    .cr-notes { font-size:0.88rem; color:var(--muted); font-style:italic; }
+
+    /* Stats */
+    .summary-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:12px; }
+    .stat-box { background:var(--bg); border-radius:8px; padding:12px 14px; }
+    .stat-box .slabel { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:3px; }
+    .stat-box .sval { font-size:1.5rem; font-weight:800; line-height:1; }
+    .stat-box .ssub { font-size:0.84rem; color:var(--muted); margin-top:3px; }
+
+    /* Progress bar */
+    .progress-wrap { background:var(--border); border-radius:8px; height:10px; overflow:hidden; margin-top:8px; }
+    .progress-fill { height:100%; border-radius:8px; background:var(--accent); transition:width 0.5s; }
+
+    /* Chart */
+    .chart-toggle { display:flex; margin-bottom:14px; border:1.5px solid var(--border); border-radius:8px; overflow:hidden; width:fit-content; }
+    .chart-toggle button { padding:7px 18px; font-size:0.8rem; font-weight:600; border:none; background:none; cursor:pointer; color:var(--muted); transition:all 0.15s; }
+    .chart-toggle button.active { background:var(--accent); color:white; }
+    .chart-canvas-wrap { position:relative; height:260px; }
+
+    /* Form */
+    .form-group label { display:block; font-size:0.68rem; font-weight:700; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.4px; }
+    .form-group input { width:100%; padding:10px 11px; border:1.5px solid var(--border); border-radius:8px; font-size:0.95rem; background:var(--bg); color:var(--text); transition:border-color 0.15s; }
+    .form-group input:focus { outline:none; border-color:var(--accent); }
+    .edit-bar { display:none; background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:8px; padding:8px 14px; margin-bottom:10px; font-size:0.82rem; color:#1d4ed8; align-items:center; gap:10px; }
+    .edit-bar.show { display:flex; }
+    #cancel-edit-link { background:none; border:none; cursor:pointer; font-size:0.82rem; color:#1d4ed8; font-weight:700; text-decoration:underline; }
+    #preview-display { text-align:center; font-size:3.2rem; font-weight:800; letter-spacing:-2px; color:var(--text); padding:6px 0 2px; min-height:56px; }
+    #preview-display .unit { font-size:1.2rem; color:var(--muted); font-weight:400; margin-left:4px; }
+    #preview-badge { text-align:center; margin-bottom:14px; min-height:28px; }
+    #inline-form { display:none; background:var(--card); border:2px solid var(--accent); border-radius:var(--radius); padding:20px; margin-top:10px; }
+
+    /* Settings */
+    .setting-row { display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-bottom:1px solid var(--border); gap:12px; }
+    .setting-row:last-child { border-bottom:none; }
+    .setting-label { font-size:1rem; font-weight:600; }
+    .setting-sub { font-size:0.82rem; color:var(--muted); margin-top:3px; }
+    .s-input { width:80px; padding:8px 10px; border:1.5px solid var(--border); border-radius:8px; font-size:1rem; background:var(--bg); color:var(--text); text-align:center; }
+    .s-input:focus { outline:none; border-color:var(--accent); }
+    .toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+    .toggle input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#cbd5e1; border-radius:24px; transition:0.3s; }
+    .toggle-slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.3s; }
+    .toggle input:checked + .toggle-slider { background:var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform:translateX(20px); }
+
+    /* Time modal */
+    #wt-time-modal { display:none; position:fixed; inset:0; z-index:300; }
+    #wt-time-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.45); }
+    #wt-time-sheet { position:absolute; bottom:0; left:0; right:0; background:var(--card); border-radius:20px 20px 0 0; padding:20px 20px 36px; }
+
+    /* Lock */
+    #lock-overlay { position:fixed; inset:0; z-index:9999; background:linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%); display:flex; align-items:center; justify-content:center; }
+    #lock-overlay.hidden { display:none; }
+    .lock-box { background:white; border-radius:16px; padding:32px 28px; max-width:340px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4); }
+    .lock-box .lock-icon { font-size:2.4rem; margin-bottom:10px; }
+    .lock-box h2 { font-size:1.2rem; font-weight:800; color:#064e3b; margin-bottom:4px; }
+    .lock-box .lock-sub { font-size:0.78rem; color:#64748b; margin-bottom:20px; line-height:1.5; }
+    .lock-box input { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:1rem; font-family:monospace; letter-spacing:2px; text-align:center; text-transform:uppercase; outline:none; margin-bottom:10px; }
+    .lock-box input:focus { border-color:#10b981; }
+    .lock-box input.error { border-color:#ef4444; }
+    .lock-box .lock-err { font-size:0.75rem; color:#ef4444; min-height:18px; margin-bottom:8px; }
+    .lock-box .lock-btn { width:100%; padding:13px; background:#10b981; color:white; border:none; border-radius:10px; font-size:0.95rem; font-weight:700; cursor:pointer; }
+    .lock-box .lock-btn:hover { background:#059669; }
+    .lock-box .lock-licensee { font-size:0.7rem; color:#94a3b8; margin-top:16px; }
+
+    /* Print */
+    #print-report { display:none; }
+    @media print {
+      body > *:not(#print-report) { display:none !important; }
+      #print-report { display:block !important; font-family:Arial,sans-serif; font-size:11pt; color:#000; padding:12pt; }
+      .pr-header { text-align:center; margin-bottom:14pt; border-bottom:2px solid #000; padding-bottom:8pt; }
+      .pr-header h2 { font-size:16pt; margin:0 0 3pt; }
+      .pr-table { width:100%; border-collapse:collapse; font-size:9pt; margin-bottom:10pt; }
+      .pr-table th { background:#eee; border:1px solid #bbb; padding:4pt 5pt; text-align:left; font-size:8pt; text-transform:uppercase; }
+      .pr-table td { border:1px solid #ddd; padding:3pt 5pt; }
+      .pr-footer { font-size:8pt; color:#777; text-align:center; margin-top:10pt; border-top:1px solid #ddd; padding-top:6pt; }
+    }
+    .empty-state { text-align:center; padding:32px 20px; color:var(--muted); }
+    .empty-state .big { font-size:2rem; }
+    .empty-state p { margin-top:8px; font-size:0.82rem; line-height:1.5; }
+    .brand-footer { text-align:center; font-size:0.66rem; color:var(--muted); margin-top:6px; padding-bottom:6px; letter-spacing:0.3px; }
+    .ai-report { background:var(--bg); color:var(--text); border-radius:var(--radius); border:1px solid var(--border); padding:16px 18px; font-family:'SF Mono','Fira Code',monospace; font-size:0.78rem; line-height:1.8; white-space:pre-wrap; overflow-x:auto; }
+    .ai-report .ai-head { color:#065f46; font-weight:700; font-size:0.85rem; }
+    .ai-report .ai-label { color:var(--muted); }
+    .ai-report .ai-ok   { color:#15803d; font-weight:600; }
+    .ai-report .ai-warn { color:#c2410c; font-weight:600; }
+    .ai-report .ai-bad  { color:#b91c1c; font-weight:700; }
+    .ai-report .ai-line { color:#cbd5e1; }
+    @media (max-width:500px) {
+      .summary-grid { grid-template-columns:1fr 1fr; }
+      .tab { padding:12px; }
+      .card { padding:18px; }
+      nav button { font-size:1rem; padding:16px 4px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Lock Overlay -->
+<div id="lock-overlay">
+  <div class="lock-box">
+    <div class="lock-icon">⚖️</div>
+    <h2>WeightWatcher</h2>
+    <div class="lock-sub">Enter your license key to activate.<br>You only need to do this once on this device.</div>
+    <input type="text" id="lock-input" placeholder="Enter your license key" maxlength="30"
+      oninput="this.value=this.value.toUpperCase()"
+      onkeydown="if(event.key==='Enter')activateLicense()">
+    <div class="lock-err" id="lock-err"></div>
+    <button class="lock-btn" onclick="activateLicense()">Activate</button>
+    <div class="lock-licensee">Licensed copy · WeightWatcher by Doc Kalodski</div>
+  </div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <div class="scale-icon">⚖️</div>
+    <div class="header-text">
+      <h1>Weight<span>Watcher</span></h1>
+      <p>SCALE MONITOR &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span></p>
+    </div>
+    <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
+  </div>
+</header>
+
+<!-- Reminder Banner -->
+<div id="reminder-banner">
+  <span id="reminder-text">⏰ Time for your morning weigh-in!</span>
+  <button type="button" id="reminder-dismiss" onclick="dismissReminder()">✕</button>
+</div>
+
+<!-- Nav -->
+<nav>
+  <button type="button" class="active" onclick="switchTab('dash',this)">🏠 Dashboard</button>
+  <button type="button" onclick="switchTab('analysis',this)">📊 Analysis</button>
+  <button type="button" onclick="switchTab('settings',this)">⚙️ Settings</button>
+</nav>
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div id="tab-dash" class="tab active">
+  <div class="card" id="log-now-card" style="padding:14px;margin-bottom:14px;">
+    <button type="button" class="btn btn-primary" onclick="openSheet(this.closest('.card'))">⚖️ Log Weight</button>
+  </div>
+  <div id="dash-summary-card" class="card" style="margin-bottom:14px;"></div>
+  <div class="card">
+    <div class="card-title">History</div>
+    <div id="cal-grid-container"></div>
+  </div>
+  <div class="brand-footer">WeightWatcher · by Doc Kalodski · WHO BMI Classifications</div>
+</div>
+
+<!-- ══════════ ANALYSIS ══════════ -->
+<div id="tab-analysis" class="tab">
+  <div id="analysis-content"></div>
+  <div class="brand-footer">WeightWatcher · by Doc Kalodski · WHO BMI Classifications</div>
+</div>
+
+<!-- ══════════ SETTINGS ══════════ -->
+<div id="tab-settings" class="tab">
+  <div class="card" style="background:#ecfdf5;border-color:#6ee7b7;">
+    <div class="card-title" style="color:#065f46;">👋 Welcome to WeightWatcher</div>
+    <p style="font-size:0.8rem;color:#047857;line-height:1.6;margin-bottom:8px;">Set your <strong>height and target weight</strong> below to unlock BMI tracking and goal progress.</p>
+    <p style="font-size:0.75rem;color:#10b981;line-height:1.5;">📍 Data is saved on <strong>this device only</strong>. Use <strong>Save to Spreadsheet</strong> to back up your readings.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">My Profile</div>
+    <div class="setting-row">
+      <div><div class="setting-label">📏 Height</div><div class="setting-sub">Used to calculate BMI</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="s-height" class="s-input" min="100" max="250" placeholder="170" oninput="saveProfile()">
+        <span style="font-size:0.9rem;color:var(--muted);">cm</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🎯 Target Weight</div><div class="setting-sub">Your goal weight</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="s-target" class="s-input" min="30" max="500" step="0.5" placeholder="70" oninput="saveProfile()">
+        <span id="s-target-unit" style="font-size:0.9rem;color:var(--muted);">kg</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📐 Unit</div><div class="setting-sub">Display weight in</div></div>
+      <select id="s-unit" onchange="saveProfile();renderAll()" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;background:var(--bg);color:var(--text);">
+        <option value="kg">kg</option>
+        <option value="lbs">lbs</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Reminder</div>
+    <div class="setting-row">
+      <div><div class="setting-label">⏰ Weigh-in Time</div><div class="setting-sub">Banner reminder shown at this time if no reading yet today</div></div>
+      <button type="button" id="reminder-time-btn" onclick="openTimePicker()" style="padding:9px 14px;border:1.5px solid var(--border);border-radius:7px;font-size:1rem;background:var(--bg);color:var(--text);cursor:pointer;font-weight:600;">6:00 AM</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">Enable Reminders</div><div class="setting-sub">Show banner when it's weigh-in time</div></div>
+      <label class="toggle"><input type="checkbox" id="s-reminders" onchange="saveProfile()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Display</div>
+    <div class="setting-row">
+      <div><div class="setting-label">🌙 Dark Mode</div></div>
+      <label class="toggle"><input type="checkbox" id="s-dark" onchange="toggleTheme()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🔠 Large Text</div></div>
+      <label class="toggle"><input type="checkbox" id="s-large" onchange="toggleLargeText()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Your Data</div>
+    <div class="setting-row">
+      <div><div class="setting-label">🖨️ Print Report</div><div class="setting-sub">Full summary — save as PDF for your doctor</div></div>
+      <button type="button" class="btn-sm" onclick="printReport()">Print</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📥 Save to Spreadsheet</div><div class="setting-sub">Download as CSV (Excel / Google Sheets)</div></div>
+      <button type="button" class="btn-sm" onclick="exportCSV()">Download</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📤 Export Backup</div><div class="setting-sub">All readings + settings as backup file</div></div>
+      <button type="button" class="btn-sm" onclick="exportBackup()">Export</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📲 Import Backup</div><div class="setting-sub">Load backup from another device</div></div>
+      <button type="button" class="btn-sm" onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(this)">
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🔄 Reload Demo Data</div><div class="setting-sub">Restores 3-month demo dataset</div></div>
+      <button type="button" class="btn-sm" onclick="loadDemoData()">Reload Demo</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🗑️ Erase All &amp; Start Fresh</div><div class="setting-sub">Deletes all readings — cannot be undone</div></div>
+      <button type="button" class="btn-danger" onclick="clearAllData()">Erase All</button>
+    </div>
+    <div class="setting-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:16px;">
+      <div><div class="setting-label">🔑 License</div><div class="setting-sub" id="settings-licensed-to">—</div></div>
+      <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
+    </div>
+  </div>
+  <div class="brand-footer">WeightWatcher v1.0 · by Doc Kalodski</div>
+</div>
+
+<div id="print-report"></div>
+
+<!-- Time Picker Modal -->
+<div id="wt-time-modal">
+  <div id="wt-time-overlay" onclick="closeTimePicker()"></div>
+  <div id="wt-time-sheet">
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Set Reminder Time</div>
+    <div class="drum-row" style="margin-bottom:16px;">
+      <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="tp-hour"></div></div></div>
+      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="tp-min"></div></div></div>
+      <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="tp-ampm"></div></div></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn-sm" onclick="closeTimePicker()">Cancel</button>
+      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmTime()">✓ Set Time</button>
+    </div>
+  </div>
+</div>
+
+<!-- Inline Log Form -->
+<div id="inline-form">
+  <div class="edit-bar" id="edit-mode-bar">
+    <span style="flex:1;">✏️ Editing this reading</span>
+    <button id="cancel-edit-link" onclick="cancelEdit()">Cancel</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div class="card-title" id="sheet-title" style="margin-bottom:0;">⚖️ Log Weight</div>
+    <button type="button" class="btn-icon" onclick="cancelEdit()" title="Close">✕</button>
+  </div>
+
+  <!-- Weight drums -->
+  <div class="drum-row">
+    <div class="drum-col"><div class="drum-label">Whole</div><div class="drum-wrap"><div class="drum-scroll" id="drum-wt-int"></div></div></div>
+    <div class="drum-sep">.</div>
+    <div class="drum-col"><div class="drum-label">Decimal</div><div class="drum-wrap"><div class="drum-scroll" id="drum-wt-dec"></div></div></div>
+    <div class="drum-sep" style="font-size:1rem;padding-top:180px;" id="unit-label-drum">kg</div>
+  </div>
+  <input type="hidden" id="in-wt-int" value="70">
+  <input type="hidden" id="in-wt-dec" value="0">
+  <input type="hidden" id="editing-id" value="">
+
+  <div id="preview-display"></div>
+  <div id="preview-badge"></div>
+
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+    <input type="text" id="in-notes" placeholder="e.g. after breakfast, before shower…" maxlength="100" style="font-size:1rem;">
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Date</div>
+    <div class="drum-row" style="margin-bottom:8px;">
+      <div class="drum-col"><div class="drum-label">Month</div><div class="drum-wrap"><div class="drum-scroll" id="drum-month"></div></div></div>
+      <div class="drum-col"><div class="drum-label">Day</div><div class="drum-wrap"><div class="drum-scroll" id="drum-day"></div></div></div>
+      <div class="drum-col"><div class="drum-label">Year</div><div class="drum-wrap"><div class="drum-scroll" id="drum-year"></div></div></div>
+    </div>
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Time</div>
+    <div class="drum-row" style="margin-bottom:0;">
+      <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dhour"></div></div></div>
+      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dmin"></div></div></div>
+      <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dampm"></div></div></div>
+    </div>
+    <input type="hidden" id="in-datetime" value="">
+  </div>
+
+  <div style="display:flex;gap:10px;">
+    <button type="button" class="btn-sm" onclick="cancelEdit()">← Back</button>
+    <button type="button" class="btn btn-primary" id="submit-btn" style="flex:1;" onclick="saveReading()">⚖️ Log Weight</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── LICENSE ───────────────────────────────────────────────
+const LICENSES = {
+  '007':               'Developer',
+  'WW-2026-DOC-0101':  'Doc Kalodski',
+  'WW-2026-BETA-9999': 'Beta Tester',
+};
+
+function _matchKey(input) {
+  const clean = input.trim().toUpperCase().replace(/-/g,'');
+  for (const [k,name] of Object.entries(LICENSES)) {
+    if (k.replace(/-/g,'').toUpperCase() === clean) return name;
+  }
+  return null;
+}
+function activateLicense() {
+  const raw=document.getElementById('lock-input').value;
+  const inEl=document.getElementById('lock-input');
+  const errEl=document.getElementById('lock-err');
+  const name=_matchKey(raw);
+  if (!name) { inEl.classList.add('error'); errEl.innerHTML='⛔ Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski for your key.</span>'; return; }
+  localStorage.setItem('ww_license_key',raw.trim().toUpperCase());
+  localStorage.setItem('ww_license_name',name);
+  if (!localStorage.getItem('ww_activated')) localStorage.setItem('ww_activated',new Date().toISOString());
+  location.reload();
+}
+function checkLicense() {
+  const key=localStorage.getItem('ww_license_key');
+  const name=key?_matchKey(key):null;
+  if (name) {
+    document.getElementById('lock-overlay').classList.add('hidden');
+    const el=document.getElementById('licensee-name'); if(el) el.textContent=name;
+    const sl=document.getElementById('settings-licensed-to'); if(sl) sl.textContent='Licensed to '+name;
+    return true;
+  }
+  localStorage.removeItem('ww_license_key');
+  document.getElementById('lock-overlay').classList.remove('hidden');
+  return false;
+}
+function deactivateLicense() {
+  if (!confirm('Deactivate this license on this device?')) return;
+  localStorage.removeItem('ww_license_key'); localStorage.removeItem('ww_license_name'); location.reload();
+}
+
+// ── PROFILE ───────────────────────────────────────────────
+let _profileCache = null;
+function loadProfile() {
+  if (!_profileCache) {
+    const raw=localStorage.getItem('ww_profile');
+    _profileCache = raw ? JSON.parse(raw) : {height:0,target:0,unit:'kg',reminderTime:'06:00',reminders:false};
+  }
+  return _profileCache;
+}
+function saveProfile() {
+  const p=loadProfile();
+  const oldUnit=p.unit;
+  p.height  = parseFloat(document.getElementById('s-height').value)||0;
+  p.target  = parseFloat(document.getElementById('s-target').value)||0;
+  p.unit    = document.getElementById('s-unit').value;
+  p.reminders = document.getElementById('s-reminders').checked;
+  if (oldUnit !== p.unit) drumsReady=false;
+  _profileCache=p;
+  localStorage.setItem('ww_profile',JSON.stringify(p));
+  document.getElementById('s-target-unit').textContent=p.unit;
+  document.getElementById('unit-label-drum').textContent=p.unit;
+}
+
+// ── STORAGE ───────────────────────────────────────────────
+let _readingsCache = null;
+function loadReadings() {
+  if (!_readingsCache) _readingsCache=JSON.parse(localStorage.getItem('ww_readings')||'[]');
+  return _readingsCache;
+}
+function saveReadings(arr) { _readingsCache=arr; localStorage.setItem('ww_readings',JSON.stringify(arr)); }
+
+// ── UNIT HELPERS ──────────────────────────────────────────
+function toDisplay(kg) { const p=loadProfile(); return p.unit==='lbs' ? +(kg*2.20462).toFixed(1) : +kg.toFixed(1); }
+function fromDisplay(val) { const p=loadProfile(); return p.unit==='lbs' ? +(val/2.20462).toFixed(2) : +val; }
+function unitStr() { return loadProfile().unit; }
+
+// ── BMI ───────────────────────────────────────────────────
+function bmi(kg) { const h=loadProfile().height; if (!h) return null; return +(kg/((h/100)**2)).toFixed(1); }
+function classifyBMI(b) {
+  if (b===null) return null;
+  if (b<18.5) return {key:'under', label:'Underweight',cls:'badge-under'};
+  if (b<25)   return {key:'normal',label:'Normal',     cls:'badge-normal'};
+  if (b<30)   return {key:'over',  label:'Overweight', cls:'badge-over'};
+  if (b<35)   return {key:'obese1',label:'Obese I',    cls:'badge-obese1'};
+  return             {key:'obese2',label:'Obese II+',  cls:'badge-obese2'};
+}
+const WT_COLOR={under:'#6366f1',normal:'#22c55e',over:'#eab308',obese1:'#f97316',obese2:'#ef4444',none:'#94a3b8'};
+
+// ── DEMO DATA ─────────────────────────────────────────────
+function buildDemoReadings() {
+  const activatedStr=localStorage.getItem('ww_activated');
+  const now=activatedStr?new Date(activatedStr):new Date();
+  const start=new Date(2026,0,1);
+  const totalDays=Math.max(0,Math.floor((now-start)/86400000));
+  const out=[];
+  for (let d=totalDays;d>=0;d--) {
+    const base=new Date(now); base.setDate(base.getDate()-d);
+    base.setHours(6,Math.floor(Math.random()*20),0,0);
+    if (base>now) continue;
+    const progress=totalDays>0?(totalDays-d)/totalDays:1;
+    const wt=+(85-progress*7+(Math.random()*1.2-0.6)).toFixed(1);
+    out.push({id:4000000+d,timestamp:base.toISOString(),wt,notes:''});
+  }
+  return out;
+}
+function loadDemoData() {
+  if (!confirm('Replace all data with 3-month demo dataset?')) return;
+  saveReadings(buildDemoReadings()); renderAll(); alert('Demo data loaded.');
+}
+function clearAllData() {
+  if (!confirm('Delete ALL readings? Cannot be undone.')) return;
+  saveReadings([]); renderAll();
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────
+function exportCSV() {
+  const r=loadReadings(); if (!r.length) { alert('No data to export.'); return; }
+  const p=loadProfile();
+  const header=['Date','Time',`Weight (${p.unit})`,'BMI','Status','Notes'];
+  const rows=r.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).map(rd=>{
+    const dt=new Date(rd.timestamp); const b=bmi(rd.wt); const c=classifyBMI(b);
+    return [dt.toLocaleDateString('en-PH'),dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),toDisplay(rd.wt),b||'',c?c.label:'',rd.notes||''];
+  });
+  const csv=[header,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='WeightWatcher_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+function exportBackup() {
+  const readings=loadReadings(); if (!readings.length) { alert('No data to export.'); return; }
+  const backup={version:1,exported:new Date().toISOString(),readings,profile:JSON.parse(localStorage.getItem('ww_profile')||'null')};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+  a.download='WeightWatcher_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+function importBackup(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const backup=JSON.parse(e.target.result);
+      if (!backup.readings||!Array.isArray(backup.readings)) { alert('Invalid backup file.'); return; }
+      const existing=loadReadings(); const existingIds=new Set(existing.map(r=>r.id));
+      const merged=[...existing,...backup.readings.filter(r=>!existingIds.has(r.id))];
+      saveReadings(merged);
+      if (backup.profile&&!localStorage.getItem('ww_profile')) { _profileCache=backup.profile; localStorage.setItem('ww_profile',JSON.stringify(backup.profile)); }
+      renderAll(); alert(`Imported ${backup.readings.length} readings. Total: ${merged.length}.`);
+    } catch { alert('Could not read backup file.'); }
+  };
+  reader.readAsText(file); input.value='';
+}
+function printReport() {
+  const readings=loadReadings(); if (!readings.length) { alert('No data to print.'); return; }
+  const now=new Date(); const sorted=readings.slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  const p=loadProfile(); const fmt=d=>new Date(d).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+  const rows=sorted.map(r=>{
+    const dt=new Date(r.timestamp); const b=bmi(r.wt); const c=classifyBMI(b);
+    return `<tr><td>${fmt(r.timestamp)}</td><td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td><td><strong>${toDisplay(r.wt)} ${p.unit}</strong></td><td>${b||'—'}</td><td>${c?c.label:'—'}</td><td>${r.notes||''}</td></tr>`;
+  }).join('');
+  document.getElementById('print-report').innerHTML=`
+    <div class="pr-header"><h2>⚖️ WeightWatcher — Weight Report</h2><p>Printed: ${now.toLocaleString('en-PH')} · by Doc Kalodski</p></div>
+    <table class="pr-table"><thead><tr><th>Date</th><th>Time</th><th>Weight</th><th>BMI</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="pr-footer">For personal monitoring only. Consult a physician for medical advice.</p>`;
+  window.print();
+}
+
+// ── DRUM PICKERS ──────────────────────────────────────────
+const DT_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DT_DAYS=Array.from({length:31},(_,i)=>String(i+1));
+const DT_YEAR0=2020;
+const DT_YEARS=Array.from({length:12},(_,i)=>String(DT_YEAR0+i));
+const DT_HOURS=Array.from({length:12},(_,i)=>String(i+1));
+const DT_MINS=Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
+const DT_AMPM=['AM','PM'];
+
+function initDrumArr(scrollId,items,defIdx,onChange) {
+  const el=document.getElementById(scrollId); if (!el) return null;
+  const CELL=60;
+  el.innerHTML=items.map(label=>`<div class="drum-item">${label}</div>`).join('');
+  const nodes=Array.from(el.querySelectorAll('.drum-item'));
+  let prevIdx=-1;
+  function getIdx() { return Math.min(Math.max(Math.round(el.scrollTop/CELL),0),nodes.length-1); }
+  function updateSelected() {
+    const idx=getIdx(); if (idx===prevIdx) return; prevIdx=idx;
+    nodes.forEach((item,i)=>{ const d=Math.abs(i-idx); item.className=d===0?'drum-item drum-sel':d===1?'drum-item drum-adj':'drum-item'; });
+    if (onChange) onChange(idx);
+  }
+  el.addEventListener('scroll',updateSelected,{passive:true});
+  function setIdx(idx) { el.scrollTop=Math.max(0,Math.min(nodes.length-1,idx))*CELL; prevIdx=-1; updateSelected(); }
+  setIdx(defIdx);
+  return {setIdx,getIdx};
+}
+
+function initDrumRange(scrollId,hiddenId,min,max,def,onCb) {
+  const el=document.getElementById(scrollId); if (!el) return null;
+  const CELL=60;
+  let html=''; for (let v=min;v<=max;v++) html+=`<div class="drum-item" data-v="${v}">${v}</div>`;
+  el.innerHTML=html;
+  const items=Array.from(el.querySelectorAll('.drum-item'));
+  let prevIdx=-1;
+  function updateSelected() {
+    const idx=Math.min(Math.max(Math.round(el.scrollTop/CELL),0),items.length-1);
+    if (idx===prevIdx) return; prevIdx=idx;
+    document.getElementById(hiddenId).value=min+idx;
+    items.forEach((item,i)=>{ const d=Math.abs(i-idx); item.className=d===0?'drum-item drum-sel':d===1?'drum-item drum-adj':'drum-item'; });
+    if (onCb) onCb();
+  }
+  el.addEventListener('scroll',updateSelected,{passive:true});
+  function setValue(val) { el.scrollTop=(Math.max(min,Math.min(max,val))-min)*CELL; prevIdx=-1; updateSelected(); }
+  setValue(def);
+  return {setValue};
+}
+
+let drumInt=null,drumDec=null;
+let drumMonth=null,drumDay=null,drumYear=null,drumHour=null,drumMin=null,drumAmpm=null;
+let drumsReady=false;
+
+function openSheet(afterEl) {
+  const form=document.getElementById('inline-form');
+  form.style.display='block';
+  if (afterEl) afterEl.insertAdjacentElement('afterend',form);
+  if (!drumsReady) {
+    const p=loadProfile();
+    const readings=loadReadings();
+    const defKg=readings.length?readings[readings.length-1].wt:70;
+    const defDisp=toDisplay(defKg);
+    const defInt=Math.floor(defDisp);
+    const defDec=Math.min(9,Math.round((defDisp-defInt)*10));
+    drumInt=initDrumRange('drum-wt-int','in-wt-int',20,400,defInt,previewLive);
+    drumDec=initDrumRange('drum-wt-dec','in-wt-dec',0,9,defDec,previewLive);
+    const n=new Date(); const nH=n.getHours(),nAP=nH>=12?1:0,nH12=nH%12||12;
+    drumMonth=initDrumArr('drum-month',DT_MONTHS,n.getMonth(),syncDatetime);
+    drumDay  =initDrumArr('drum-day',  DT_DAYS,  n.getDate()-1,syncDatetime);
+    drumYear =initDrumArr('drum-year', DT_YEARS, Math.max(0,n.getFullYear()-DT_YEAR0),syncDatetime);
+    drumHour =initDrumArr('drum-dhour',DT_HOURS, nH12-1,syncDatetime);
+    drumMin  =initDrumArr('drum-dmin', DT_MINS,  n.getMinutes(),syncDatetime);
+    drumAmpm =initDrumArr('drum-dampm',DT_AMPM,  nAP,syncDatetime);
+    syncDatetime(); drumsReady=true;
+  } else { setDatetimeNow(); }
+  document.getElementById('unit-label-drum').textContent=unitStr();
+}
+function closeSheet() { document.getElementById('inline-form').style.display='none'; }
+
+function syncDatetime() {
+  if (!drumMonth) return;
+  const m=drumMonth.getIdx()+1,d=drumDay.getIdx()+1,y=DT_YEAR0+drumYear.getIdx();
+  const h12=drumHour.getIdx()+1,minI=drumMin.getIdx(),ap=drumAmpm.getIdx();
+  let h24=h12; if(ap===1&&h12<12) h24=h12+12; if(ap===0&&h12===12) h24=0;
+  const pad=n=>String(n).padStart(2,'0');
+  document.getElementById('in-datetime').value=`${y}-${pad(m)}-${pad(d)}T${pad(h24)}:${pad(minI)}`;
+}
+function setDateDrums(dt) {
+  if (!drumMonth) return;
+  const h=dt.getHours(),ap=h>=12?1:0,h12=h%12||12;
+  drumMonth.setIdx(dt.getMonth()); drumDay.setIdx(Math.min(dt.getDate()-1,30));
+  drumYear.setIdx(Math.max(0,Math.min(dt.getFullYear()-DT_YEAR0,DT_YEARS.length-1)));
+  drumHour.setIdx(h12-1); drumMin.setIdx(dt.getMinutes()); drumAmpm.setIdx(ap);
+}
+function setDatetimeNow() { setDateDrums(new Date()); syncDatetime(); }
+
+function previewLive() {
+  const intVal=parseInt(document.getElementById('in-wt-int').value);
+  const decVal=parseInt(document.getElementById('in-wt-dec').value);
+  const disp=document.getElementById('preview-display');
+  const badge=document.getElementById('preview-badge');
+  if (intVal>=20) {
+    const dispWt=(intVal+decVal*0.1).toFixed(1);
+    disp.innerHTML=`${dispWt}<span class="unit">${unitStr()}</span>`;
+    const kg=fromDisplay(parseFloat(dispWt));
+    const b=bmi(kg); const bc=classifyBMI(b);
+    badge.innerHTML=bc?`<span class="badge ${bc.cls}">BMI ${b} — ${bc.label}</span>`:'';
+  } else { disp.innerHTML=badge.innerHTML=''; }
+}
+
+// ── SAVE / EDIT / DELETE ──────────────────────────────────
+function saveReading() {
+  const intVal=parseInt(document.getElementById('in-wt-int').value);
+  const decVal=parseInt(document.getElementById('in-wt-dec').value);
+  if (isNaN(intVal)||intVal<20) { alert('Enter a valid weight.'); return; }
+  const dispWt=parseFloat((intVal+decVal*0.1).toFixed(1));
+  const kg=fromDisplay(dispWt);
+  const dtVal=document.getElementById('in-datetime').value;
+  if (!dtVal) { alert('Select a date and time.'); return; }
+  const ts=new Date(dtVal).toISOString();
+  const notes=document.getElementById('in-notes').value.trim();
+  const editId=document.getElementById('editing-id').value;
+  let readings=loadReadings();
+  if (editId) {
+    const idx=readings.findIndex(r=>String(r.id)===editId);
+    if (idx!==-1) readings[idx]={...readings[idx],wt:kg,notes,timestamp:ts};
+  } else {
+    readings.push({id:Date.now(),timestamp:ts,wt:kg,notes});
+  }
+  saveReadings(readings); clearForm(); closeSheet(); renderAll();
+}
+function clearForm() { document.getElementById('in-notes').value=''; document.getElementById('editing-id').value=''; }
+
+function editReading(id) {
+  const r=loadReadings().find(x=>String(x.id)===String(id)); if (!r) return;
+  if (drumInt) {
+    const dispWt=toDisplay(r.wt); const intP=Math.floor(dispWt); const decP=Math.min(9,Math.round((dispWt-intP)*10));
+    drumInt.setValue(intP); drumDec.setValue(decP);
+  }
+  document.getElementById('in-notes').value=r.notes||'';
+  document.getElementById('editing-id').value=String(r.id);
+  setDateDrums(new Date(r.timestamp)); previewLive();
+  document.getElementById('edit-mode-bar').classList.add('show');
+  document.getElementById('submit-btn').textContent='✏️ Update Weight';
+  document.getElementById('submit-btn').classList.add('editing');
+  document.getElementById('sheet-title').textContent='✏️ Edit Reading';
+  openSheet(document.getElementById('log-now-card'));
+}
+function cancelEdit() {
+  document.getElementById('editing-id').value='';
+  document.getElementById('edit-mode-bar').classList.remove('show');
+  document.getElementById('submit-btn').textContent='⚖️ Log Weight';
+  document.getElementById('submit-btn').classList.remove('editing');
+  document.getElementById('sheet-title').textContent='⚖️ Log Weight';
+  clearForm(); closeSheet();
+}
+function deleteReading(id) {
+  if (!confirm('Delete this reading?')) return;
+  saveReadings(loadReadings().filter(r=>String(r.id)!==String(id))); renderAll();
+}
+function prefillDate(isoDateTime, triggerEl) {
+  cancelEdit();
+  openSheet(triggerEl||document.getElementById('log-now-card'));
+  if (drumMonth) { setDateDrums(new Date(isoDateTime)); syncDatetime(); }
+}
+
+// ── TIME PICKER (reminder) ────────────────────────────────
+let tpHour=null,tpMin=null,tpAmpm=null;
+function openTimePicker() {
+  const p=loadProfile(); const [h24,m]=(p.reminderTime||'06:00').split(':').map(Number);
+  const ap=h24>=12?1:0,h12=h24%12||12;
+  document.getElementById('wt-time-modal').style.display='block';
+  if (!tpHour) { tpHour=initDrumArr('tp-hour',DT_HOURS,h12-1,null); tpMin=initDrumArr('tp-min',DT_MINS,m,null); tpAmpm=initDrumArr('tp-ampm',DT_AMPM,ap,null); }
+  else { tpHour.setIdx(h12-1); tpMin.setIdx(m); tpAmpm.setIdx(ap); }
+}
+function closeTimePicker() { document.getElementById('wt-time-modal').style.display='none'; }
+function confirmTime() {
+  const h12=tpHour.getIdx()+1,m=tpMin.getIdx(),ap=tpAmpm.getIdx();
+  let h24=h12; if(ap===1&&h12<12) h24=h12+12; if(ap===0&&h12===12) h24=0;
+  const pad=n=>String(n).padStart(2,'0'); const timeStr=`${pad(h24)}:${pad(m)}`;
+  const p=loadProfile(); p.reminderTime=timeStr; _profileCache=p; localStorage.setItem('ww_profile',JSON.stringify(p));
+  document.getElementById('reminder-time-btn').textContent=fmt12(timeStr); closeTimePicker();
+}
+function fmt12(hhmm) { const [h,m]=hhmm.split(':').map(Number); const ap=h>=12?'PM':'AM',h12=h%12||12; return `${h12}:${String(m).padStart(2,'0')} ${ap}`; }
+function toMin(hhmm) { const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+
+// ── REMINDER ──────────────────────────────────────────────
+let _reminderDismissed=false;
+function checkReminder() {
+  const p=loadProfile(); if (!p.reminders||_reminderDismissed) return;
+  const now=new Date(); const hhmm=now.getHours()*60+now.getMinutes();
+  const start=toMin(p.reminderTime||'06:00');
+  const hasTodayReading=loadReadings().some(r=>new Date(r.timestamp).toDateString()===now.toDateString());
+  const banner=document.getElementById('reminder-banner');
+  if (hhmm>=start&&hhmm<=start+120&&!hasTodayReading) banner.classList.add('show');
+  else banner.classList.remove('show');
+}
+function dismissReminder() { _reminderDismissed=true; document.getElementById('reminder-banner').classList.remove('show'); }
+
+// ── STREAK ────────────────────────────────────────────────
+function calcStreak(readings) {
+  const now=new Date(); let streak=0;
+  for (let i=0;i<365;i++) {
+    const d=new Date(now); d.setDate(d.getDate()-i);
+    if (readings.some(r=>new Date(r.timestamp).toDateString()===d.toDateString())) streak++;
+    else break;
+  }
+  return streak;
+}
+
+// ── DASHBOARD SUMMARY ─────────────────────────────────────
+function renderDashSummary() {
+  const el=document.getElementById('dash-summary-card'); if (!el) return;
+  const readings=loadReadings(); const p=loadProfile(); const now=new Date();
+  const streak=calcStreak(readings);
+  if (!readings.length) {
+    el.innerHTML='<div class="card-title">Summary</div><div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:12px;">No readings yet — log your first weight!</div>';
+    return;
+  }
+  const sorted=readings.slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  const latest=sorted[0]; const latestDisp=toDisplay(latest.wt);
+  const b=bmi(latest.wt); const bc=classifyBMI(b);
+  const cut7=new Date(now); cut7.setDate(cut7.getDate()-7);
+  const week7=readings.filter(r=>new Date(r.timestamp)>=cut7);
+
+  let changeHTML='';
+  if (sorted.length>=2) {
+    const delta=+(toDisplay(latest.wt)-toDisplay(sorted[1].wt)).toFixed(1);
+    const sign=delta>0?'+':''; const color=delta>0?'#ef4444':delta<0?'#22c55e':'var(--muted)'; const arrow=delta>0?'↑':delta<0?'↓':'→';
+    changeHTML=`<div style="font-size:1rem;color:${color};font-weight:700;">${arrow} ${sign}${delta} ${unitStr()} from last reading</div>`;
+  }
+
+  let goalHTML='';
+  if (p.target>0) {
+    const targetKg=p.unit==='lbs'?p.target/2.20462:p.target;
+    const toGo=+(toDisplay(latest.wt)-toDisplay(targetKg)).toFixed(1);
+    const allWts=readings.map(r=>r.wt); const startWt=Math.max(...allWts);
+    const pct=startWt===targetKg?100:Math.max(0,Math.min(100,Math.round((startWt-latest.wt)/(startWt-targetKg)*100)));
+    const done=toGo<=0;
+    goalHTML=`<div style="margin-top:12px;padding:12px 14px;background:${done?'#f0fdf4':'var(--bg)'};border-radius:10px;border:1px solid ${done?'#86efac':'var(--border)'};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:0.82rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;">Goal Progress</span>
+        <span style="font-size:0.9rem;font-weight:700;color:${done?'#16a34a':'var(--accent)'};">${done?'🎉 Goal reached!':`${Math.abs(toGo)} ${unitStr()} to go`}</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${pct}%;${done?'background:#22c55e':''}"></div></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;text-align:right;">${pct}% complete · target: ${toDisplay(targetKg).toFixed(1)} ${unitStr()}</div>
+    </div>`;
+  }
+
+  el.innerHTML=`
+    <div class="card-title">Latest</div>
+    <div style="text-align:center;margin-bottom:14px;">
+      <div style="font-size:3.5rem;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--text);">${latestDisp.toFixed(1)}<span style="font-size:1.5rem;font-weight:400;color:var(--muted);"> ${unitStr()}</span></div>
+      <div style="font-size:0.78rem;color:var(--muted);margin:4px 0 6px;">${new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})} · ${readings.length} readings total</div>
+      ${bc?`<span class="badge ${bc.cls}">BMI ${b} — ${bc.label}</span>`:''}
+      ${streak>1?`<div style="font-size:0.85rem;color:#f97316;font-weight:700;margin-top:6px;">🔥 ${streak}-day streak</div>`:''}
+      ${changeHTML}
+    </div>
+    ${week7.length>=2?`<div class="summary-grid">
+      <div class="stat-box" style="border-left:4px solid var(--accent);">
+        <div class="slabel">7-Day Avg</div>
+        <div class="sval">${toDisplay(week7.reduce((a,r)=>a+r.wt,0)/week7.length).toFixed(1)} <span style="font-size:0.9rem;font-weight:400;">${unitStr()}</span></div>
+        <div class="ssub">${week7.length} readings</div>
+      </div>
+      <div class="stat-box" style="border-left:4px solid #6366f1;">
+        <div class="slabel">Week Range</div>
+        <div class="sval" style="font-size:1.1rem;">${toDisplay(Math.min(...week7.map(r=>r.wt))).toFixed(1)} – ${toDisplay(Math.max(...week7.map(r=>r.wt))).toFixed(1)}</div>
+        <div class="ssub">${unitStr()} · low – high</div>
+      </div>
+    </div>`:''}
+    ${goalHTML}`;
+}
+
+// ── CALENDAR ──────────────────────────────────────────────
+let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
+
+function changeCalMonth(delta) {
+  calMonth+=delta; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendarOnly();
+}
+
+function renderCalendarOnly() {
+  const el=document.getElementById('cal-grid-container'); if (!el) return;
+  const readings=loadReadings(); const dayMap={};
+  readings.forEach(r=>{ const d=new Date(r.timestamp); if(d.getFullYear()===calYear&&d.getMonth()===calMonth){const day=d.getDate(); if(!dayMap[day]) dayMap[day]=[]; dayMap[day].push(r); } });
+  const monthName=new Date(calYear,calMonth,1).toLocaleDateString('en-PH',{month:'long',year:'numeric'});
+  const firstDow=new Date(calYear,calMonth,1).getDay();
+  const daysInMo=new Date(calYear,calMonth+1,0).getDate();
+  const dowLabels=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const nowForISO=new Date();
+  let cells=dowLabels.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) cells+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=daysInMo;d++) {
+    const dr=dayMap[d];
+    const detId=`cd-${calYear}-${calMonth}-${d}`;
+    const dayDateISO=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(nowForISO.getHours()).padStart(2,'0')}:${String(nowForISO.getMinutes()).padStart(2,'0')}`;
+    const dayLabel=new Date(calYear,calMonth,d).toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    const toggleFn=`(()=>{const det=document.getElementById('${detId}');const open=det.classList.toggle('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));if(open)this.classList.add('selected');else this.classList.remove('selected');})()`;
+    const closeFn=`document.getElementById('${detId}').classList.remove('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'))`;
+    const closeBtn=`<button type="button" class="btn-icon" style="font-size:0.8rem;min-height:28px;min-width:28px;padding:4px;" onclick="${closeFn}">✕</button>`;
+    const addBtn=`<button type="button" class="btn btn-primary" style="margin-top:10px;width:100%;font-size:0.9rem;" onclick="prefillDate('${dayDateISO}',this)">✚ Add Reading for this Day</button>`;
+    const detHeader=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><div style="font-size:0.65rem;font-weight:700;">${dayLabel}</div>${closeBtn}</div>`;
+    if (dr) {
+      const avgWt=dr.reduce((a,r)=>a+r.wt,0)/dr.length;
+      const b=bmi(avgWt); const bc=classifyBMI(b); const color=bc?WT_COLOR[bc.key]:WT_COLOR.none;
+      cells+=`<div class="cal-cell has-data" style="background:${color};" onclick="${toggleFn}"><span class="cday">${d}</span><span class="cwt">${toDisplay(avgWt).toFixed(1)}</span></div>
+      <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">${detHeader}${dr.map(calRowHTML).join('')}${addBtn}</div>`;
+    } else {
+      cells+=`<div class="cal-cell no-data" onclick="${toggleFn}"><span class="cday">${d}</span></div>
+      <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">${detHeader}<div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px;">No readings logged this day.</div>${addBtn}</div>`;
+    }
+  }
+  el.innerHTML=`<div class="month-card">
+    <div class="month-nav">
+      <button type="button" class="month-nav-btn" onclick="changeCalMonth(-1)">‹</button>
+      <span class="month-nav-title">${monthName}</span>
+      <button type="button" class="month-nav-btn" onclick="changeCalMonth(1)">›</button>
+    </div>
+    <div class="month-grid">${cells}</div>
+  </div>`;
+}
+
+function calRowHTML(r) {
+  const ts=new Date(r.timestamp); const b=bmi(r.wt); const bc=classifyBMI(b);
+  const color=bc?WT_COLOR[bc.key]:WT_COLOR.none;
+  return `<div class="cal-row" style="border-left-color:${color};">
+    <div class="cr-top">
+      <span class="cr-time">${ts.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</span>
+      <span class="cr-actions">
+        <button type="button" class="btn-icon" onclick="editReading(${r.id})">✏️</button>
+        <button type="button" class="btn-icon del" onclick="deleteReading(${r.id})">🗑️</button>
+      </span>
+    </div>
+    <div class="cr-main"><span class="cr-wt">${toDisplay(r.wt).toFixed(1)} ${unitStr()}</span></div>
+    <div class="cr-meta">
+      ${bc?`<span class="badge ${bc.cls}">BMI ${b} — ${bc.label}</span>`:''}
+      ${r.notes?`<span class="cr-notes">· ${r.notes}</span>`:''}
+    </div>
+  </div>`;
+}
+
+// ── CHART ─────────────────────────────────────────────────
+let chartInstance=null, chartView='30d';
+function setChartView(v,btn) {
+  chartView=v; document.querySelectorAll('.chart-toggle button').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderChart();
+}
+function renderChart() {
+  const container=document.getElementById('chart-container'); if (!container) return;
+  if (!container.querySelector('canvas')) container.innerHTML='<canvas id="wt-chart"></canvas>';
+  const readings=loadReadings();
+  if (!readings.length) { container.innerHTML=`<div class="empty-state"><div class="big">📈</div><p>No data yet.</p></div>`; return; }
+  const sorted=readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const nDays=chartView==='7d'?7:chartView==='30d'?30:91;
+  const now=new Date(); const points=[];
+  for (let d=nDays-1;d>=0;d--) {
+    const day=new Date(now); day.setDate(day.getDate()-d);
+    const dayR=sorted.filter(r=>new Date(r.timestamp).toDateString()===day.toDateString());
+    const label=day.toLocaleDateString('en-PH',nDays<=7?{weekday:'short',month:'short',day:'numeric'}:{month:'short',day:'numeric'});
+    if (dayR.length) {
+      const avgWt=dayR.reduce((a,r)=>a+r.wt,0)/dayR.length;
+      const b=bmi(avgWt); const bc=classifyBMI(b);
+      points.push({label,wt:toDisplay(avgWt),color:bc?WT_COLOR[bc.key]:WT_COLOR.none,count:dayR.length});
+    } else { points.push({label,wt:null,color:'transparent',count:0}); }
+  }
+  const p=loadProfile();
+  const targetDisp=p.target>0?toDisplay(p.unit==='lbs'?p.target:p.target):null;
+  const ctx=document.getElementById('wt-chart').getContext('2d');
+  if (chartInstance) { chartInstance.destroy(); chartInstance=null; }
+  const datasets=[{
+    label:'Weight', data:points.map(p=>p.wt),
+    borderColor:'#10b981', pointBackgroundColor:points.map(p=>p.color),
+    pointBorderColor:'#fff', pointBorderWidth:1.5,
+    pointRadius:points.map(p=>p.count?5:0), tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
+  }];
+  if (targetDisp) datasets.push({label:'Target',data:points.map(()=>targetDisp),borderColor:'#6366f1',borderDash:[6,4],borderWidth:1.5,pointRadius:0,fill:false,spanGaps:true});
+  chartInstance=new Chart(ctx,{
+    type:'line', data:{labels:points.map(p=>p.label),datasets},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:item=>{if(item.parsed.y===null)return '';if(item.dataset.label==='Target')return `Target: ${item.parsed.y} ${unitStr()}`;const cnt=points[item.dataIndex].count;return `Weight: ${item.parsed.y} ${unitStr()} (${cnt} reading${cnt!==1?'s':''})`;} }}},
+      scales:{x:{ticks:{maxTicksLimit:8,maxRotation:40,font:{size:10}},grid:{color:'#f1f5f9'}},y:{ticks:{font:{size:10}},grid:{color:'#f1f5f9'}}}
+    }
+  });
+}
+
+// ── ANALYSIS ──────────────────────────────────────────────
+function renderAnalysis() {
+  const el=document.getElementById('analysis-content'); const readings=loadReadings();
+  if (readings.length<2) { el.innerHTML=`<div class="card"><div class="empty-state"><div class="big">📊</div><p>Need at least 2 readings.<br>Load demo data in Settings to preview.</p></div></div>`; return; }
+  const p=loadProfile(); const now=new Date();
+  const sorted=readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const latest=sorted[sorted.length-1]; const b=bmi(latest.wt); const bc=classifyBMI(b);
+  const cut7=new Date(now); cut7.setDate(cut7.getDate()-7);
+  const week7=readings.filter(r=>new Date(r.timestamp)>=cut7);
+  const avg7=week7.length?week7.reduce((a,r)=>a+r.wt,0)/week7.length:null;
+  const cut30=new Date(now); cut30.setDate(cut30.getDate()-30);
+  const mo1=readings.filter(r=>new Date(r.timestamp)>=cut30);
+  const avg30=mo1.length?mo1.reduce((a,r)=>a+r.wt,0)/mo1.length:null;
+  let rate=null;
+  if (mo1.length>=4) {
+    const s30=mo1.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const days=(new Date(s30[s30.length-1].timestamp)-new Date(s30[0].timestamp))/86400000;
+    if (days>0) rate=+((s30[s30.length-1].wt-s30[0].wt)/days*7).toFixed(2);
+  }
+  const bestR=sorted.reduce((a,r)=>r.wt<a.wt?r:a);
+  const worstR=sorted.reduce((a,r)=>r.wt>a.wt?r:a);
+  const targetKg=p.target>0?(p.unit==='lbs'?p.target/2.20462:p.target):null;
+  const toGoKg=targetKg!==null?+(latest.wt-targetKg).toFixed(2):null;
+  const fmt=ts=>new Date(ts).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  const fmtWt=kg=>`${toDisplay(kg).toFixed(1)} ${unitStr()}`;
+  const rateDisp=rate!==null?toDisplay(Math.abs(rate)).toFixed(2):null;
+  const rateWord=rate===null?'Insufficient data (need 30d+)':rate>0.3?`GAINING at +${rateDisp} ${unitStr()}/week`:rate<-0.1?`LOSING at −${rateDisp} ${unitStr()}/week`:`STABLE — minimal change`;
+
+  const report=[
+    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
+    `<span class="ai-head">  WEIGHTWATCH — PROGRESS REPORT</span>`,
+    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
+    `<span class="ai-label">Generated   :</span> ${now.toLocaleString('en-PH')}`,
+    `<span class="ai-label">Data Range  :</span> ${fmt(sorted[0].timestamp)} → ${fmt(latest.timestamp)}`,
+    `<span class="ai-label">Total Logs  :</span> ${readings.length} readings`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  CURRENT STATUS</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-label">Latest      :</span> <span class="${bc&&bc.key==='normal'?'ai-ok':bc&&['obese1','obese2'].includes(bc.key)?'ai-bad':'ai-warn'}">${fmtWt(latest.wt)}</span>  (${fmt(latest.timestamp)})`,
+    b?`<span class="ai-label">BMI         :</span> <span class="${bc&&bc.key==='normal'?'ai-ok':bc&&['obese1','obese2'].includes(bc.key)?'ai-bad':'ai-warn'}">${b}  [${bc?bc.label.toUpperCase():''}]</span>`:'',
+    !p.height?`<span class="ai-label">BMI         :</span> Set your height in Settings to calculate BMI`:'',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  AVERAGES & TREND</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    avg7?`<span class="ai-label">7-Day Avg   :</span> ${fmtWt(avg7)}`:'',
+    avg30?`<span class="ai-label">30-Day Avg  :</span> ${fmtWt(avg30)}`:'',
+    `<span class="ai-label">Rate        :</span> <span class="${rate!==null&&rate>0.3?'ai-warn':rate!==null&&rate<-0.1?'ai-ok':'ai-label'}">${rateWord}</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  GOAL TRACKING</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    targetKg?`<span class="ai-label">Target      :</span> ${fmtWt(targetKg)}`:`  No target set — add one in Settings.`,
+    toGoKg!==null?(toGoKg<=0?`<span class="ai-ok">  🎉 Goal REACHED! You are ${fmtWt(Math.abs(toGoKg))} past your target.</span>`:`<span class="ai-label">To Go       :</span> ${fmtWt(toGoKg)} remaining`):'',
+    toGoKg!==null&&toGoKg>0&&rate&&rate<-0.05?`<span class="ai-label">ETA         :</span> ~${Math.ceil(toGoKg/Math.abs(rate))} weeks at current rate`:'',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  NOTABLE READINGS</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-label">Lowest Ever :</span> <span class="ai-ok">${fmtWt(bestR.wt)}</span>  on ${fmt(bestR.timestamp)}`,
+    `<span class="ai-label">Highest Ever:</span> <span class="ai-warn">${fmtWt(worstR.wt)}</span>  on ${fmt(worstR.timestamp)}`,
+    toDisplay(worstR.wt-latest.wt)>0?`<span class="ai-label">Total Lost  :</span> <span class="ai-ok">−${fmtWt(worstR.wt-latest.wt)} from highest</span>`:'',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-label">  For personal monitoring only. Consult a physician\n  for medical advice and weight management guidance.</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+  ].filter(l=>l).join('\n');
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance=null; }
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">📈 Weight Trend</div>
+      <div class="chart-toggle">
+        <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
+        <button type="button" class="${chartView==='30d'?'active':''}" onclick="setChartView('30d',this)">30 Days</button>
+        <button type="button" class="${chartView==='3m'?'active':''}" onclick="setChartView('3m',this)">3 Months</button>
+      </div>
+      <div class="chart-canvas-wrap" id="chart-container"></div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:0.85rem;">
+        <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:3px;background:#10b981;display:inline-block;border-radius:2px;"></span> Weight</span>
+        ${targetKg?`<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:2px;background:#6366f1;display:inline-block;border-radius:2px;"></span> Target</span>`:''}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Progress Report</div>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Rule-based analysis · WHO BMI Classifications</p>
+      <div class="ai-report">${report}</div>
+    </div>`;
+  renderChart();
+}
+
+// ── DISPLAY / THEME ───────────────────────────────────────
+function toggleTheme() {
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const next=dark?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next); localStorage.setItem('ww_theme',next);
+  document.getElementById('theme-btn').textContent=next==='dark'?'☀️':'🌙';
+  const cb=document.getElementById('s-dark'); if(cb) cb.checked=next==='dark';
+}
+function toggleLargeText() {
+  const on=document.getElementById('s-large').checked;
+  document.documentElement.setAttribute('data-large',on?'1':'0'); localStorage.setItem('ww_large',on?'1':'0');
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────
+function switchTab(id,btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id==='analysis') renderAnalysis();
+  if (id==='settings') renderSettingsForm();
+}
+function renderSettingsForm() {
+  const p=loadProfile();
+  const hEl=document.getElementById('s-height'); if(hEl) hEl.value=p.height||'';
+  const tEl=document.getElementById('s-target'); if(tEl) tEl.value=p.target||'';
+  const uEl=document.getElementById('s-unit'); if(uEl) uEl.value=p.unit||'kg';
+  const rEl=document.getElementById('s-reminders'); if(rEl) rEl.checked=p.reminders||false;
+  document.getElementById('reminder-time-btn').textContent=fmt12(p.reminderTime||'06:00');
+  document.getElementById('s-target-unit').textContent=p.unit||'kg';
+  const dkCb=document.getElementById('s-dark'); if(dkCb) dkCb.checked=document.documentElement.getAttribute('data-theme')==='dark';
+  const lgCb=document.getElementById('s-large'); if(lgCb) lgCb.checked=document.documentElement.getAttribute('data-large')==='1';
+}
+function renderAll() {
+  calYear=new Date().getFullYear(); calMonth=new Date().getMonth();
+  renderCalendarOnly(); renderDashSummary();
+  const active=document.querySelector('.tab.active');
+  if (active?.id==='tab-analysis') renderAnalysis();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+(function init() {
+  if (!checkLicense()) return;
+  const savedTheme=localStorage.getItem('ww_theme')||'light';
+  document.documentElement.setAttribute('data-theme',savedTheme);
+  document.getElementById('theme-btn').textContent=savedTheme==='dark'?'☀️':'🌙';
+  document.documentElement.setAttribute('data-large',localStorage.getItem('ww_large')||'0');
+  if (!loadReadings().length) saveReadings(buildDemoReadings());
+  renderAll();
+  checkReminder();
+  setInterval(checkReminder,60000);
+})();
+</script>
+</body>
+</html>
