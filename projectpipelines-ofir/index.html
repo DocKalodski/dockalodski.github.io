@@ -866,6 +866,16 @@ let _filteredIdx=null, _sortCol='', _sortDir=1;
 
 // ── DATA ───────────────────────────────────────────────
 async function initData(){
+  // Show cached data instantly — no blank screen
+  const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+  if(cached){
+    data=cached.data||DEFAULT_PROJECTS;
+    _meta=cached._meta||{};
+    _board=cached._board||null;
+    rebuildDOM();refreshAll();buildFilterOwners();
+    if(isAdmin()) loadReports();
+  }
+  // Fetch from Supabase in background — update silently when ready
   try{
     const {data:rows,error}=await sb.from('pp_data').select('*');
     if(error) throw error;
@@ -879,9 +889,7 @@ async function initData(){
     if(!proj&&isAdmin()) await sb.from('pp_data').upsert({key:'projects',value:data});
     localStorage.setItem(CACHE_KEY,JSON.stringify({data,_meta,_board}));
   }catch(e){
-    const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
-    if(c){data=c.data||DEFAULT_PROJECTS;_meta=c._meta||{};_board=c._board||null;}
-    else data=DEFAULT_PROJECTS;
+    if(!cached) data=DEFAULT_PROJECTS;
   }
   const wasOpen=currentProjOpen;
   rebuildDOM();refreshAll();buildFilterOwners();
