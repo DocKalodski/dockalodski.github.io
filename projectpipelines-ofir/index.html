@@ -1311,13 +1311,19 @@ async function _getReportBlob(name,mime){
   return new Blob([bytes],{type:mime||'application/octet-stream'});
 }
 async function viewReport(name,mime){
-  const win=window.open('','_blank');
-  if(!win){alert('Allow popups for this site to view reports.');return;}
-  win.document.write('<html><body style="margin:0;background:#111;color:#aaa;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;font-size:14px">Loading "'+name.replace(/</g,'&lt;')+'"…</body></html>');
   const blob=await _getReportBlob(name,mime);
-  if(!blob){win.close();alert('File not available for viewing.');return;}
+  if(!blob){alert('File not available for viewing. Try re-uploading the report.');return;}
   const url=URL.createObjectURL(blob);
-  win.location.href=url;
+  const isPDF=(mime||'').includes('pdf')||name.toLowerCase().endsWith('.pdf');
+  const safeName=name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const win=window.open('','_blank');
+  if(!win){alert('Please allow popups for this site, then try again.');URL.revokeObjectURL(url);return;}
+  if(isPDF){
+    win.document.write(`<!DOCTYPE html><html><head><title>${safeName}</title></head><body style="margin:0;padding:0;overflow:hidden"><embed src="${url}" type="application/pdf" style="position:fixed;inset:0;width:100%;height:100%;border:none"></body></html>`);
+  }else{
+    win.document.write(`<!DOCTYPE html><html><head><title>${safeName}</title><style>body{margin:0;background:#1a1f26;color:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;text-align:center;padding:24px;box-sizing:border-box}</style></head><body><div style="font-size:48px">📄</div><div style="font-size:17px;font-weight:700">${safeName}</div><div style="font-size:13px;color:#aaa">This file type cannot be previewed in the browser.</div><a href="${url}" download="${safeName}" style="margin-top:8px;background:#38bdf8;color:#0f1419;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px">⬇ Download to Open</a></body></html>`);
+  }
+  win.document.close();
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 async function downloadReport(name,mime){
