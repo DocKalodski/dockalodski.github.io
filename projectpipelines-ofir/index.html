@@ -1071,7 +1071,7 @@ function sortedFiltered(){
 function rebuildDOM(){
   renderProjectList();
   renderTableBody();
-  document.getElementById('upload-label').style.display=canEdit()?'':'none';
+  const ul=document.getElementById('upload-label');if(ul)ul.style.display=canEdit()?'':'none';
   document.getElementById('extract-btn').style.display=canEdit()?'':'none';
   if(canEdit()) updateDedupBadge();
   document.getElementById('meeting-date').style.display=canEdit()?'':'none';
@@ -2016,23 +2016,6 @@ async function applyExtracted(){
 }
 
 // ── INIT ───────────────────────────────────────────────
-// Paint immediately — never show blank screen
-(()=>{
-  try{
-    const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
-    data=(cached&&cached.data&&cached.data.length)?cached.data:DEFAULT_PROJECTS;
-    _meta=(cached&&cached._meta)||{};
-    _board=(cached&&cached._board)||null;
-    rebuildDOM();refreshAll();buildFilterOwners();
-    // Also paint history from cache
-    const hc=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'null');
-    if(hc&&hc.length){_histRows=hc;renderHistory(_histRows);}
-    // Paint reports from cache
-    const rc=JSON.parse(localStorage.getItem(REPORTS_CACHE_KEY)||'null');
-    if(rc){_reports=rc;renderReports();}
-  }catch(e){}
-})();
-// Then fetch fresh data from Supabase in background
 initData();
 </script>
 </body>
