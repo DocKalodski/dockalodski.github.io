@@ -866,16 +866,14 @@ let _filteredIdx=null, _sortCol='', _sortDir=1;
 
 // ── DATA ───────────────────────────────────────────────
 async function initData(){
-  // Show cached data instantly — no blank screen
+  // ALWAYS render immediately — cache if available, defaults if not
   const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
-  if(cached){
-    data=cached.data||DEFAULT_PROJECTS;
-    _meta=cached._meta||{};
-    _board=cached._board||null;
-    rebuildDOM();refreshAll();buildFilterOwners();
-    if(isAdmin()) loadReports();
-  }
-  // Fetch from Supabase in background — update silently when ready
+  data=(cached&&cached.data&&cached.data.length)?cached.data:DEFAULT_PROJECTS;
+  _meta=(cached&&cached._meta)||{};
+  _board=(cached&&cached._board)||null;
+  rebuildDOM();refreshAll();buildFilterOwners();
+  if(isAdmin()) loadReports();
+  // Fetch from Supabase silently — update when ready
   try{
     const {data:rows,error}=await sb.from('pp_data').select('*');
     if(error) throw error;
@@ -889,7 +887,7 @@ async function initData(){
     if(!proj&&isAdmin()) await sb.from('pp_data').upsert({key:'projects',value:data});
     localStorage.setItem(CACHE_KEY,JSON.stringify({data,_meta,_board}));
   }catch(e){
-    if(!cached) data=DEFAULT_PROJECTS;
+    // Keep showing cached/default data
   }
   const wasOpen=currentProjOpen;
   rebuildDOM();refreshAll();buildFilterOwners();
