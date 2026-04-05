@@ -253,6 +253,28 @@ tr:hover td{background:#1a1f26}
 body.light .action-card{background:#fff}
 body.light .resolution-card{background:#fff}
 body.light .res-text{color:#1a2535}
+/* === MEETING THREAD === */
+.meeting-card{background:#1a1f26;border-radius:8px;margin-bottom:14px;overflow:hidden;border:1px solid #2a2f36}
+.meeting-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;gap:10px}
+.meeting-hdr:hover{background:#1f2630}
+.meeting-title{font-size:13px;font-weight:700;color:#fff;flex:1;min-width:0}
+.meeting-date{font-size:10px;color:#555;margin-top:2px}
+.meeting-pills{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap}
+.meeting-pill{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.meeting-pill.proj{background:#0c2a1a;color:#4CAF50}
+.meeting-pill.act{background:#2a1a08;color:#f97316}
+.meeting-pill.res{background:#1a0a2a;color:#8b5cf6}
+.meeting-body{padding:0 16px 14px;border-top:1px solid #2a2f36}
+.meeting-section{margin-top:12px}
+.meeting-section-title{font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px}
+.meeting-proj-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#242b32;border-radius:5px;margin-bottom:4px;cursor:pointer}
+.meeting-proj-item:hover{background:#2d3640}
+.meeting-action-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:#242b32;border-radius:5px;margin-bottom:4px}
+.meeting-res-item{padding:8px 10px;background:#242b32;border-radius:5px;margin-bottom:4px}
+body.light .meeting-card{background:#fff;border-color:#b0c0d0}
+body.light .meeting-hdr:hover{background:#f0f4f8}
+body.light .meeting-proj-item,.body.light .meeting-action-item,.body.light .meeting-res-item{background:#eef2f7}
+body.light .meeting-title{color:#1a2535}
 
 /* === FONT SIZE: NORMAL (default) === */
 body{font-size:14px}
@@ -452,6 +474,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
   <button class="tab-btn" data-tab="table" onclick="showTab('table',this)">🗂️ Summary</button>
   <button class="tab-btn" id="tab-btn-reports" data-tab="reports" onclick="showTab('reports',this)" style="display:none">📁 Documents</button>
   <button class="tab-btn" id="tab-btn-history" data-tab="history" onclick="showTab('history',this)" style="display:none">📜 History</button>
+  <button class="tab-btn" id="tab-btn-meetings" data-tab="meetings" onclick="showTab('meetings',this)" style="display:none">🗓 Meetings</button>
   <button class="tab-btn" id="tab-btn-actions" data-tab="actions" onclick="showTab('actions',this)" style="display:none">✅ Actions</button>
   <button class="tab-btn" id="tab-btn-resolutions" data-tab="resolutions" onclick="showTab('resolutions',this)" style="display:none">📋 Resolutions</button>
 </div>
@@ -669,6 +692,15 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
     <button id="hist-load-more" onclick="loadMoreHistory()" style="display:none;background:none;border:1px solid #2a2f36;color:#888;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer">Load more</button>
   </div>
   <div id="history-list"><div style="color:#555;font-size:10px;padding:12px">Loading…</div></div>
+<!-- MEETINGS -->
+<div id="meetings" class="tab">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:#0F6E56">🗓 Meeting Threads</div>
+    <div style="font-size:10px;color:#555">One view per extracted document</div>
+  </div>
+  <div id="meetings-list"><div class="loading-msg">No meetings yet. Upload minutes in Documents → Extract Projects.</div></div>
+</div>
+
 <!-- ACTIONS -->
 <div id="actions" class="tab">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
@@ -878,6 +910,7 @@ function ppCheck(){
     if(obj.role==='admin'||obj.role==='editor') document.getElementById('tab-btn-reports').style.display='';
     if(obj.role==='admin'){
       document.getElementById('tab-btn-history').style.display='';
+      document.getElementById('tab-btn-meetings').style.display='';
       document.getElementById('tab-btn-actions').style.display='';
       document.getElementById('tab-btn-resolutions').style.display='';
     }
@@ -906,7 +939,7 @@ async function initData(){
   _meta=(cached&&cached._meta)||{};
   _board=(cached&&cached._board)||null;
   rebuildDOM();refreshAll();buildFilterOwners();
-  if(isAdmin()){loadReports();loadActions();loadResolutions();}
+  if(isAdmin()){loadReports();loadActions();loadResolutions();renderMeetings();}
   // Fetch from Supabase silently — update when ready
   try{
     const {data:rows,error}=await sb.from('pp_data').select('*');
@@ -927,7 +960,7 @@ async function initData(){
   rebuildDOM();refreshAll();buildFilterOwners();
   if(wasOpen!==null&&wasOpen<data.length) detail(wasOpen);
   await loadHistory();
-  if(isAdmin()){loadReports();loadActions();loadResolutions();}
+  if(isAdmin()){loadReports();loadActions();loadResolutions();renderMeetings();}
 }
 async function saveProjects(){await sb.from('pp_data').upsert({key:'projects',value:data});}
 async function saveMeta(){await sb.from('pp_data').upsert({key:'meta',value:_meta});}
@@ -1203,15 +1236,19 @@ function refreshOverviewStats(){
   const total=data.length;
   const active=data.filter(p=>/progress|planning/i.test(p.s)).length;
   const bids=data.filter(p=>/bid|proposal/i.test(p.s)).length;
-  let stag=0;
-  if(_board){const cut=_board.date;stag=data.filter(p=>{const m=_meta[p.id]||{};const ref=m.meetingDate||m.lastTouched;return!ref||ref<=cut;}).length;}
-  const sc=stag>0?'#ef4444':'#4CAF50';
   const pv=pipelineTotal();
+  const overdueAct=_actions.filter(a=>actionStatus(a)==='overdue').length;
+  const pendingAct=_actions.filter(a=>actionStatus(a)==='pending').length;
+  const actCount=overdueAct||pendingAct;
+  const actCard=isAdmin()&&actCount?`<div class="card" onclick="showTab('actions',document.querySelector('[data-tab=actions]'))" style="border-left-color:#f97316;cursor:pointer">
+    <div class="big" style="color:${overdueAct?'#ef4444':'#f97316'}">${actCount}</div>
+    <div class="small">${overdueAct?'Overdue Actions':'Pending Actions'}</div>
+  </div>`:'';
   document.getElementById('stat-grid').innerHTML=`
     <div class="card"><div class="big">${total}</div><div class="small">Total Projects</div></div>
     <div class="card"><div class="big">${active}</div><div class="small">Active</div></div>
     <div class="card"><div class="big">${bids}</div><div class="small">Bids Out</div></div>
-    <div class="card" style="border-left-color:${sc}"><div class="big" style="color:${sc}">${stag}</div><div class="small">Not Moving</div></div>
+    ${actCard}
     ${pv?`<div class="card" style="grid-column:1/-1;border-left-color:#38bdf8"><div class="big" style="color:#38bdf8;font-size:16px">${pv}</div><div class="small">Pipeline Value</div></div>`:''}`;
 }
 function refreshPriorityBoxes(){
@@ -1947,6 +1984,75 @@ function renderResolutions(){
     </div>`;
   }).join('');
 }
+const _meetingOpen={};
+function renderMeetings(){
+  const el=document.getElementById('meetings-list');
+  if(!el) return;
+  // Build list of unique source documents that have been extracted
+  const sources=new Set();
+  _actions.forEach(a=>{if(a.source)sources.add(a.source);});
+  _resolutions.forEach(r=>{if(r.source)sources.add(r.source);});
+  data.forEach(p=>{if(p.lastExtractedFrom)sources.add(p.lastExtractedFrom);});
+  // Also include reports that have been extracted
+  _reports.filter(r=>r.extractedAt).forEach(r=>sources.add(r.name));
+  if(!sources.size){el.innerHTML='<div class="loading-msg">No meetings yet. Upload minutes in Documents → Extract Projects.</div>';return;}
+  // Sort by report date (newest first), fall back to filename
+  const sorted=[...sources].sort((a,b)=>{
+    const ra=_reports.find(r=>r.name===a);
+    const rb=_reports.find(r=>r.name===b);
+    const da=ra?(parseDateFromFilename(ra.name)||new Date(ra.date)):new Date(0);
+    const db=rb?(parseDateFromFilename(rb.name)||new Date(rb.date)):new Date(0);
+    return db-da;
+  });
+  el.innerHTML=sorted.map(src=>{
+    const rep=_reports.find(r=>r.name===src);
+    const repDate=rep?(parseDateFromFilename(rep.name)||new Date(rep.date)):null;
+    const displayDate=repDate?repDate.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'}):'Date unknown';
+    const projItems=data.filter(p=>p.lastExtractedFrom===src);
+    const actItems=_actions.map((a,i)=>({a,i})).filter(({a})=>a.source===src);
+    const resItems=_resolutions.filter(r=>r.source===src);
+    const isOpen=!!_meetingOpen[src];
+    const arrow=isOpen?'▾':'▸';
+    const body=isOpen?`<div class="meeting-body">
+      ${projItems.length?`<div class="meeting-section">
+        <div class="meeting-section-title" style="color:#4CAF50">📋 Projects (${projItems.length})</div>
+        ${projItems.map(p=>{const pi=data.indexOf(p);return`<div class="meeting-proj-item" onclick="showTab('projects',document.querySelector('[data-tab=projects]'));setTimeout(()=>detail(${pi}),50)">
+          <div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:700;color:#fff">${p.n}</div><div style="font-size:9px;color:#888">${p.s} · ${p.r}</div></div>
+          <span style="font-size:9px;color:#555">→</span>
+        </div>`}).join('')}
+      </div>`:''}
+      ${actItems.length?`<div class="meeting-section">
+        <div class="meeting-section-title" style="color:#f97316">✅ Actions (${actItems.length})</div>
+        ${actItems.map(({a,i})=>{const st=actionStatus(a);return`<div class="meeting-action-item">
+          <span class="action-badge ${st}" style="margin-top:0;flex-shrink:0">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+          <div style="flex:1;min-width:0"><div style="font-size:11px;color:#fff">${a.text}</div><div style="font-size:9px;color:#888">${a.owner?`👤 ${a.owner}`:''}${a.dueDate?` · Due ${fmtDate(a.dueDate)}`:''}</div></div>
+          <button onclick="toggleActionStatus(${i})" style="background:none;border:1px solid #2a2f36;color:#888;border-radius:4px;cursor:pointer;font-size:10px;padding:3px 7px;white-space:nowrap;flex-shrink:0">${a.status==='Done'?'↩':'✓'}</button>
+        </div>`}).join('')}
+      </div>`:''}
+      ${resItems.length?`<div class="meeting-section">
+        <div class="meeting-section-title" style="color:#8b5cf6">📋 Resolutions (${resItems.length})</div>
+        ${resItems.map(r=>`<div class="meeting-res-item">
+          ${r.number?`<div style="font-size:9px;font-weight:700;color:#8b5cf6;margin-bottom:2px">${r.number}</div>`:''}
+          <div style="font-size:11px;color:#e2e8f0">${r.text}</div>
+        </div>`).join('')}
+      </div>`:''}
+    </div>`:'';
+    return`<div class="meeting-card">
+      <div class="meeting-hdr" onclick="_meetingOpen['${src}']=!_meetingOpen['${src}'];renderMeetings()">
+        <div style="flex:1;min-width:0">
+          <div class="meeting-title">${arrow} ${src}</div>
+          <div class="meeting-date">${displayDate}${rep&&rep.category?` · ${catLabel(rep.category)}`:''}</div>
+        </div>
+        <div class="meeting-pills">
+          ${projItems.length?`<span class="meeting-pill proj">📋 ${projItems.length} project${projItems.length!==1?'s':''}</span>`:''}
+          ${actItems.length?`<span class="meeting-pill act">✅ ${actItems.length} action${actItems.length!==1?'s':''}</span>`:''}
+          ${resItems.length?`<span class="meeting-pill res">📋 ${resItems.length} res.</span>`:''}
+        </div>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+}
 
 async function readFileText(file){
   const ext=file.name.split('.').pop().toLowerCase();
@@ -2202,6 +2308,8 @@ function fuzzyMatch(existing,extracted){
 }
 async function applyExtracted(){
   if(!_extractedProjects.length&&!_extractedActions.length&&!_extractedResolutions.length) return;
+  const src=_currentExtractIdx!==null&&_reports[_currentExtractIdx]?_reports[_currentExtractIdx].name:'';
+  const today=new Date().toISOString().slice(0,10);
   for(const p of _extractedProjects){
     const existingIdx=data.findIndex(d=>fuzzyMatch(d.n,p.n));
     if(existingIdx>=0){
@@ -2217,7 +2325,11 @@ async function applyExtracted(){
         c:p.current&&p.current.length?(p.current).map(x=>({label:x,date:''})):old.c,
         x:p.next&&p.next.length?(p.next).map(x=>({label:x,date:''})):old.x,
         notes:p.notes||old.notes,
+        lastExtractedFrom:src,
       };
+      if(!_meta[old.id]) _meta[old.id]={};
+      _meta[old.id].lastExtractedFrom=src;
+      _meta[old.id].lastExtractedAt=today;
     }else{
       const id='p'+Date.now()+Math.random().toString(36).slice(2,6);
       data.push({
@@ -2225,9 +2337,9 @@ async function applyExtracted(){
         d:(p.done||[]).map(x=>({label:x,date:''})),
         c:(p.current||[]).map(x=>({label:x,date:''})),
         x:(p.next||[]).map(x=>({label:x,date:''})),
-        notes:p.notes||'',deadline:''
+        notes:p.notes||'',deadline:'',lastExtractedFrom:src
       });
-      if(!_meta[id]) _meta[id]={createdAt:new Date().toISOString().slice(0,10)};
+      if(!_meta[id]) _meta[id]={createdAt:today,lastExtractedFrom:src,lastExtractedAt:today};
     }
   }
   await saveProjects();
@@ -2258,7 +2370,7 @@ async function applyExtracted(){
     await sb.from('pp_data').upsert({key:'reports',value:_reports});
     renderReports();
   }
-  rebuildDOM();refreshAll();buildFilterOwners();
+  rebuildDOM();refreshAll();buildFilterOwners();renderMeetings();
   closeExtractModal();
   const msg=[_extractedProjects.length&&`${_extractedProjects.length} project(s)`,_extractedActions.length&&`${_extractedActions.length} action(s)`,_extractedResolutions.length&&`${_extractedResolutions.length} resolution(s)`].filter(Boolean).join(', ');
   alert(`✅ Applied: ${msg}`);
