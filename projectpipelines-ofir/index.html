@@ -330,7 +330,7 @@ body.light .tab-btn.active{background:#0F6E56;color:#fff}
 body.light .filter-bar{background:#d8e2ed;border-bottom-color:#b0c0d0}
 body.light .filter-input,body.light .filter-sel{background:#fff;color:#1a2535;border-color:#a0b4c8}
 body.light #report-search{background:#fff;color:#1a2535;border-color:#a0b4c8}
-body.light #report-cat-sel{background:#fff;color:#1a2535;border-color:#a0b4c8}
+body.light #report-parent-sel,body.light #report-sub-sel{background:#fff;color:#1a2535;border-color:#a0b4c8}
 body.light .filter-clear{border-color:#a0b4c8;color:#4a5a6a}
 body.light .filter-count{color:#4a5a6a}
 body.light .card{background:#fff;border-left-color:#0F6E56}
@@ -637,12 +637,19 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
       <div style="font-size:9px;color:#555;margin-top:2px">Upload reports, then use 🤖 Extract Projects to update the pipeline</div>
     </div>
     <div id="report-upload-area" style="display:none;align-items:center;gap:6px">
-      <select id="report-cat-sel" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
-        <option value="Board Meetings">Board Meetings</option>
-        <option value="Corporate Documents">Corporate Documents</option>
+      <select id="report-parent-sel" onchange="updateSubCats()" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
+        <option value="Board">Board</option>
         <option value="Financials">Financials</option>
-        <option value="Contracts">Contracts</option>
+        <option value="Operations">Operations</option>
+        <option value="Legal">Legal</option>
+        <option value="HR">HR</option>
+        <option value="Corporate">Corporate</option>
         <option value="General">General</option>
+      </select>
+      <select id="report-sub-sel" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
+        <option value="Minutes">Minutes</option>
+        <option value="Resolutions">Resolutions</option>
+        <option value="Presentations">Presentations</option>
       </select>
       <label class="upload-btn" id="report-add-btn" style="cursor:pointer;margin:0">⬆ Add File
         <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.tiff,.tif,.heic,.heif,.avif" style="display:none" onchange="handleReportUpload(this.files[0])">
@@ -1406,7 +1413,7 @@ async function handleBoardUpload(input){
   const addedBy=localStorage.getItem('pp_licensee')||'Admin';
   const existing=_reports.findIndex(r=>r.name===file.name);
   const prevCat=existing>=0?_reports[existing].category:null;
-  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile,category:prevCat||'Board Meetings'};
+  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile,category:prevCat||'Board/Minutes'};
   if(existing>=0)_reports[existing]=entry;else _reports.push(entry);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   if(isAdmin())renderReports();
@@ -1438,7 +1445,35 @@ function renderHistory(rows){
 }
 
 // ── REPORTS REPOSITORY ─────────────────────────────────
-const REPORT_CATS=['Board Meetings','Corporate Documents','Financials','Contracts','General'];
+const REPORT_CATS={
+  'Board':['Minutes','Resolutions','Presentations'],
+  'Financials':['Monthly Bills','Invoices & Receipts','Tax Filings','Payroll'],
+  'Operations':['Consultations','Project Proposals','Site Reports','Field Photos'],
+  'Legal':['Permits & Clearances','DENR Submissions',"Gov't Filings",'Contracts'],
+  'HR':['Personnel Records','Licenses & Certificates'],
+  'Corporate':['Company Documents','Insurance'],
+  'General':[]};
+function allFlatCats(){const r=[];Object.entries(REPORT_CATS).forEach(([p,subs])=>{if(subs.length)subs.forEach(s=>r.push(`${p}/${s}`));else r.push(p);});return r;}
+function catParent(c){return c&&c.includes('/')?c.split('/')[0]:c||'General';}
+function catSub(c){return c&&c.includes('/')?c.split('/').slice(1).join('/'):'';}
+function catLabel(c){const p=catParent(c);const s=catSub(c);return s?`${p} › ${s}`:p;}
+const _folderOpen={};
+function toggleFolder(p){_folderOpen[p]=(_folderOpen[p]!==false)?false:true;renderReports();}
+function updateSubCats(){
+  const p=document.getElementById('report-parent-sel')?.value||'General';
+  const subSel=document.getElementById('report-sub-sel');
+  if(!subSel) return;
+  const subs=REPORT_CATS[p]||[];
+  if(!subs.length){subSel.style.display='none';return;}
+  subSel.style.display='';
+  subSel.innerHTML=subs.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+function getSelectedCat(){
+  const p=document.getElementById('report-parent-sel')?.value||'General';
+  const subSel=document.getElementById('report-sub-sel');
+  const s=(subSel&&subSel.style.display!=='none')?subSel.value:'';
+  return s?`${p}/${s}`:p;
+}
 function fileIcon(name,mime){
   const ext=(name||'').split('.').pop().toLowerCase();
   if((mime||'').startsWith('image/')||['jpg','jpeg','png','gif','webp','bmp','svg','tiff','tif','heic','heif','avif'].includes(ext)) return '🖼';
@@ -1566,49 +1601,91 @@ function renderReports(){
   const el=document.getElementById('reports-list');
   if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Select a category and click ⬆ Add File.</div>';return;}
   const q=(document.getElementById('report-search')?.value||'').trim().toLowerCase();
-  const groups={};
-  REPORT_CATS.forEach(c=>groups[c]=[]);
+  const nameCounts={};
+  _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
+  // Two-level grouping
+  const parentMap={}; // { parent: { sub: [{r,i}] } }
+  const legacyGroup=[]; // unknown/old category strings
   _reports.forEach((r,i)=>{
     if(q&&!r.name.toLowerCase().includes(q)&&!(r.addedBy||'').toLowerCase().includes(q)) return;
-    const c=r.category||'General';if(!groups[c])groups[c]=[];groups[c].push({r,i});
+    const c=r.category||'General';
+    const p=catParent(c);
+    const s=catSub(c)||'';
+    if(Object.prototype.hasOwnProperty.call(REPORT_CATS,p)){
+      if(!parentMap[p])parentMap[p]={};
+      const key=s||'__top';
+      if(!parentMap[p][key])parentMap[p][key]=[];
+      parentMap[p][key].push({r,i});
+    } else {
+      legacyGroup.push({r,i,c});
+    }
   });
-  Object.values(groups).forEach(arr=>arr.sort((a,b)=>{
+  // Sort within each sub
+  Object.values(parentMap).forEach(subMap=>Object.values(subMap).forEach(arr=>arr.sort((a,b)=>{
     const da=parseDateFromFilename(a.r.name)||new Date(a.r.date);
     const db=parseDateFromFilename(b.r.name)||new Date(b.r.date);
     return db-da;
-  }));
-  const nameCounts={};
-  _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
+  })));
   const totalAll=_reports.length;
-  const totalFiltered=Object.values(groups).reduce((s,a)=>s+a.length,0);
-  const countLine=q?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} reports match</div>`
-                   :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} report${totalAll===1?'':'s'} in repository</div>`;
+  const totalFiltered=Object.values(parentMap).reduce((s,sm)=>s+Object.values(sm).reduce((s2,a)=>s2+a.length,0),0)+legacyGroup.length;
+  const countLine=q
+    ?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} reports match</div>`
+    :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} report${totalAll===1?'':'s'} in repository</div>`;
   let html=countLine;
   let totalShown=0;
-  REPORT_CATS.forEach(cat=>{
-    const items=groups[cat];
-    if(!items.length) return;
-    totalShown+=items.length;
-    html+=`<div style="margin-top:18px;margin-bottom:6px;font-size:11px;font-weight:700;color:#0F6E56;letter-spacing:0.04em">📂 ${cat} <span style="font-weight:400;color:#555">(${items.length})</span></div>`;
-    html+=items.map(({r,i})=>{
-      const fileDate=parseDateFromFilename(r.name);
-      const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
-      const icon=fileIcon(r.name,r.type);
-      const catSel=isAdmin()?`<select onchange='reassignCategory(${i},this.value)' title="Move to folder" style="background:#1a2535;color:#aaa;border:1px solid #2a2f36;border-radius:5px;font-size:10px;padding:3px 5px;cursor:pointer">${REPORT_CATS.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('')}</select>`:'';
-      const isDupe=nameCounts[r.name]>1;
-      const canDel=isAdmin()||(canEdit()&&isDupe);
-      return`<div class="report-card">
-        <div style="flex:1;min-width:0">
-          <div class="report-card-name">${icon} ${r.name}</div>
-          <div class="report-card-meta">${displayDate} · ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50;font-weight:600">✓ Extracted ${r.extractedAt}</span>`:''}</div>
-        </div>
-        ${catSel}
-        ${r.hasFile?`<button onclick='viewReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")},${i})' style="color:#0F6E56;font-size:12px;font-weight:700;background:none;border:2px solid #0F6E56;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">👁 View</button>`:''}
-        ${r.hasFile?`<button onclick='downloadReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")})' style="color:#38bdf8;font-size:12px;font-weight:700;background:none;border:2px solid #38bdf8;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">⬇ Download</button>`:''}
-        ${canDel?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete">🗑</button>`:''}
-      </div>`;
-    }).join('');
+  const flatCats=allFlatCats();
+  const catSelHtml=(i)=>isAdmin()
+    ?`<select onchange='reassignCategory(${i},this.value)' title="Move folder" style="background:#1a2535;color:#aaa;border:1px solid #2a2f36;border-radius:5px;font-size:10px;padding:3px 5px;cursor:pointer">${flatCats.map(c=>`<option value="${c}"${c===(_reports[i]?.category||'General')?' selected':''}>${catLabel(c)}</option>`).join('')}</select>`
+    :'';
+  const cardHtml=(r,i,indent)=>{
+    const fileDate=parseDateFromFilename(r.name);
+    const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
+    const icon=fileIcon(r.name,r.type);
+    const isDupe=nameCounts[r.name]>1;
+    const canDel=isAdmin()||(canEdit()&&isDupe);
+    return`<div class="report-card" style="margin-left:${indent}px">
+      <div style="flex:1;min-width:0">
+        <div class="report-card-name">${icon} ${r.name}</div>
+        <div class="report-card-meta">${displayDate} · ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50;font-weight:600">✓ Extracted ${r.extractedAt}</span>`:''}</div>
+      </div>
+      ${catSelHtml(i)}
+      ${r.hasFile?`<button onclick='viewReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")},${i})' style="color:#0F6E56;font-size:12px;font-weight:700;background:none;border:2px solid #0F6E56;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">👁 View</button>`:''}
+      ${r.hasFile?`<button onclick='downloadReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")})' style="color:#38bdf8;font-size:12px;font-weight:700;background:none;border:2px solid #38bdf8;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">⬇ Download</button>`:''}
+      ${canDel?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete">🗑</button>`:''}
+    </div>`;
+  };
+  Object.keys(REPORT_CATS).forEach(parent=>{
+    const subMap=parentMap[parent];
+    if(!subMap) return;
+    const parentTotal=Object.values(subMap).reduce((s,a)=>s+a.length,0);
+    if(!parentTotal) return;
+    totalShown+=parentTotal;
+    const isOpen=!!q||(_folderOpen[parent]!==false);
+    const arrow=isOpen?'▾':'▸';
+    html+=`<div onclick="toggleFolder('${parent}')" style="margin-top:14px;margin-bottom:2px;font-size:12px;font-weight:700;color:#0F6E56;letter-spacing:0.03em;cursor:pointer;user-select:none;display:flex;align-items:center;gap:5px">
+      <span>${arrow}</span>📂 ${parent} <span style="font-weight:400;color:#555;font-size:10px">(${parentTotal})</span>
+    </div>`;
+    if(isOpen){
+      // Subfolders first (in defined order), then __top items
+      const definedSubs=REPORT_CATS[parent]||[];
+      const renderSub=(key,label)=>{
+        const items=subMap[key];
+        if(!items||!items.length) return;
+        if(label){
+          html+=`<div style="margin-left:18px;margin-top:6px;margin-bottom:2px;font-size:10px;font-weight:600;color:#4a9d85;letter-spacing:0.02em">📁 ${label} <span style="font-weight:400;color:#555">(${items.length})</span></div>`;
+        }
+        html+=items.map(({r,i})=>cardHtml(r,i,label?30:14)).join('');
+      };
+      definedSubs.forEach(s=>renderSub(s,s));
+      renderSub('__top','');
+    }
   });
+  // Legacy/unknown categories
+  if(legacyGroup.length){
+    totalShown+=legacyGroup.length;
+    html+=`<div style="margin-top:14px;margin-bottom:4px;font-size:12px;font-weight:700;color:#888">📂 Other (${legacyGroup.length})</div>`;
+    html+=legacyGroup.map(({r,i})=>cardHtml(r,i,14)).join('');
+  }
   if(!totalShown) html='<div class="loading-msg">No reports match your search.</div>';
   el.innerHTML=html;
 }
@@ -1628,7 +1705,7 @@ async function handleReportUpload(file){
   const isImg=(file.type||'').startsWith('image/');
   let text='';
   if(!isImg){try{text=await readFileText(file);}catch(e){text='';}}
-  const cat=document.getElementById('report-cat-sel')?.value||'General';
+  const cat=getSelectedCat();
   showUploadProgress(true);
   let hasFile=false;
   try{await storeFileBin(file);hasFile=true;}catch(e){console.warn('Bin store failed:',e);}
@@ -1822,7 +1899,7 @@ function showReportPicker(){
     return`<div style="background:#242b32;border-radius:6px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-left:3px solid ${done?'#0F6E56':'#0C447C'};opacity:${done?'0.8':'1'}" onclick="runExtractFromReport(${i})">
       <div>
         <div style="font-size:11px;font-weight:700;color:#fff">${fileIcon(r.name,r.type)} ${r.name}</div>
-        <div style="font-size:9px;color:#888;margin-top:1px">${displayDate} · ${r.addedBy} · <span style="color:#555">${cat}</span></div>
+        <div style="font-size:9px;color:#888;margin-top:1px">${displayDate} · ${r.addedBy} · <span style="color:#555">${catLabel(cat)}</span></div>
         ${done?`<div style="font-size:8px;color:#4CAF50;margin-top:2px">✓ Extracted on ${r.extractedAt}</div>`:''}
       </div>
       <span style="font-size:${done?'9':'10'}px;color:${done?'#555':'#38bdf8'};font-weight:600">${done?'Re-extract':'Extract →'}</span>
