@@ -816,7 +816,13 @@ async function loadHistory(){
   _histRows=rows||[];renderHistory(_histRows);
 }
 sb.channel('pp_rt')
-  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},()=>{if(document.getElementById('det-edit').style.display!=='none')return;initData();})
+  .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},(payload)=>{
+    if(document.getElementById('det-edit').style.display!=='none')return;
+    // Ignore binary file changes — they race against the reports upsert and wipe _reports.text
+    const changedKey=(payload.new&&payload.new.key)||(payload.old&&payload.old.key)||'';
+    if(changedKey.startsWith('report_bin_')||changedKey.startsWith('report_text_'))return;
+    initData();
+  })
   .on('postgres_changes',{event:'INSERT',schema:'public',table:'pp_history'},()=>loadHistory())
   .subscribe();
 
