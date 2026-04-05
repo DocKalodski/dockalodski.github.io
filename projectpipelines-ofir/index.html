@@ -1311,11 +1311,14 @@ async function _getReportBlob(name,mime){
   return new Blob([bytes],{type:mime||'application/octet-stream'});
 }
 async function viewReport(name,mime){
+  const win=window.open('','_blank');
+  if(!win){alert('Allow popups for this site to view reports.');return;}
+  win.document.write('<html><body style="margin:0;background:#111;color:#aaa;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;font-size:14px">Loading "'+name.replace(/</g,'&lt;')+'"…</body></html>');
   const blob=await _getReportBlob(name,mime);
-  if(!blob){alert('File not available for viewing.');return;}
+  if(!blob){win.close();alert('File not available for viewing.');return;}
   const url=URL.createObjectURL(blob);
-  window.open(url,'_blank');
-  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  win.location.href=url;
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 async function downloadReport(name,mime){
   const blob=await _getReportBlob(name,mime);
