@@ -167,6 +167,7 @@ tr:hover td{background:#1a1f26}
 
 /* === PRINT === */
 .print-date{display:none;font-size:9px;color:#555;text-align:right;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 @media print{
   #lock-overlay,#loading-bar,.tabs,.filter-bar,.header-actions,.board-bar,
   .detail,.add-proj-btn,.comment-section,.edit-btn,.del-btn,.close,
@@ -595,6 +596,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
       </label>
     </div>
   </div>
+  <input id="report-search" type="search" placeholder="🔍 Search documents…" oninput="renderReports()" style="width:100%;box-sizing:border-box;background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:4px;outline:none">
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
 
@@ -624,6 +626,10 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
       <button class="print-opt-btn" onclick="doPrint('projects')">
         <div style="font-size:1.3rem">📋</div>
         <div><div style="font-weight:700">Project Details</div><div style="font-size:9px;color:#888;margin-top:2px">All project cards with steps and notes</div></div>
+      </button>
+      <button class="print-opt-btn" onclick="exportCSV()">
+        <div style="font-size:1.3rem">📥</div>
+        <div><div style="font-weight:700">Export CSV</div><div style="font-size:9px;color:#888;margin-top:2px">Download project list as spreadsheet</div></div>
       </button>
     </div>
     <div style="text-align:right;margin-top:4px">
@@ -840,6 +846,32 @@ function fmtDate(iso){if(!iso)return'';const d=new Date(iso+'T00:00:00');return 
 function daysSince(iso){if(!iso)return null;return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);}
 function daysUntil(iso){if(!iso)return null;return Math.ceil((new Date(iso+'T00:00:00').getTime()-Date.now())/86400000);}
 function normItems(arr){return(arr||[]).map(x=>typeof x==='string'?{label:x,date:''}:x);}
+function showToast(msg,duration=2500){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0F6E56;color:#fff;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:opacity 0.3s';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},duration);
+}
+function showUploadProgress(show){
+  let el=document.getElementById('upload-progress-overlay');
+  if(show&&!el){
+    el=document.createElement('div');el.id='upload-progress-overlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:20000;display:flex;align-items:center;justify-content:center';
+    el.innerHTML='<div style="background:#1a1f26;border:1px solid #2a2f36;border-radius:12px;padding:28px 36px;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;gap:14px"><span style="font-size:24px;animation:spin 1s linear infinite;display:inline-block">⏳</span>Uploading… please wait</div>';
+    document.body.appendChild(el);
+  }else if(!show&&el){el.remove();}
+}
+function exportCSV(){
+  const h=['Name','Status','Owner','Revenue (PHP)','Probability (%)','Deadline','Age (days)'];
+  const q=s=>`"${(s||'').replace(/"/g,'""')}"`;
+  const rows=data.map(p=>[q(p.n),p.s||'',q(p.o),p.r||'',p.p||'',p.deadline||'',daysSince(p.created)||''].join(','));
+  const csv=[h.join(','),...rows].join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=document.createElement('a');a.href=url;a.download=`OFIR-Projects-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+  closePrintModal();
+}
 function statusClass(s,stag){
   if(stag)return 's-stag';
   if(/progress/i.test(s))return 's-active';
@@ -1261,6 +1293,8 @@ function goto(i){clearFilters();const btn=document.querySelector('[data-tab="pro
 async function handleBoardUpload(input){
   if(!input.files.length||!canEdit())return;
   const file=input.files[0];
+  if(file.size>20*1024*1024){alert('⛔ File too large (max 20 MB).');input.value='';return;}
+  if(file.size>10*1024*1024&&!confirm(`This file is ${(file.size/1024/1024).toFixed(1)} MB — upload may take a moment. Continue?`)) return;
   const old=_board?_board.name:'none';
   const b={name:file.name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
   await saveBoard(b);logHistory('(global)','Board Report',old,b.name);
@@ -1422,11 +1456,13 @@ function parseDateFromFilename(name){
 function renderReports(){
   const el=document.getElementById('reports-list');
   if(!_reports.length){el.innerHTML='<div class="loading-msg">No documents yet. Select a category and click ⬆ Add File.</div>';return;}
-  // Group by category
+  const q=(document.getElementById('report-search')?.value||'').trim().toLowerCase();
   const groups={};
   REPORT_CATS.forEach(c=>groups[c]=[]);
-  _reports.forEach((r,i)=>{const c=r.category||'General';if(!groups[c])groups[c]=[];groups[c].push({r,i});});
-  // Sort each group newest first
+  _reports.forEach((r,i)=>{
+    if(q&&!r.name.toLowerCase().includes(q)&&!(r.addedBy||'').toLowerCase().includes(q)) return;
+    const c=r.category||'General';if(!groups[c])groups[c]=[];groups[c].push({r,i});
+  });
   Object.values(groups).forEach(arr=>arr.sort((a,b)=>{
     const da=parseDateFromFilename(a.r.name)||new Date(a.r.date);
     const db=parseDateFromFilename(b.r.name)||new Date(b.r.date);
@@ -1435,10 +1471,12 @@ function renderReports(){
   const nameCounts={};
   _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
   let html='';
+  let totalShown=0;
   REPORT_CATS.forEach(cat=>{
     const items=groups[cat];
     if(!items.length) return;
-    html+=`<div style="margin-top:18px;margin-bottom:6px;font-size:11px;font-weight:700;color:#0F6E56;letter-spacing:0.04em">📂 ${cat}</div>`;
+    totalShown+=items.length;
+    html+=`<div style="margin-top:18px;margin-bottom:6px;font-size:11px;font-weight:700;color:#0F6E56;letter-spacing:0.04em">📂 ${cat} <span style="font-weight:400;color:#555">(${items.length})</span></div>`;
     html+=items.map(({r,i})=>{
       const fileDate=parseDateFromFilename(r.name);
       const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
@@ -1458,23 +1496,27 @@ function renderReports(){
       </div>`;
     }).join('');
   });
+  if(!totalShown) html='<div class="loading-msg">No documents match your search.</div>';
   el.innerHTML=html;
 }
 async function reassignCategory(idx,newCat){
   if(!isAdmin()) return;
+  const oldCat=_reports[idx].category||'General';
   _reports[idx].category=newCat;
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
+  await logHistory('(global)','Report Move',`${_reports[idx].name} → ${oldCat}`,newCat);
   renderReports();
+  showToast(`✓ Moved to ${newCat}`);
 }
 async function handleReportUpload(file){
   if(!file||!isAdmin()) return;
+  if(file.size>20*1024*1024){alert('⛔ File too large (max 20 MB). Compress or split the document first.');return;}
+  if(file.size>10*1024*1024&&!confirm(`This file is ${(file.size/1024/1024).toFixed(1)} MB — upload may take a moment. Continue?`)) return;
   const isImg=(file.type||'').startsWith('image/');
-  // Extract text only for non-image files
   let text='';
-  if(!isImg){
-    try{text=await readFileText(file);}catch(e){text='';}
-  }
+  if(!isImg){try{text=await readFileText(file);}catch(e){text='';}}
   const cat=document.getElementById('report-cat-sel')?.value||'General';
+  showUploadProgress(true);
   let hasFile=false;
   try{await storeFileBin(file);hasFile=true;}catch(e){console.warn('Bin store failed:',e);}
   const date=new Date().toISOString().slice(0,10);
@@ -1486,10 +1528,12 @@ async function handleReportUpload(file){
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   const _old=_board?_board.name:'none';
   const _b={name:file.name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
-  await saveBoard(_b);logHistory('(global)','Board Report',_old,_b.name);
+  await saveBoard(_b);
+  await logHistory('(global)',`Report Upload (${cat})`,_old,file.name);
+  showUploadProgress(false);
   renderReports();
   document.getElementById('report-file-input').value='';
-  alert(`✅ "${file.name}" added to ${cat}.`);
+  showToast(`✅ "${file.name}" added to ${cat}`);
 }
 async function deleteReport(i){
   const r=_reports[i];
