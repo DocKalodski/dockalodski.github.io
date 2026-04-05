@@ -1436,12 +1436,12 @@ function renderHistory(rows){
 
 // ── REPORTS REPOSITORY ─────────────────────────────────
 const REPORT_CATS={
-  'Board':['Minutes','Resolutions','Presentations'],
-  'Financials':['Financial Reports','Monthly Bills','Invoices & Receipts','Tax Filings','Payroll'],
-  'Operations':['Consultations','Project Proposals','Site Reports','Field Photos'],
-  'Legal':['Permits & Clearances','DENR Submissions',"Gov't Filings",'Contracts'],
-  'HR':['Personnel Records','Licenses & Certificates'],
-  'Corporate':['Company Documents','Insurance'],
+  'Board':['Minutes','Resolutions','Presentations','Other'],
+  'Financials':['Financial Reports','Monthly Bills','Invoices & Receipts','Tax Filings','Payroll','Other'],
+  'Operations':['Consultations','Project Proposals','Site Reports','Field Photos','Other'],
+  'Legal':['Permits & Clearances','DENR Submissions',"Gov't Filings",'Contracts','Other'],
+  'HR':['Personnel Records','Licenses & Certificates','Other'],
+  'Corporate':['Company Documents','Insurance','Other'],
   'General':[]};
 function allFlatCats(){const r=[];Object.entries(REPORT_CATS).forEach(([p,subs])=>{if(subs.length)subs.forEach(s=>r.push(`${p}/${s}`));else r.push(p);});return r;}
 function catParent(c){return c&&c.includes('/')?c.split('/')[0]:c||'General';}
