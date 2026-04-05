@@ -253,6 +253,31 @@ tr:hover td{background:#1a1f26}
 body.light .action-card{background:#fff}
 body.light .resolution-card{background:#fff}
 body.light .res-text{color:#1a2535}
+/* === GLOBAL SEARCH === */
+#gsearch-overlay{position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,0.75);display:none;align-items:flex-start;justify-content:center;padding-top:60px}
+#gsearch-overlay.open{display:flex}
+#gsearch-box{background:#1a1f26;border:1px solid #2a2f36;border-radius:12px;width:100%;max-width:620px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.6)}
+#gsearch-input{width:100%;box-sizing:border-box;background:#1a1f26;color:#e2e8f0;border:none;border-bottom:1px solid #2a2f36;padding:16px 20px;font-size:15px;outline:none}
+#gsearch-results{max-height:60vh;overflow-y:auto;padding:8px 0}
+.gs-section{padding:6px 16px 2px;font-size:9px;font-weight:700;letter-spacing:0.08em;color:#555;text-transform:uppercase}
+.gs-item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px;cursor:pointer}
+.gs-item:hover{background:#242b32}
+.gs-type{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;flex-shrink:0;margin-top:2px}
+.gs-type.proj{background:#0c2a1a;color:#4CAF50}
+.gs-type.act{background:#2a1a08;color:#f97316}
+.gs-type.res{background:#1a0a2a;color:#8b5cf6}
+.gs-type.doc{background:#0c2233;color:#38bdf8}
+.gs-title{font-size:12px;font-weight:700;color:#fff}
+.gs-sub{font-size:10px;color:#888;margin-top:1px}
+#gsearch-empty{padding:24px;text-align:center;color:#555;font-size:12px}
+body.light #gsearch-box{background:#fff;border-color:#b0c0d0}
+body.light #gsearch-input{background:#fff;color:#1a2535;border-bottom-color:#b0c0d0}
+body.light .gs-item:hover{background:#f0f4f8}
+body.light .gs-title{color:#1a2535}
+/* === RESOLUTION STATUS === */
+.res-status-sel{background:#1a2535;color:#8b5cf6;border:1px solid #3a2a5a;border-radius:12px;font-size:9px;font-weight:700;padding:2px 8px;cursor:pointer;outline:none}
+.res-status-sel.implementing{color:#f97316;border-color:#5a3a08}
+.res-status-sel.closed{color:#555;border-color:#2a2f36}
 /* === MEETING THREAD === */
 .meeting-card{background:#1a1f26;border-radius:8px;margin-bottom:14px;overflow:hidden;border:1px solid #2a2f36}
 .meeting-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;gap:10px}
@@ -461,6 +486,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
   </div>
   <div class="header-actions" style="display:flex;gap:5px;flex-shrink:0">
     <button id="dedup-hdr-btn" class="hdr-btn" onclick="openDedupModal()" style="display:none;background:rgba(249,115,22,0.2);color:#f97316">🧹 <span id="dedup-count"></span></button>
+    <button class="hdr-btn" onclick="openGSearch()" title="Global search (/)">🔍</button>
     <button id="font-btn" class="hdr-btn" onclick="toggleFont()" title="Toggle font size">Aa</button>
     <button id="theme-btn" class="hdr-btn" onclick="toggleMode()" title="Toggle light/dark mode">☀️</button>
     <button id="install-btn" class="hdr-btn" onclick="installApp()">📲</button>
@@ -720,12 +746,29 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 
 <!-- RESOLUTIONS -->
 <div id="resolutions" class="tab">
-  <div style="font-size:12px;font-weight:700;color:#0F6E56;margin-bottom:10px">📋 Board Resolutions</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:12px;font-weight:700;color:#0F6E56">📋 Board Resolutions</div>
+    <select id="res-f-status" onchange="renderResolutions()" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer">
+      <option value="">All Status</option>
+      <option value="Active">Active</option>
+      <option value="In Implementation">In Implementation</option>
+      <option value="Closed">Closed</option>
+    </select>
+  </div>
+  <div id="res-counts" style="font-size:10px;color:#555;margin-bottom:8px"></div>
   <div id="resolutions-list"><div class="loading-msg">No resolutions yet. Extract from board minutes to populate.</div></div>
 </div>
 
 </div></div>
 <div id="loading-bar"></div>
+
+<!-- GLOBAL SEARCH -->
+<div id="gsearch-overlay" onclick="if(event.target===this)closeGSearch()">
+  <div id="gsearch-box">
+    <input id="gsearch-input" type="text" placeholder="🔍 Search projects, actions, resolutions, documents…" oninput="runGSearch(this.value)" onkeydown="gsearchKey(event)">
+    <div id="gsearch-results"><div id="gsearch-empty" style="display:none">No results</div></div>
+  </div>
+</div>
 
 <!-- PRINT MODAL -->
 <div id="print-modal-overlay" style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;padding:16px">
@@ -1972,18 +2015,103 @@ function renderActions(){
     ${isAdmin()?`<button onclick="deleteAction(${i})" class="del-report-btn" title="Delete">🗑</button>`:''}
   </div>`).join('');
 }
+const RES_STATUS_ORDER=['Active','In Implementation','Closed'];
+function resStatusColor(s){return s==='Active'?'#8b5cf6':s==='In Implementation'?'#f97316':'#555';}
+async function setResStatus(i,val){
+  if(!_resolutions[i]) return;
+  _resolutions[i].status=val;
+  await sb.from('pp_data').upsert({key:'resolutions',value:_resolutions});
+  localStorage.setItem(RESOLUTIONS_CACHE_KEY,JSON.stringify(_resolutions));
+  renderResolutions();renderMeetings();
+}
 function renderResolutions(){
   const el=document.getElementById('resolutions-list');
+  const cnt=document.getElementById('res-counts');
   if(!el) return;
   if(!_resolutions.length){el.innerHTML='<div class="loading-msg">No resolutions yet. Extract from board minutes to populate.</div>';return;}
-  el.innerHTML=[..._resolutions].reverse().map((r,ri)=>{
-    const i=_resolutions.length-1-ri;
-    return`<div class="resolution-card">
-      <div class="res-num">${r.number||`Resolution #${i+1}`}</div>
+  const fSt=document.getElementById('res-f-status')?.value||'';
+  const active=_resolutions.filter(r=>(r.status||'Active')==='Active').length;
+  const impl=_resolutions.filter(r=>r.status==='In Implementation').length;
+  const closed=_resolutions.filter(r=>r.status==='Closed').length;
+  if(cnt) cnt.innerHTML=`<span style="color:#8b5cf6">${active} active</span> · <span style="color:#f97316">${impl} implementing</span> · <span style="color:#555">${closed} closed</span>`;
+  let items=[..._resolutions].map((r,i)=>({r,i})).reverse();
+  if(fSt) items=items.filter(({r})=>(r.status||'Active')===fSt);
+  if(!items.length){el.innerHTML='<div class="loading-msg">No resolutions match.</div>';return;}
+  el.innerHTML=items.map(({r,i})=>{
+    const st=r.status||'Active';
+    const col=resStatusColor(st);
+    const selHtml=isAdmin()?`<select class="res-status-sel${st==='In Implementation'?' implementing':st==='Closed'?' closed':''}" onchange="setResStatus(${i},this.value)">${RES_STATUS_ORDER.map(s=>`<option value="${s}"${s===st?' selected':''}>${s}</option>`).join('')}</select>`:`<span style="font-size:9px;font-weight:700;color:${col}">${st}</span>`;
+    return`<div class="resolution-card" style="border-left-color:${col};opacity:${st==='Closed'?'0.6':'1'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;gap:8px">
+        <div class="res-num">${r.number||`Resolution #${i+1}`}</div>
+        ${selHtml}
+      </div>
       <div class="res-text">${r.text}</div>
       <div class="res-meta">${r.date?fmtDate(r.date):'Date unknown'}${r.source?` · 📄 ${r.source}`:''}</div>
     </div>`;
   }).join('');
+}
+// ── GLOBAL SEARCH ──────────────────────────────────────
+function openGSearch(){
+  document.getElementById('gsearch-overlay').classList.add('open');
+  const inp=document.getElementById('gsearch-input');
+  inp.value='';inp.focus();
+  document.getElementById('gsearch-results').innerHTML='<div id="gsearch-empty" style="padding:24px;text-align:center;color:#555;font-size:12px">Start typing…</div>';
+}
+function closeGSearch(){document.getElementById('gsearch-overlay').classList.remove('open');}
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();openGSearch();}
+  if(e.key==='Escape') closeGSearch();
+});
+function gsearchKey(e){if(e.key==='Escape')closeGSearch();}
+function highlight(text,q){
+  if(!q||!text) return text||'';
+  return text.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),'<mark style="background:#0F6E56;color:#fff;border-radius:2px;padding:0 2px">$1</mark>');
+}
+function runGSearch(q){
+  const el=document.getElementById('gsearch-results');
+  q=q.trim();
+  if(q.length<2){el.innerHTML='<div style="padding:24px;text-align:center;color:#555;font-size:12px">Type at least 2 characters…</div>';return;}
+  const ql=q.toLowerCase();
+  let html='';
+  // Projects
+  const pHits=data.map((p,i)=>({p,i})).filter(({p})=>p.n.toLowerCase().includes(ql)||p.s.toLowerCase().includes(ql)||(p.o||'').toLowerCase().includes(ql)||(p.notes||'').toLowerCase().includes(ql));
+  if(pHits.length){
+    html+=`<div class="gs-section">Projects (${pHits.length})</div>`;
+    html+=pHits.map(({p,i})=>`<div class="gs-item" onclick="closeGSearch();showTab('projects',document.querySelector('[data-tab=projects]'));setTimeout(()=>detail(${i}),50)">
+      <span class="gs-type proj">Project</span>
+      <div><div class="gs-title">${highlight(p.n,q)}</div><div class="gs-sub">${p.s} · ${p.r} · ${p.o||'—'}</div></div>
+    </div>`).join('');
+  }
+  // Actions
+  const aHits=_actions.map((a,i)=>({a,i})).filter(({a})=>a.text.toLowerCase().includes(ql)||(a.owner||'').toLowerCase().includes(ql)||(a.projRef||'').toLowerCase().includes(ql));
+  if(aHits.length){
+    html+=`<div class="gs-section">Actions (${aHits.length})</div>`;
+    html+=aHits.map(({a,i})=>`<div class="gs-item" onclick="closeGSearch();showTab('actions',document.querySelector('[data-tab=actions]'))">
+      <span class="gs-type act">Action</span>
+      <div><div class="gs-title">${highlight(a.text,q)}</div><div class="gs-sub">${a.owner?`👤 ${a.owner} · `:''}${actionStatus(a)}${a.dueDate?` · Due ${fmtDate(a.dueDate)}`:''}</div></div>
+    </div>`).join('');
+  }
+  // Resolutions
+  const rHits=_resolutions.map((r,i)=>({r,i})).filter(({r})=>r.text.toLowerCase().includes(ql)||(r.number||'').toLowerCase().includes(ql));
+  if(rHits.length){
+    html+=`<div class="gs-section">Resolutions (${rHits.length})</div>`;
+    html+=rHits.map(({r,i})=>`<div class="gs-item" onclick="closeGSearch();showTab('resolutions',document.querySelector('[data-tab=resolutions]'))">
+      <span class="gs-type res">Resolution</span>
+      <div><div class="gs-title">${highlight(r.number||'Resolution',q)}</div><div class="gs-sub">${highlight(r.text.slice(0,80),q)}${r.text.length>80?'…':''}</div></div>
+    </div>`).join('');
+  }
+  // Documents
+  const dHits=_reports.filter(r=>r.name.toLowerCase().includes(ql)||(r.addedBy||'').toLowerCase().includes(ql)||(r.text||'').toLowerCase().includes(ql));
+  if(dHits.length){
+    html+=`<div class="gs-section">Documents (${dHits.length})</div>`;
+    html+=dHits.map(r=>`<div class="gs-item" onclick="closeGSearch();showTab('reports',document.querySelector('[data-tab=reports]'))">
+      <span class="gs-type doc">Doc</span>
+      <div><div class="gs-title">${highlight(r.name,q)}</div><div class="gs-sub">${catLabel(r.category||'General')} · ${r.addedBy}</div></div>
+    </div>`).join('');
+  }
+  if(!html) html='<div style="padding:24px;text-align:center;color:#555;font-size:12px">No results for "<strong style="color:#e2e8f0">'+(q)+'</strong>"</div>';
+  el.innerHTML=html;
 }
 const _meetingOpen={};
 function renderMeetings(){
