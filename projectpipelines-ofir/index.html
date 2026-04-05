@@ -413,7 +413,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
     </div>
     <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
     <label class="upload-btn" id="upload-label">⬆ Upload Report
-      <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display:none" onchange="handleBoardUpload(this)">
+      <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.tiff,.tif,.heic,.heif,.avif" style="display:none" onchange="handleBoardUpload(this)">
     </label>
   </div>
   <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
@@ -577,14 +577,23 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 
 <!-- REPORTS REPOSITORY -->
 <div id="reports" class="tab">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Board Meeting Reports</div>
-      <div style="font-size:9px;color:#555;margin-top:2px">Upload reports here first, then use 🤖 Extract Projects to update the pipeline</div>
+      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Document Repository</div>
+      <div style="font-size:9px;color:#555;margin-top:2px">Upload documents, then use 🤖 Extract Projects to update the pipeline</div>
     </div>
-    <label class="upload-btn" id="report-add-btn" style="display:none;cursor:pointer">⬆ Add Report
-      <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="handleReportUpload(this.files[0])">
-    </label>
+    <div id="report-upload-area" style="display:none;align-items:center;gap:6px">
+      <select id="report-cat-sel" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
+        <option value="Board Meetings">Board Meetings</option>
+        <option value="Corporate Documents">Corporate Documents</option>
+        <option value="Financials">Financials</option>
+        <option value="Contracts">Contracts</option>
+        <option value="General">General</option>
+      </select>
+      <label class="upload-btn" id="report-add-btn" style="cursor:pointer;margin:0">⬆ Add File
+        <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.tiff,.tif,.heic,.heif,.avif" style="display:none" onchange="handleReportUpload(this.files[0])">
+      </label>
+    </div>
   </div>
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
@@ -1294,6 +1303,16 @@ function renderHistory(rows){
 }
 
 // ── REPORTS REPOSITORY ─────────────────────────────────
+const REPORT_CATS=['Board Meetings','Corporate Documents','Financials','Contracts','General'];
+function fileIcon(name,mime){
+  const ext=(name||'').split('.').pop().toLowerCase();
+  if((mime||'').startsWith('image/')||['jpg','jpeg','png','gif','webp','bmp','svg','tiff','tif','heic','heif','avif'].includes(ext)) return '🖼';
+  if(ext==='pdf') return '📄';
+  if(['doc','docx'].includes(ext)) return '📝';
+  if(['xls','xlsx'].includes(ext)) return '📊';
+  if(['ppt','pptx'].includes(ext)) return '📑';
+  return '📁';
+}
 let _reports=[];
 async function storeFileBin(file){
   return new Promise((resolve,reject)=>{
@@ -1369,7 +1388,7 @@ async function loadReports(){
   const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
   _reports=(rows&&rows[0]?rows[0].value:[])||[];
   renderReports();
-  document.getElementById('report-add-btn').style.display=canEdit()?'':'none';
+  document.getElementById('report-upload-area').style.display=canEdit()?'flex':'none';
 }
 function parseDateFromFilename(name){
   // matches: Oct 17 2025 / October 17 2025 / 2025-10-17 / 2025_10_17 / 10-17-2025 / 17 Oct 2025 etc.
@@ -1401,64 +1420,90 @@ function parseDateFromFilename(name){
 }
 function renderReports(){
   const el=document.getElementById('reports-list');
-  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Click ⬆ Add Report to upload your first board meeting report.</div>';return;}
-  // sort by date parsed from filename, newest first; fallback to upload date
-  const sorted=[..._reports.map((r,i)=>({r,i}))].sort((a,b)=>{
+  if(!_reports.length){el.innerHTML='<div class="loading-msg">No documents yet. Select a category and click ⬆ Add File.</div>';return;}
+  // Group by category
+  const groups={};
+  REPORT_CATS.forEach(c=>groups[c]=[]);
+  _reports.forEach((r,i)=>{const c=r.category||'General';if(!groups[c])groups[c]=[];groups[c].push({r,i});});
+  // Sort each group newest first
+  Object.values(groups).forEach(arr=>arr.sort((a,b)=>{
     const da=parseDateFromFilename(a.r.name)||new Date(a.r.date);
     const db=parseDateFromFilename(b.r.name)||new Date(b.r.date);
     return db-da;
+  }));
+  const nameCounts={};
+  _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
+  let html='';
+  REPORT_CATS.forEach(cat=>{
+    const items=groups[cat];
+    if(!items.length) return;
+    html+=`<div style="margin-top:18px;margin-bottom:6px;font-size:11px;font-weight:700;color:#0F6E56;letter-spacing:0.04em">📂 ${cat}</div>`;
+    html+=items.map(({r,i})=>{
+      const fileDate=parseDateFromFilename(r.name);
+      const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
+      const icon=fileIcon(r.name,r.type);
+      const catSel=isAdmin()?`<select onchange='reassignCategory(${i},this.value)' title="Move to folder" style="background:#1a2535;color:#aaa;border:1px solid #2a2f36;border-radius:5px;font-size:10px;padding:3px 5px;cursor:pointer">${REPORT_CATS.map(c=>`<option value="${c}"${c===cat?' selected':''}>${c}</option>`).join('')}</select>`:'';
+      const isDupe=nameCounts[r.name]>1;
+      const canDel=isAdmin()||(canEdit()&&isDupe);
+      return`<div class="report-card">
+        <div style="flex:1;min-width:0">
+          <div class="report-card-name">${icon} ${r.name}</div>
+          <div class="report-card-meta">${displayDate} · ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50;font-weight:600">✓ Extracted ${r.extractedAt}</span>`:''}</div>
+        </div>
+        ${catSel}
+        ${r.hasFile?`<button onclick='viewReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")},${i})' style="color:#0F6E56;font-size:12px;font-weight:700;background:none;border:2px solid #0F6E56;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">👁 View</button>`:''}
+        ${r.hasFile?`<button onclick='downloadReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")})' style="color:#38bdf8;font-size:12px;font-weight:700;background:none;border:2px solid #38bdf8;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">⬇ Download</button>`:''}
+        ${canDel?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete">🗑</button>`:''}
+      </div>`;
+    }).join('');
   });
-  el.innerHTML=sorted.map(({r,i})=>{
-    const fileDate=parseDateFromFilename(r.name);
-    const displayDate=fileDate?fileDate.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):r.date;
-    return`<div class="report-card">
-      <div style="flex:1;min-width:0">
-        <div class="report-card-name">📄 ${r.name}</div>
-        <div class="report-card-meta">${displayDate} · Added by ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50;font-weight:600">✓ Extracted ${r.extractedAt}</span>`:''}</div>
-      </div>
-      ${r.hasFile?`<button onclick='viewReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")},${i})' style="color:#0F6E56;font-size:12px;font-weight:700;background:none;border:2px solid #0F6E56;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">👁 View</button>`:''}
-      ${r.hasFile?`<button onclick='downloadReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||"")})' style="color:#38bdf8;font-size:12px;font-weight:700;background:none;border:2px solid #38bdf8;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">⬇ Download</button>`:''}
-      ${canDeleteReport(r)?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete report">🗑 Delete</button>`:''}
-    </div>`;
-  }).join('');
+  el.innerHTML=html;
+}
+async function reassignCategory(idx,newCat){
+  if(!isAdmin()) return;
+  _reports[idx].category=newCat;
+  await sb.from('pp_data').upsert({key:'reports',value:_reports});
+  renderReports();
 }
 async function handleReportUpload(file){
   if(!file||!isAdmin()) return;
-  const statusEl=document.getElementById('extract-status');
-  const errEl=document.getElementById('extract-err');
-  // Read text from file
+  const isImg=(file.type||'').startsWith('image/');
+  // Extract text only for non-image files
   let text='';
-  try{
-    text=await readFileText(file);
-    if(!text.trim()) throw new Error('Could not extract text. Try a different format.');
-  }catch(e){
-    alert('⛔ '+e.message);
-    document.getElementById('report-file-input').value='';
-    return;
+  if(!isImg){
+    try{text=await readFileText(file);}catch(e){text='';}
   }
-  // Store file binary for download
+  const cat=document.getElementById('report-cat-sel')?.value||'General';
   let hasFile=false;
   try{await storeFileBin(file);hasFile=true;}catch(e){console.warn('Bin store failed:',e);}
-  // Save metadata + text to repository
   const date=new Date().toISOString().slice(0,10);
   const addedBy=localStorage.getItem('pp_licensee')||'Admin';
-  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile};
+  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile,category:cat};
   const existing=_reports.findIndex(r=>r.name===file.name);
   if(existing>=0) _reports[existing]=entry;
   else _reports.push(entry);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
-  // Sync board header (inline — avoids re-reading the file or re-saving reports)
   const _old=_board?_board.name:'none';
   const _b={name:file.name,date:_board?_board.date:new Date().toISOString().slice(0,10)};
   await saveBoard(_b);logHistory('(global)','Board Report',_old,_b.name);
   renderReports();
   document.getElementById('report-file-input').value='';
-  alert(`✅ "${file.name}" added to repository. Use 🤖 Extract Projects to update the pipeline.`);
+  alert(`✅ "${file.name}" added to ${cat}.`);
 }
 async function deleteReport(i){
-  if(!isAdmin()||!confirm('Remove this report from the repository?')) return;
-  const removed=_reports.splice(i,1)[0];
-  if(removed&&removed.name) await sb.from('pp_data').delete().eq('key','report_bin_'+encodeURIComponent(removed.name));
+  const r=_reports[i];
+  if(!r) return;
+  const isDupe=_reports.filter(x=>x.name===r.name).length>1;
+  // Only admin can delete the sole copy; editors can delete duplicates
+  if(!isDupe&&!isAdmin()){alert('Only admin can delete the only copy of a document.');return;}
+  if(isDupe&&!isAdmin()&&!canEdit()) return;
+  const msg=isDupe?`Remove this copy of "${r.name}"?`:`⚠️ This is the ONLY copy of "${r.name}". Permanently delete?`;
+  if(!confirm(msg)) return;
+  _reports.splice(i,1);
+  // Only delete binary if no other copy remains
+  if(!_reports.some(x=>x.name===r.name)){
+    await sb.from('pp_data').delete().eq('key','report_bin_'+encodeURIComponent(r.name));
+  }
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   renderReports();
 }
