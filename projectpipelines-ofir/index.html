@@ -174,20 +174,24 @@ tr:hover td{background:#1a1f26}
   .box,h3,#stat-grid{display:none!important}
   body,html{overflow:visible!important;height:auto!important;background:#fff!important;color:#000!important}
   .wrapper{height:auto!important;overflow:visible!important}
-  .content{overflow:visible!important;height:auto!important}
-  .tab{display:flex!important;overflow:visible!important}
-  #overview:not(.active),#projects:not(.active),#history:not(.active),#table:not(.active),#reports:not(.active){display:none!important}
-  #table.active{display:block!important;padding:4px!important}
-  #overview.active,#projects.active{display:flex!important;overflow:visible!important}
+  .content{overflow:visible!important;height:auto!important;display:block!important}
+  /* hide all tabs by default; only show .print-selected ones */
+  .tab{display:none!important}
+  .tab.print-selected{display:flex!important;overflow:visible!important;page-break-after:always}
+  #table.print-selected{display:block!important;padding:4px!important}
   .header{background:none!important;border-bottom:2px solid #000;padding:6px 0;flex-direction:column;text-align:center}
   .header h1{color:#000!important;font-size:13px}
   .header p{color:#555!important}
-  table{font-size:8px}
+  .proj{background:#fff!important;border:1px solid #ccc!important;color:#000!important;page-break-inside:avoid}
+  .proj-h{color:#000!important}
+  .proj-m{color:#555!important}
+  table{font-size:9px}
   th{background:#eee!important;color:#000!important;border-bottom:1px solid #000;cursor:default}
-  td{color:#000!important;border-bottom:1px solid #eee}
+  td{color:#000!important;border-bottom:1px solid #eee;font-size:9px!important}
   tr:hover td{background:none!important}
   .tag{background:#ddd!important;color:#000!important}
   .print-date{display:block!important}
+  .print-section-title{display:block!important;font-size:13px;font-weight:800;border-bottom:2px solid #0F6E56;margin-bottom:12px;padding-bottom:4px;color:#0F6E56}
 }
 
 /* === WARNINGS PANEL === */
@@ -736,6 +740,7 @@ function ppMatch(k){const c=k.trim().toUpperCase().replace(/-/g,'');for(const[ke
 function getRole(){const k=localStorage.getItem('pp_license');const m=k?ppMatch(k):null;return m?m.role:'none';}
 function isAdmin(){return getRole()==='admin';}
 function canEdit(){return getRole()==='admin'||getRole()==='editor';}
+function canDeleteReport(r){return isAdmin()||(r&&r.addedBy&&r.addedBy===localStorage.getItem('pp_licensee'));}
 function ppLogout(){localStorage.removeItem('pp_license');localStorage.removeItem('pp_licensee');location.reload();}
 function ppActivate(){
   const raw=document.getElementById('lock-input').value;
@@ -1298,12 +1303,23 @@ async function storeFileBin(file){
     reader.readAsDataURL(file);
   });
 }
-async function downloadReport(name,mime){
+async function _getReportBlob(name,mime){
   const {data}=await sb.from('pp_data').select('value').eq('key','report_bin_'+encodeURIComponent(name)).single();
-  if(!data){alert('File not available for download.');return;}
+  if(!data) return null;
   const bin=atob(data.value);const bytes=new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-  const blob=new Blob([bytes],{type:mime||'application/octet-stream'});
+  return new Blob([bytes],{type:mime||'application/octet-stream'});
+}
+async function viewReport(name,mime){
+  const blob=await _getReportBlob(name,mime);
+  if(!blob){alert('File not available for viewing.');return;}
+  const url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+async function downloadReport(name,mime){
+  const blob=await _getReportBlob(name,mime);
+  if(!blob){alert('File not available for download.');return;}
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
@@ -1359,8 +1375,9 @@ function renderReports(){
         <div class="report-card-name">📄 ${r.name}</div>
         <div class="report-card-meta">${displayDate} · Added by ${r.addedBy}${r.extractedAt?` · <span style="color:#4CAF50;font-weight:600">✓ Extracted ${r.extractedAt}</span>`:''}</div>
       </div>
+      ${r.hasFile?`<button onclick="viewReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||'')})" style="color:#0F6E56;font-size:12px;font-weight:700;background:none;border:2px solid #0F6E56;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">👁 View</button>`:''}
       ${r.hasFile?`<button onclick="downloadReport(${JSON.stringify(r.name)},${JSON.stringify(r.type||'')})" style="color:#38bdf8;font-size:12px;font-weight:700;background:none;border:2px solid #38bdf8;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0">⬇ Download</button>`:''}
-      ${canEdit()?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete report">🗑 Delete</button>`:''}
+      ${canDeleteReport(r)?`<button onclick="deleteReport(${i})" class="del-report-btn" title="Delete report">🗑 Delete</button>`:''}
     </div>`;
   }).join('');
 }
