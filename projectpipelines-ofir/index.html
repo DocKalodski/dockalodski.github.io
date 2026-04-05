@@ -904,19 +904,30 @@ async function logHistory(proj,field,oldV,newV){
 }
 let _histOffset=0;
 const HIST_PAGE=50;
+const HIST_CACHE_KEY='pp_hist_cache_v1';
 async function loadHistory(){
   _histOffset=0;
-  const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).limit(HIST_PAGE);
-  _histRows=rows||[];renderHistory(_histRows);
+  // Show cached history instantly
+  const cached=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'null');
+  if(cached&&cached.length){_histRows=cached;renderHistory(_histRows);}
+  // Fetch fresh from Supabase in background
+  try{
+    const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).limit(HIST_PAGE);
+    _histRows=rows||[];
+    localStorage.setItem(HIST_CACHE_KEY,JSON.stringify(_histRows));
+    renderHistory(_histRows);
+  }catch(e){}
   const btn=document.getElementById('hist-load-more');
   if(btn)btn.style.display=_histRows.length===HIST_PAGE?'':'none';
 }
 async function loadMoreHistory(){
   _histOffset+=HIST_PAGE;
-  const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).range(_histOffset,_histOffset+HIST_PAGE-1);
-  if(rows&&rows.length){_histRows=[..._histRows,...rows];renderHistory(_histRows);}
-  const btn=document.getElementById('hist-load-more');
-  if(btn)btn.style.display=(rows&&rows.length===HIST_PAGE)?'':'none';
+  try{
+    const {data:rows}=await sb.from('pp_history').select('*').order('created_at',{ascending:false}).range(_histOffset,_histOffset+HIST_PAGE-1);
+    if(rows&&rows.length){_histRows=[..._histRows,...rows];renderHistory(_histRows);}
+    const btn=document.getElementById('hist-load-more');
+    if(btn)btn.style.display=(rows&&rows.length===HIST_PAGE)?'':'none';
+  }catch(e){}
 }
 sb.channel('pp_rt')
   .on('postgres_changes',{event:'*',schema:'public',table:'pp_data'},(payload)=>{
@@ -1508,12 +1519,20 @@ async function downloadReport(name,mime){
   const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
+const REPORTS_CACHE_KEY='pp_reports_cache_v1';
 async function loadReports(){
-  const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
-  _reports=(rows&&rows[0]?rows[0].value:[])||[];
-  renderReports();
+  // Show cached reports instantly
+  const cached=JSON.parse(localStorage.getItem(REPORTS_CACHE_KEY)||'null');
+  if(cached){_reports=cached;renderReports();}
   document.getElementById('report-upload-area').style.display=canEdit()?'flex':'none';
   document.getElementById('report-search').style.display='';
+  // Fetch fresh from Supabase
+  try{
+    const {data:rows}=await sb.from('pp_data').select('*').eq('key','reports');
+    _reports=(rows&&rows[0]?rows[0].value:[])||[];
+    localStorage.setItem(REPORTS_CACHE_KEY,JSON.stringify(_reports));
+    renderReports();
+  }catch(e){}
 }
 function parseDateFromFilename(name){
   // matches: Oct 17 2025 / October 17 2025 / 2025-10-17 / 2025_10_17 / 10-17-2025 / 17 Oct 2025 etc.
