@@ -460,15 +460,6 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 
 <!-- OVERVIEW -->
 <div id="overview" class="tab active">
-  <div class="board-bar">
-    <div class="board-bar-info">
-      <strong>📅 Board Meeting Date</strong>
-      <span id="board-info" style="color:#555;font-size:9px">Set date to track stagnant projects</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:5px">
-      <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
-    </div>
-  </div>
   <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
@@ -1446,7 +1437,7 @@ function renderHistory(rows){
 // ── REPORTS REPOSITORY ─────────────────────────────────
 const REPORT_CATS={
   'Board':['Minutes','Resolutions','Presentations'],
-  'Financials':['Monthly Bills','Invoices & Receipts','Tax Filings','Payroll'],
+  'Financials':['Financial Reports','Monthly Bills','Invoices & Receipts','Tax Filings','Payroll'],
   'Operations':['Consultations','Project Proposals','Site Reports','Field Photos'],
   'Legal':['Permits & Clearances','DENR Submissions',"Gov't Filings",'Contracts'],
   'HR':['Personnel Records','Licenses & Certificates'],
