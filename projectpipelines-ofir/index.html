@@ -908,7 +908,7 @@ function ppCheck(){
     document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';
     const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;
     document.getElementById('pp-licensee').appendChild(rb);
-    if(obj.role==='admin'||obj.role==='editor') document.getElementById('tab-btn-reports').style.display='';
+    if(obj.role==='admin'||obj.role==='editor'||obj.role==='presenter') document.getElementById('tab-btn-reports').style.display='';
     if(obj.role==='admin'||obj.role==='presenter'){
       document.getElementById('tab-btn-meetings').style.display='';
       document.getElementById('tab-btn-actions').style.display='';
