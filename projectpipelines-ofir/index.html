@@ -1270,8 +1270,9 @@ async function handleBoardUpload(input){
   try{await storeFileBin(file);hasFile=true;}catch(e){console.warn('Bin store failed:',e);}
   const date=new Date().toISOString().slice(0,10);
   const addedBy=localStorage.getItem('pp_licensee')||'Admin';
-  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile};
   const existing=_reports.findIndex(r=>r.name===file.name);
+  const prevCat=existing>=0?_reports[existing].category:null;
+  const entry={name:file.name,date,addedBy,text,type:file.type,hasFile,category:prevCat||'Board Meetings'};
   if(existing>=0)_reports[existing]=entry;else _reports.push(entry);
   await sb.from('pp_data').upsert({key:'reports',value:_reports});
   if(isAdmin())renderReports();
