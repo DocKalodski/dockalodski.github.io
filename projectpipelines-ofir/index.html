@@ -1295,7 +1295,10 @@ async function storeFileBin(file){
     reader.onload=async()=>{
       try{
         const b64=reader.result.split(',')[1];
-        await sb.from('pp_data').upsert({key:'report_bin_'+encodeURIComponent(file.name),value:b64});
+        const key='report_bin_'+encodeURIComponent(file.name);
+        // Delete any existing rows first (avoids duplicate-row issue if key is not PK)
+        await sb.from('pp_data').delete().eq('key',key);
+        await sb.from('pp_data').insert({key,value:b64});
         resolve();
       }catch(e){reject(e);}
     };
@@ -1304,11 +1307,18 @@ async function storeFileBin(file){
   });
 }
 async function _getReportBlob(name,mime){
-  const {data}=await sb.from('pp_data').select('value').eq('key','report_bin_'+encodeURIComponent(name)).single();
-  if(!data) return null;
-  const bin=atob(data.value);const bytes=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-  return new Blob([bytes],{type:mime||'application/octet-stream'});
+  const key='report_bin_'+encodeURIComponent(name);
+  const {data,error}=await sb.from('pp_data').select('value').eq('key',key).limit(1);
+  if(error){alert('⛔ Could not load file: '+error.message);return null;}
+  if(!data||!data.length||!data[0].value){alert('⛔ File not found in database.\nTry deleting this report and re-uploading it.');return null;}
+  try{
+    const raw=data[0].value;
+    const b64=typeof raw==='string'?raw:JSON.stringify(raw);
+    const bin=atob(b64);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    return new Blob([bytes],{type:mime||'application/octet-stream'});
+  }catch(e){alert('⛔ Error decoding file: '+e.message);return null;}
 }
 async function viewReport(name,mime){
   const blob=await _getReportBlob(name,mime);
