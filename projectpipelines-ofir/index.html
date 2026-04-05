@@ -460,14 +460,9 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 
 <!-- OVERVIEW -->
 <div id="overview" class="tab active">
-  <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
   <div id="priority-boxes"></div>
-  <div class="box" style="border-left-color:#ef4444">
-    <div class="box-h">🚨 NOT MOVING</div>
-    <div id="stagnant-list"><div style="font-size:10px;color:#888">Loading…</div></div>
-  </div>
 </div>
 
 <!-- DETAILS -->
@@ -1119,7 +1114,7 @@ function renderTableBody(){
 }
 
 // ── OVERVIEW ───────────────────────────────────────────
-function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();refreshStagnant();renderWarnings();}
+function refreshAll(){refreshBoardBar();refreshOverviewStats();refreshPriorityBoxes();refreshCards();}
 function renderWarnings(){
   const panel=document.getElementById('warnings-panel');
   const items=[];
