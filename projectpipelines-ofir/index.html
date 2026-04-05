@@ -852,6 +852,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const CACHE_KEY='pp_cache_v3';
 const PP_LICENSES={
   '007':            {name:'Doc Kalodski',role:'admin'},
+  '008':            {name:'Board Presentation',role:'presenter'},
   'OFIR-2026-0101': {name:'OFIR Team',  role:'editor'},
   'BETATESTER-1234':{name:'Beta Tester',role:'viewer'},
   'DENNIS':          {name:'Dennis Vicente',role:'editor'},
@@ -908,12 +909,12 @@ function ppCheck(){
     const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;
     document.getElementById('pp-licensee').appendChild(rb);
     if(obj.role==='admin'||obj.role==='editor') document.getElementById('tab-btn-reports').style.display='';
-    if(obj.role==='admin'){
-      document.getElementById('tab-btn-history').style.display='';
+    if(obj.role==='admin'||obj.role==='presenter'){
       document.getElementById('tab-btn-meetings').style.display='';
       document.getElementById('tab-btn-actions').style.display='';
       document.getElementById('tab-btn-resolutions').style.display='';
     }
+    if(obj.role==='admin') document.getElementById('tab-btn-history').style.display='';
     return true;
   }
   document.getElementById('lock-overlay').classList.remove('hidden');
