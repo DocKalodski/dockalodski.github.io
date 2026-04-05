@@ -633,8 +633,8 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 <div id="reports" class="tab">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Document Repository</div>
-      <div style="font-size:9px;color:#555;margin-top:2px">Upload documents, then use 🤖 Extract Projects to update the pipeline</div>
+      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Report Repository</div>
+      <div style="font-size:9px;color:#555;margin-top:2px">Upload reports, then use 🤖 Extract Projects to update the pipeline</div>
     </div>
     <div id="report-upload-area" style="display:none;align-items:center;gap:6px">
       <select id="report-cat-sel" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
@@ -649,7 +649,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
       </label>
     </div>
   </div>
-  <input id="report-search" type="search" placeholder="🔍 Search documents…" oninput="renderReports()" style="width:100%;box-sizing:border-box;background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:4px;outline:none">
+  <input id="report-search" type="search" placeholder="🔍 Search reports…" oninput="renderReports()" style="width:100%;box-sizing:border-box;background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:4px;outline:none">
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
 
@@ -1564,7 +1564,7 @@ function parseDateFromFilename(name){
 }
 function renderReports(){
   const el=document.getElementById('reports-list');
-  if(!_reports.length){el.innerHTML='<div class="loading-msg">No documents yet. Select a category and click ⬆ Add File.</div>';return;}
+  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Select a category and click ⬆ Add File.</div>';return;}
   const q=(document.getElementById('report-search')?.value||'').trim().toLowerCase();
   const groups={};
   REPORT_CATS.forEach(c=>groups[c]=[]);
@@ -1581,8 +1581,8 @@ function renderReports(){
   _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
   const totalAll=_reports.length;
   const totalFiltered=Object.values(groups).reduce((s,a)=>s+a.length,0);
-  const countLine=q?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} documents match</div>`
-                   :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} document${totalAll===1?'':'s'} in repository</div>`;
+  const countLine=q?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} reports match</div>`
+                   :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} report${totalAll===1?'':'s'} in repository</div>`;
   let html=countLine;
   let totalShown=0;
   REPORT_CATS.forEach(cat=>{
@@ -1609,7 +1609,7 @@ function renderReports(){
       </div>`;
     }).join('');
   });
-  if(!totalShown) html='<div class="loading-msg">No documents match your search.</div>';
+  if(!totalShown) html='<div class="loading-msg">No reports match your search.</div>';
   el.innerHTML=html;
 }
 async function reassignCategory(idx,newCat){
