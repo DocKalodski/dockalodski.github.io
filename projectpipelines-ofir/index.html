@@ -407,17 +407,13 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 <div id="overview" class="tab active">
   <div class="board-bar">
     <div class="board-bar-info">
-      <strong>📋 Board Report</strong>
-      <span id="board-info">No report uploaded yet</span>
+      <strong>📅 Board Meeting Date</strong>
+      <span id="board-info" style="color:#555;font-size:9px">Set date to track stagnant projects</span>
     </div>
-    <div id="board-date-wrap" style="display:none;align-items:center;gap:5px">
-      <span style="font-size:9px;color:#888">Date:</span>
+    <div style="display:flex;align-items:center;gap:5px">
       <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
     </div>
     <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
-    <label class="upload-btn" id="upload-label">⬆ Upload Report
-      <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.tiff,.tif,.heic,.heif,.avif" style="display:none" onchange="handleBoardUpload(this)">
-    </label>
   </div>
   <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
@@ -1111,11 +1107,11 @@ function refreshPriorityBoxes(){
     box('#0F6E56','🏆','MUST WIN',must)+box('#4CAF50','💰','HIGH VALUE',high)+box('#BA7517','⚠️','MONITOR',mon);
 }
 function refreshBoardBar(){
-  document.getElementById('board-info').textContent=_board?`${_board.name} · ${fmtDate(_board.date)}`:'No report uploaded yet';
-  const wrap=document.getElementById('board-date-wrap');
-  if(wrap)wrap.style.display=(_board&&canEdit())?'flex':'none';
   const odi=document.getElementById('board-date-override');
-  if(odi&&_board)odi.value=_board.date||'';
+  if(odi){
+    if(_board&&_board.date) odi.value=_board.date;
+    odi.disabled=!canEdit();
+  }
 }
 function refreshCards(){
   data.forEach((p,i)=>{
