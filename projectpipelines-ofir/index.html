@@ -435,7 +435,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
   <button class="tab-btn active" data-tab="overview" onclick="showTab('overview',this)">📊 Overview</button>
   <button class="tab-btn" data-tab="projects" onclick="showTab('projects',this)">📋 Details</button>
   <button class="tab-btn" data-tab="table" onclick="showTab('table',this)">🗂️ Summary</button>
-  <button class="tab-btn" id="tab-btn-reports" data-tab="reports" onclick="showTab('reports',this)" style="display:none">📁 Reports</button>
+  <button class="tab-btn" id="tab-btn-reports" data-tab="reports" onclick="showTab('reports',this)" style="display:none">📁 Documents</button>
   <button class="tab-btn" id="tab-btn-history" data-tab="history" onclick="showTab('history',this)" style="display:none">📜 History</button>
 </div>
 
@@ -460,6 +460,15 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
 
 <!-- OVERVIEW -->
 <div id="overview" class="tab active">
+  <div class="board-bar">
+    <div class="board-bar-info">
+      <strong>📅 Board Meeting Date</strong>
+      <span id="board-info" style="color:#555;font-size:9px">Set date to track stagnant projects</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
+    </div>
+  </div>
   <div id="warnings-panel" style="display:none;margin-bottom:10px"></div>
   <div class="grid" id="stat-grid"><div class="loading-msg">Loading…</div></div>
   <h3 style="color:#0F6E56;font-size:12px;margin-bottom:0.75rem">TOP PRIORITIES</h3>
@@ -619,22 +628,12 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
   </table>
 </div>
 
-<!-- REPORTS REPOSITORY -->
+<!-- DOCUMENTS -->
 <div id="reports" class="tab">
-  <div class="board-bar" style="margin-bottom:16px">
-    <div class="board-bar-info">
-      <strong>📅 Board Meeting Date</strong>
-      <span id="board-info" style="color:#555;font-size:9px">Set date to track stagnant projects</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:5px">
-      <input type="date" class="meeting-input" id="board-date-override" style="width:130px" onchange="handleBoardDateOverride(this.value)">
-    </div>
-    <button class="upload-btn" id="extract-btn" onclick="openExtractModal()" style="display:none;color:#38bdf8;border-color:#38bdf8">🤖 Extract Projects</button>
-  </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Report Repository</div>
-      <div style="font-size:9px;color:#555;margin-top:2px">Upload reports, then use 🤖 Extract Projects to update the pipeline</div>
+      <div style="font-size:12px;font-weight:700;color:#0F6E56">📁 Document Repository</div>
+      <div style="font-size:9px;color:#555;margin-top:2px">Upload documents · <button id="extract-btn" onclick="openExtractModal()" style="display:none;background:none;border:none;color:#38bdf8;font-size:9px;font-weight:700;cursor:pointer;padding:0">🤖 Extract Projects →</button></div>
     </div>
     <div id="report-upload-area" style="display:none;align-items:center;gap:6px">
       <select id="report-parent-sel" onchange="updateSubCats()" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">
@@ -656,7 +655,7 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
       </label>
     </div>
   </div>
-  <input id="report-search" type="search" placeholder="🔍 Search reports…" oninput="renderReports()" style="width:100%;box-sizing:border-box;background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:4px;outline:none">
+  <input id="report-search" type="search" placeholder="🔍 Search documents…" oninput="renderReports()" style="width:100%;box-sizing:border-box;background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:4px;outline:none">
   <div id="reports-list"><div class="loading-msg">No reports uploaded yet.</div></div>
 </div>
 
@@ -1599,7 +1598,7 @@ function parseDateFromFilename(name){
 }
 function renderReports(){
   const el=document.getElementById('reports-list');
-  if(!_reports.length){el.innerHTML='<div class="loading-msg">No reports yet. Select a category and click ⬆ Add File.</div>';return;}
+  if(!_reports.length){el.innerHTML='<div class="loading-msg">No documents yet. Select a category and click ⬆ Add File.</div>';return;}
   const q=(document.getElementById('report-search')?.value||'').trim().toLowerCase();
   const nameCounts={};
   _reports.forEach(r=>{nameCounts[r.name]=(nameCounts[r.name]||0)+1;});
@@ -1629,8 +1628,8 @@ function renderReports(){
   const totalAll=_reports.length;
   const totalFiltered=Object.values(parentMap).reduce((s,sm)=>s+Object.values(sm).reduce((s2,a)=>s2+a.length,0),0)+legacyGroup.length;
   const countLine=q
-    ?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} reports match</div>`
-    :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} report${totalAll===1?'':'s'} in repository</div>`;
+    ?`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalFiltered} of ${totalAll} documents match</div>`
+    :`<div style="font-size:10px;color:#555;margin-bottom:4px">${totalAll} document${totalAll===1?'':'s'} in repository</div>`;
   let html=countLine;
   let totalShown=0;
   const flatCats=allFlatCats();
@@ -1686,7 +1685,7 @@ function renderReports(){
     html+=`<div style="margin-top:14px;margin-bottom:4px;font-size:12px;font-weight:700;color:#888">📂 Other (${legacyGroup.length})</div>`;
     html+=legacyGroup.map(({r,i})=>cardHtml(r,i,14)).join('');
   }
-  if(!totalShown) html='<div class="loading-msg">No reports match your search.</div>';
+  if(!totalShown) html='<div class="loading-msg">No documents match your search.</div>';
   el.innerHTML=html;
 }
 async function reassignCategory(idx,newCat){
