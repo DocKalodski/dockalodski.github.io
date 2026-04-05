@@ -238,6 +238,21 @@ tr:hover td{background:#1a1f26}
 .report-card-meta{font-size:11px;color:#888;margin-top:3px}
 .del-report-btn{background:none;border:1px solid #554;color:#cc4444;border-radius:4px;cursor:pointer;font-size:13px;padding:4px 8px;white-space:nowrap;flex-shrink:0}
 .del-report-btn:hover{background:rgba(239,68,68,0.15);border-color:#ef4444;color:#ef4444}
+/* === ACTION ITEMS === */
+.action-card{background:#1a1f26;border-radius:6px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;border-left:4px solid #f97316}
+.action-card.done{border-left-color:#4CAF50;opacity:0.75}
+.action-card.overdue{border-left-color:#ef4444}
+.action-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0;margin-top:2px}
+.action-badge.pending{background:#7c2d12;color:#fed7aa}
+.action-badge.done{background:#14532d;color:#86efac}
+.action-badge.overdue{background:#7f1d1d;color:#fca5a5}
+.resolution-card{background:#1a1f26;border-radius:6px;padding:12px 14px;margin-bottom:8px;border-left:4px solid #8b5cf6}
+.res-num{font-size:10px;font-weight:700;color:#8b5cf6;margin-bottom:3px}
+.res-text{font-size:12px;color:#e2e8f0;line-height:1.5}
+.res-meta{font-size:10px;color:#555;margin-top:4px}
+body.light .action-card{background:#fff}
+body.light .resolution-card{background:#fff}
+body.light .res-text{color:#1a2535}
 
 /* === FONT SIZE: NORMAL (default) === */
 body{font-size:14px}
@@ -437,6 +452,8 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
   <button class="tab-btn" data-tab="table" onclick="showTab('table',this)">🗂️ Summary</button>
   <button class="tab-btn" id="tab-btn-reports" data-tab="reports" onclick="showTab('reports',this)" style="display:none">📁 Documents</button>
   <button class="tab-btn" id="tab-btn-history" data-tab="history" onclick="showTab('history',this)" style="display:none">📜 History</button>
+  <button class="tab-btn" id="tab-btn-actions" data-tab="actions" onclick="showTab('actions',this)" style="display:none">✅ Actions</button>
+  <button class="tab-btn" id="tab-btn-resolutions" data-tab="resolutions" onclick="showTab('resolutions',this)" style="display:none">📋 Resolutions</button>
 </div>
 
 <div class="filter-bar" id="filter-bar" style="display:none">
@@ -652,6 +669,27 @@ body.light .role-badge{background:#d0f0e0;color:#0a5a45}
     <button id="hist-load-more" onclick="loadMoreHistory()" style="display:none;background:none;border:1px solid #2a2f36;color:#888;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer">Load more</button>
   </div>
   <div id="history-list"><div style="color:#555;font-size:10px;padding:12px">Loading…</div></div>
+<!-- ACTIONS -->
+<div id="actions" class="tab">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:12px;font-weight:700;color:#0F6E56">✅ Action Items</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <select id="action-f-status" onchange="renderActions()" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer">
+        <option value="">All Status</option><option value="pending">Pending</option><option value="overdue">Overdue</option><option value="done">Done</option>
+      </select>
+      <select id="action-f-owner" onchange="renderActions()" style="background:#1a2535;color:#e2e8f0;border:1px solid #2a2f36;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer">
+        <option value="">All Owners</option>
+      </select>
+    </div>
+  </div>
+  <div id="actions-count" style="font-size:10px;color:#555;margin-bottom:8px"></div>
+  <div id="actions-list"><div class="loading-msg">No action items yet. Extract from board minutes to populate.</div></div>
+</div>
+
+<!-- RESOLUTIONS -->
+<div id="resolutions" class="tab">
+  <div style="font-size:12px;font-weight:700;color:#0F6E56;margin-bottom:10px">📋 Board Resolutions</div>
+  <div id="resolutions-list"><div class="loading-msg">No resolutions yet. Extract from board minutes to populate.</div></div>
 </div>
 
 </div></div>
@@ -838,7 +876,11 @@ function ppCheck(){
     const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;
     document.getElementById('pp-licensee').appendChild(rb);
     if(obj.role==='admin'||obj.role==='editor') document.getElementById('tab-btn-reports').style.display='';
-    if(obj.role==='admin') document.getElementById('tab-btn-history').style.display='';
+    if(obj.role==='admin'){
+      document.getElementById('tab-btn-history').style.display='';
+      document.getElementById('tab-btn-actions').style.display='';
+      document.getElementById('tab-btn-resolutions').style.display='';
+    }
     return true;
   }
   document.getElementById('lock-overlay').classList.remove('hidden');
@@ -864,7 +906,7 @@ async function initData(){
   _meta=(cached&&cached._meta)||{};
   _board=(cached&&cached._board)||null;
   rebuildDOM();refreshAll();buildFilterOwners();
-  if(isAdmin()) loadReports();
+  if(isAdmin()){loadReports();loadActions();loadResolutions();}
   // Fetch from Supabase silently — update when ready
   try{
     const {data:rows,error}=await sb.from('pp_data').select('*');
@@ -885,7 +927,7 @@ async function initData(){
   rebuildDOM();refreshAll();buildFilterOwners();
   if(wasOpen!==null&&wasOpen<data.length) detail(wasOpen);
   await loadHistory();
-  if(isAdmin()) loadReports();
+  if(isAdmin()){loadReports();loadActions();loadResolutions();}
 }
 async function saveProjects(){await sb.from('pp_data').upsert({key:'projects',value:data});}
 async function saveMeta(){await sb.from('pp_data').upsert({key:'meta',value:_meta});}
@@ -1826,6 +1868,85 @@ async function applyDedup(){
 // ── GROQ EXTRACT ───────────────────────────────────────
 function groqKey(){return localStorage.getItem('pp_groq_key')||'';}
 let _extractedProjects=[];
+let _extractedActions=[];
+let _extractedResolutions=[];
+let _actions=[];
+let _resolutions=[];
+const ACTIONS_CACHE_KEY='pp_actions_cache_v1';
+const RESOLUTIONS_CACHE_KEY='pp_res_cache_v1';
+async function loadActions(){
+  const cached=JSON.parse(localStorage.getItem(ACTIONS_CACHE_KEY)||'null');
+  if(cached){_actions=cached;renderActions();}
+  try{const {data:rows}=await sb.from('pp_data').select('*').eq('key','actions');_actions=(rows&&rows[0]?rows[0].value:[])||[];localStorage.setItem(ACTIONS_CACHE_KEY,JSON.stringify(_actions));renderActions();}catch(e){}
+}
+async function loadResolutions(){
+  const cached=JSON.parse(localStorage.getItem(RESOLUTIONS_CACHE_KEY)||'null');
+  if(cached){_resolutions=cached;renderResolutions();}
+  try{const {data:rows}=await sb.from('pp_data').select('*').eq('key','resolutions');_resolutions=(rows&&rows[0]?rows[0].value:[])||[];localStorage.setItem(RESOLUTIONS_CACHE_KEY,JSON.stringify(_resolutions));renderResolutions();}catch(e){}
+}
+function actionStatus(a){
+  if(a.status==='Done') return 'done';
+  if(a.dueDate){const d=new Date(a.dueDate);d.setHours(23,59,59);if(d<new Date()) return 'overdue';}
+  return 'pending';
+}
+async function toggleActionStatus(i){
+  if(!_actions[i]) return;
+  _actions[i].status=_actions[i].status==='Done'?'Pending':'Done';
+  await sb.from('pp_data').upsert({key:'actions',value:_actions});
+  localStorage.setItem(ACTIONS_CACHE_KEY,JSON.stringify(_actions));
+  renderActions();
+}
+async function deleteAction(i){
+  if(!isAdmin()||!confirm('Delete this action item?')) return;
+  _actions.splice(i,1);
+  await sb.from('pp_data').upsert({key:'actions',value:_actions});
+  localStorage.setItem(ACTIONS_CACHE_KEY,JSON.stringify(_actions));
+  renderActions();
+}
+function renderActions(){
+  const el=document.getElementById('actions-list');
+  const cnt=document.getElementById('actions-count');
+  if(!el) return;
+  const fSt=(document.getElementById('action-f-status')?.value||'').toLowerCase();
+  const fOw=(document.getElementById('action-f-owner')?.value||'').toLowerCase();
+  const ownerSel=document.getElementById('action-f-owner');
+  if(ownerSel){
+    const owners=[...new Set(_actions.map(a=>a.owner).filter(Boolean))].sort();
+    const cur=ownerSel.value;
+    ownerSel.innerHTML='<option value="">All Owners</option>'+owners.map(o=>`<option${o===cur?' selected':''}>${o}</option>`).join('');
+  }
+  const pending=_actions.filter(a=>actionStatus(a)==='pending').length;
+  const overdue=_actions.filter(a=>actionStatus(a)==='overdue').length;
+  const done=_actions.filter(a=>a.status==='Done').length;
+  if(cnt) cnt.innerHTML=`<span style="color:#fed7aa">${pending} pending</span> · <span style="color:#fca5a5">${overdue} overdue</span> · <span style="color:#86efac">${done} done</span>`;
+  let items=_actions.map((a,i)=>({a,i,st:actionStatus(a)}));
+  if(fSt) items=items.filter(({st})=>st===fSt);
+  if(fOw) items=items.filter(({a})=>(a.owner||'').toLowerCase()===fOw);
+  if(!items.length){el.innerHTML='<div class="loading-msg">No action items match. Extract from board minutes to populate.</div>';return;}
+  el.innerHTML=items.map(({a,i,st})=>`<div class="action-card ${st}">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">${a.text}</div>
+      <div style="font-size:10px;color:#888">${a.owner?`👤 ${a.owner} · `:''}${a.dueDate?`Due ${fmtDate(a.dueDate)}`:'No due date'}${a.projRef?` · 📋 ${a.projRef}`:''}</div>
+      ${a.source?`<div style="font-size:9px;color:#555;margin-top:2px">📄 ${a.source}</div>`:''}
+    </div>
+    <span class="action-badge ${st}">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+    <button onclick="toggleActionStatus(${i})" style="background:none;border:1px solid #2a2f36;color:#888;border-radius:4px;cursor:pointer;font-size:10px;padding:4px 8px;white-space:nowrap;flex-shrink:0">${a.status==='Done'?'↩ Reopen':'✓ Done'}</button>
+    ${isAdmin()?`<button onclick="deleteAction(${i})" class="del-report-btn" title="Delete">🗑</button>`:''}
+  </div>`).join('');
+}
+function renderResolutions(){
+  const el=document.getElementById('resolutions-list');
+  if(!el) return;
+  if(!_resolutions.length){el.innerHTML='<div class="loading-msg">No resolutions yet. Extract from board minutes to populate.</div>';return;}
+  el.innerHTML=[..._resolutions].reverse().map((r,ri)=>{
+    const i=_resolutions.length-1-ri;
+    return`<div class="resolution-card">
+      <div class="res-num">${r.number||`Resolution #${i+1}`}</div>
+      <div class="res-text">${r.text}</div>
+      <div class="res-meta">${r.date?fmtDate(r.date):'Date unknown'}${r.source?` · 📄 ${r.source}`:''}</div>
+    </div>`;
+  }).join('');
+}
 
 async function readFileText(file){
   const ext=file.name.split('.').pop().toLowerCase();
@@ -1907,7 +2028,7 @@ function closeExtractModal(){
   document.getElementById('extract-overlay').classList.add('hidden');
 }
 function resetExtract(){
-  _extractedProjects=[];
+  _extractedProjects=[];_extractedActions=[];_extractedResolutions=[];
   document.getElementById('extract-results').style.display='none';
   document.getElementById('extract-err').innerHTML='';
   document.getElementById('extract-groq-key-section').style.display='none';
@@ -1930,21 +2051,30 @@ async function runExtractFromReport(i){
   statusEl.style.display='block';
   statusEl.textContent='⚡ Sending "'+report.name+'" to Groq AI…';
   const key=groqKey();
-  const prompt=`You are a project data extractor for OFIR Consulting Corporation's project pipeline tracker.
+  const prompt=`You are a board meeting data extractor for OFIR Consulting Corporation.
 
-Extract ALL projects mentioned in this board meeting report.
-For each project return a JSON object with these exact keys:
-- "n": project name (string)
-- "s": status — one of: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
-- "r": revenue/contract value as string (e.g. "₱60k","$4.5M","TBD")
-- "o": owner/responsible person (string, "" if unknown)
-- "p": priority — one of: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆" (infer from urgency/value)
-- "notes": 2-3 sentence summary of key updates
-- "done": array of completed steps (strings)
-- "current": array of ongoing steps (strings)
-- "next": array of next steps (strings)
+From this board meeting report/minutes, extract three things:
 
-Return ONLY a valid JSON array. No explanation, no markdown, no code blocks.
+1. PROJECTS — all projects mentioned with status updates
+2. ACTIONS — specific tasks assigned to people (who must do what, by when)
+3. RESOLUTIONS — formal resolutions or key decisions made by the board
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "projects": [
+    {"n":"project name","s":"status","r":"revenue","o":"owner","p":"★★★★★","notes":"2-3 sentence summary","done":["completed step"],"current":["ongoing step"],"next":["next step"]}
+  ],
+  "actions": [
+    {"text":"action to be done","owner":"person responsible","dueDate":"YYYY-MM-DD or empty string","projRef":"related project name or empty string"}
+  ],
+  "resolutions": [
+    {"number":"resolution number or empty string","text":"full resolution text","date":"YYYY-MM-DD or empty string"}
+  ]
+}
+
+Status options: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
+Priority options: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆"
+Return ONLY valid JSON. No explanation, no markdown, no code blocks.
 
 Report:
 ${report.text.slice(0,12000)}`;
@@ -1959,10 +2089,13 @@ ${report.text.slice(0,12000)}`;
     const raw=result.choices[0].message.content.trim();
     const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
     const parsed=JSON.parse(clean);
-    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in this document.');
-    _extractedProjects=parsed;
-    statusEl.textContent=`✓ Found ${parsed.length} project(s) from "${report.name}"`;
-    showExtractResults(parsed);
+    const projects=Array.isArray(parsed)?parsed:(parsed.projects||[]);
+    _extractedActions=Array.isArray(parsed)?[]:(parsed.actions||[]);
+    _extractedResolutions=Array.isArray(parsed)?[]:(parsed.resolutions||[]);
+    if(!projects.length&&!_extractedActions.length&&!_extractedResolutions.length) throw new Error('No data found in this document.');
+    _extractedProjects=projects;
+    statusEl.textContent=`✓ ${projects.length} project(s) · ${_extractedActions.length} action(s) · ${_extractedResolutions.length} resolution(s) from "${report.name}"`;
+    showExtractResults(projects);
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
@@ -1978,21 +2111,30 @@ async function runExtractText(){
   statusEl.style.display='block';
   statusEl.textContent='⚡ Sending to Groq AI…';
   const key=groqKey();
-  const prompt=`You are a project data extractor for OFIR Consulting Corporation's project pipeline tracker.
+  const prompt=`You are a board meeting data extractor for OFIR Consulting Corporation.
 
-Extract ALL projects mentioned in this board meeting report.
-For each project return a JSON object with these exact keys:
-- "n": project name (string)
-- "s": status — one of: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
-- "r": revenue/contract value as string (e.g. "₱60k","$4.5M","TBD")
-- "o": owner/responsible person (string, "" if unknown)
-- "p": priority — one of: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆" (infer from urgency/value)
-- "notes": 2-3 sentence summary of key updates
-- "done": array of completed steps (strings)
-- "current": array of ongoing steps (strings)
-- "next": array of next steps (strings)
+From this board meeting report/minutes, extract three things:
 
-Return ONLY a valid JSON array. No explanation, no markdown, no code blocks.
+1. PROJECTS — all projects mentioned with status updates
+2. ACTIONS — specific tasks assigned to people (who must do what, by when)
+3. RESOLUTIONS — formal resolutions or key decisions made by the board
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "projects": [
+    {"n":"project name","s":"status","r":"revenue","o":"owner","p":"★★★★★","notes":"2-3 sentence summary","done":["completed step"],"current":["ongoing step"],"next":["next step"]}
+  ],
+  "actions": [
+    {"text":"action to be done","owner":"person responsible","dueDate":"YYYY-MM-DD or empty string","projRef":"related project name or empty string"}
+  ],
+  "resolutions": [
+    {"number":"resolution number or empty string","text":"full resolution text","date":"YYYY-MM-DD or empty string"}
+  ]
+}
+
+Status options: "In Progress","Bid Submitted","Proposal Pending","Planning","Waiting Feedback","On Hold","Completed"
+Priority options: "★★★★★","★★★★☆","★★★☆☆","★★☆☆☆","★☆☆☆☆"
+Return ONLY valid JSON. No explanation, no markdown, no code blocks.
 
 Report:
 ${text.slice(0,12000)}`;
@@ -2007,10 +2149,13 @@ ${text.slice(0,12000)}`;
     const raw=result.choices[0].message.content.trim();
     const clean=raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
     const parsed=JSON.parse(clean);
-    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No projects found in this text.');
-    _extractedProjects=parsed;
-    statusEl.textContent=`✓ Found ${parsed.length} project(s) — review below`;
-    showExtractResults(parsed);
+    const projects2=Array.isArray(parsed)?parsed:(parsed.projects||[]);
+    _extractedActions=Array.isArray(parsed)?[]:(parsed.actions||[]);
+    _extractedResolutions=Array.isArray(parsed)?[]:(parsed.resolutions||[]);
+    if(!projects2.length&&!_extractedActions.length&&!_extractedResolutions.length) throw new Error('No data found in this text.');
+    _extractedProjects=projects2;
+    statusEl.textContent=`✓ ${projects2.length} project(s) · ${_extractedActions.length} action(s) · ${_extractedResolutions.length} resolution(s) found`;
+    showExtractResults(projects2);
   }catch(e){
     errEl.innerHTML=`<div class="extract-err">⛔ ${e.message}</div>`;
     statusEl.style.display='none';
@@ -2019,19 +2164,36 @@ ${text.slice(0,12000)}`;
 }
 function showExtractResults(parsed){
   const list=document.getElementById('extract-items-list');
-  list.innerHTML=parsed.map((p,i)=>{
-    const existing=data.find(d=>d.n.toLowerCase()===p.n.toLowerCase());
-    const badge=existing
-      ?`<span style="font-size:8px;background:#0c2a3a;color:#38bdf8;border-radius:3px;padding:1px 5px;margin-left:5px">UPDATE existing</span>`
-      :`<span style="font-size:8px;background:#0a2a0a;color:#4CAF50;border-radius:3px;padding:1px 5px;margin-left:5px">NEW project</span>`;
-    return`<div class="extract-result-item ${existing?'extract-match':'extract-new'}">
-      <div class="extract-result-name">${p.n}${badge}</div>
-      <div class="extract-result-meta">
-        ${p.s} · ${p.r||'TBD'} · ${p.o||'—'} · ${p.p}
-      </div>
-      ${p.notes?`<div style="color:#888;font-size:9px;margin-top:4px">${p.notes}</div>`:''}
-    </div>`;
-  }).join('');
+  let html='';
+  if(parsed.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:#0F6E56;margin-bottom:6px">📋 Projects (${parsed.length})</div>`;
+    html+=parsed.map(p=>{
+      const existing=data.find(d=>d.n.toLowerCase()===p.n.toLowerCase());
+      const badge=existing
+        ?`<span style="font-size:8px;background:#0c2a3a;color:#38bdf8;border-radius:3px;padding:1px 5px;margin-left:5px">UPDATE</span>`
+        :`<span style="font-size:8px;background:#0a2a0a;color:#4CAF50;border-radius:3px;padding:1px 5px;margin-left:5px">NEW</span>`;
+      return`<div class="extract-result-item ${existing?'extract-match':'extract-new'}">
+        <div class="extract-result-name">${p.n}${badge}</div>
+        <div class="extract-result-meta">${p.s} · ${p.r||'TBD'} · ${p.o||'—'} · ${p.p}</div>
+        ${p.notes?`<div style="color:#888;font-size:9px;margin-top:4px">${p.notes}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+  if(_extractedActions.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:#f97316;margin:10px 0 6px">✅ Actions (${_extractedActions.length})</div>`;
+    html+=_extractedActions.map(a=>`<div style="background:#1a1f26;border-left:3px solid #f97316;border-radius:5px;padding:7px 10px;margin-bottom:5px;font-size:11px">
+      <span style="color:#fff;font-weight:600">${a.text}</span>
+      ${a.owner?`<span style="color:#888;margin-left:6px">· 👤 ${a.owner}</span>`:''}
+      ${a.dueDate?`<span style="color:#888;margin-left:6px">· ${a.dueDate}</span>`:''}
+    </div>`).join('');
+  }
+  if(_extractedResolutions.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:#8b5cf6;margin:10px 0 6px">📋 Resolutions (${_extractedResolutions.length})</div>`;
+    html+=_extractedResolutions.map(r=>`<div style="background:#1a1f26;border-left:3px solid #8b5cf6;border-radius:5px;padding:7px 10px;margin-bottom:5px;font-size:11px;color:#e2e8f0">
+      ${r.number?`<span style="color:#8b5cf6;font-weight:700;font-size:9px">${r.number} · </span>`:''}${r.text}
+    </div>`).join('');
+  }
+  list.innerHTML=html||'<div style="color:#555;font-size:11px">Nothing extracted.</div>';
   document.getElementById('extract-results').style.display='flex';
 }
 function fuzzyMatch(existing,extracted){
@@ -2039,7 +2201,7 @@ function fuzzyMatch(existing,extracted){
   return a===b||a.includes(b)||b.includes(a);
 }
 async function applyExtracted(){
-  if(!_extractedProjects.length) return;
+  if(!_extractedProjects.length&&!_extractedActions.length&&!_extractedResolutions.length) return;
   for(const p of _extractedProjects){
     const existingIdx=data.findIndex(d=>fuzzyMatch(d.n,p.n));
     if(existingIdx>=0){
@@ -2070,6 +2232,27 @@ async function applyExtracted(){
   }
   await saveProjects();
   await saveMeta();
+  // Apply actions
+  if(_extractedActions.length){
+    const src=_currentExtractIdx!==null&&_reports[_currentExtractIdx]?_reports[_currentExtractIdx].name:'';
+    const today=new Date().toISOString().slice(0,10);
+    _extractedActions.forEach(a=>{
+      _actions.push({id:'a'+Date.now()+Math.random().toString(36).slice(2,5),text:a.text,owner:a.owner||'',dueDate:a.dueDate||'',projRef:a.projRef||'',status:'Pending',source:src,createdAt:today});
+    });
+    await sb.from('pp_data').upsert({key:'actions',value:_actions});
+    localStorage.setItem(ACTIONS_CACHE_KEY,JSON.stringify(_actions));
+    renderActions();
+  }
+  // Apply resolutions
+  if(_extractedResolutions.length){
+    const src=_currentExtractIdx!==null&&_reports[_currentExtractIdx]?_reports[_currentExtractIdx].name:'';
+    _extractedResolutions.forEach(r=>{
+      _resolutions.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),number:r.number||'',text:r.text,date:r.date||'',status:'Active',source:src});
+    });
+    await sb.from('pp_data').upsert({key:'resolutions',value:_resolutions});
+    localStorage.setItem(RESOLUTIONS_CACHE_KEY,JSON.stringify(_resolutions));
+    renderResolutions();
+  }
   if(_currentExtractIdx!==null&&_reports[_currentExtractIdx]){
     _reports[_currentExtractIdx].extractedAt=new Date().toISOString().slice(0,10);
     await sb.from('pp_data').upsert({key:'reports',value:_reports});
@@ -2077,7 +2260,8 @@ async function applyExtracted(){
   }
   rebuildDOM();refreshAll();buildFilterOwners();
   closeExtractModal();
-  alert(`✅ ${_extractedProjects.length} project(s) applied to pipeline.`);
+  const msg=[_extractedProjects.length&&`${_extractedProjects.length} project(s)`,_extractedActions.length&&`${_extractedActions.length} action(s)`,_extractedResolutions.length&&`${_extractedResolutions.length} resolution(s)`].filter(Boolean).join(', ');
+  alert(`✅ Applied: ${msg}`);
 }
 
 // ── INIT ───────────────────────────────────────────────
