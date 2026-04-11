@@ -1863,27 +1863,27 @@ function renderChart() {
   const datasets = [];
 
   if (chartType === 'bar') {
-    // Bar chart: AM/PM side-by-side
-    if (showSys) {
-      datasets.push({
-        label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
-        backgroundColor:'#ef4444', borderColor:'#dc2626', borderWidth:1,
-      });
-      datasets.push({
-        label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
-        backgroundColor:'#f97316', borderColor:'#ea580c', borderWidth:1,
-      });
-    }
-    if (showDia) {
-      datasets.push({
-        label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
-        backgroundColor:'#3b82f6', borderColor:'#1d4ed8', borderWidth:1,
-      });
-      datasets.push({
-        label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
-        backgroundColor:'#0ea5e9', borderColor:'#0284c7', borderWidth:1,
-      });
-    }
+    // Stacked bar: AM and PM, each showing Diastolic + Systolic
+    datasets.push({
+      label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
+      backgroundColor:'#3b82f6', borderColor:'#1d4ed8', borderWidth:1,
+      stack: 'AM',
+    });
+    datasets.push({
+      label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+      backgroundColor:'#ef4444', borderColor:'#dc2626', borderWidth:1,
+      stack: 'AM',
+    });
+    datasets.push({
+      label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
+      backgroundColor:'#0ea5e9', borderColor:'#0284c7', borderWidth:1,
+      stack: 'PM',
+    });
+    datasets.push({
+      label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+      backgroundColor:'#f97316', borderColor:'#ea580c', borderWidth:1,
+      stack: 'PM',
+    });
   } else {
     // Line chart: all 6 lines
     if (showSys) {
@@ -1955,8 +1955,8 @@ function renderChart() {
         }
       },
       scales:{
-        x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'} },
-        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'} }
+        x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'}, stacked: chartType==='bar' },
+        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'}, stacked: chartType==='bar' }
       }
     },
     plugins:[{
