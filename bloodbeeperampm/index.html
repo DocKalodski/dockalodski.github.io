@@ -1998,14 +1998,17 @@ function renderChart() {
             const hr = isAM ? pts[idx].am.hr : pts[idx].pm.hr;
 
             if (sys !== null && dia !== null) {
-              let labelY = bar.y - 8;
-              ctx.fillText(`S:${sys}`, bar.x, labelY);
-              labelY += 13;
-              ctx.fillText(`D:${dia}`, bar.x, labelY);
-              if (hr !== null) {
-                labelY += 13;
-                ctx.fillText(`HR:${hr}`, bar.x, labelY);
-              }
+              let labelY = bar.y - 20;
+              const txt = [`S:${sys}`, `D:${dia}`];
+              if (hr !== null) txt.push(`HR:${hr}`);
+
+              txt.forEach((t, i) => {
+                const y = labelY + (i * 15);
+                ctx.fillStyle = 'white';
+                ctx.fillRect(bar.x - 20, y - 9, 40, 11);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillText(t, bar.x, y);
+              });
             }
           });
         });
