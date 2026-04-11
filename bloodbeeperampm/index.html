@@ -303,9 +303,9 @@
     .ri-actions { display: flex; gap: 2px; margin-top: 3px; justify-content: flex-end; }
 
     /* ── Chart Controls ───────────────────────── */
-    .chart-toggle { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
-    .chart-toggle button { padding: 7px 18px; font-size: 0.8rem; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--muted); transition: all 0.15s; }
-    .chart-toggle button.active { background: var(--accent); color: white; }
+    .chart-toggle, .chart-type-toggle { display: flex; gap: 0; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
+    .chart-toggle button, .chart-type-toggle button { padding: 7px 18px; font-size: 0.8rem; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .chart-toggle button.active, .chart-type-toggle button.active { background: var(--accent); color: white; }
     .chart-canvas-wrap { position: relative; height: 260px; }
     .legend-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.95rem; margin-top: 12px; }
     .legend-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; -webkit-user-select: none; user-select: none; }
@@ -1756,11 +1756,22 @@ function renderCalendarOnly() {
   </div>`;
 }
 let chartView = '7d';
+let chartType = 'line';
 
 function setChartView(v, btn) {
   chartView = v;
-  document.querySelectorAll('.chart-toggle button').forEach(b=>b.classList.remove('active'));
+  chartType = 'line';
+  document.querySelectorAll('.chart-toggle button, .chart-type-toggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  document.querySelector('.chart-type-toggle [data-type="line"]')?.classList.add('active');
+  renderChart();
+}
+
+function setChartType(type, btn) {
+  chartType = type;
+  document.querySelectorAll('.chart-type-toggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if (type === 'bar') chartView = '7d';
   renderChart();
 }
 
@@ -1838,7 +1849,8 @@ function renderChart() {
     return;
   }
 
-  const points = chartView === '7d' ? groupByDay(readings) : groupByWeek(readings);
+  // Bar chart only supports 7-day view
+  const points = groupByDay(readings);
 
   const labels = points.map(p => p.label);
   const showSys = document.getElementById('toggle-sys').checked;
@@ -1849,58 +1861,84 @@ function renderChart() {
     ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
 
   const datasets = [];
-  if (showSys) {
-    datasets.push({
-      label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
-      borderColor:'#ef4444', pointBackgroundColor:'#ef4444',
-      pointBorderColor:'#fff', pointBorderWidth:1.5,
-      pointRadius: points.map(p=>p.am.count?5:0),
-      tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
-    });
-    datasets.push({
-      label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
-      borderColor:'#f97316', pointBackgroundColor:'#f97316',
-      pointBorderColor:'#fff', pointBorderWidth:1.5,
-      pointRadius: points.map(p=>p.pm.count?5:0),
-      tension:0.35, borderWidth:2.5, borderDash:[6,3], fill:false, spanGaps:true,
-    });
-  }
-  if (showDia) {
-    datasets.push({
-      label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
-      borderColor:'#3b82f6', pointBackgroundColor:'#3b82f6',
-      pointBorderColor:'#fff', pointBorderWidth:1.5,
-      pointRadius: points.map(p=>p.am.count?4:0),
-      tension:0.35, borderWidth:2, fill:false, spanGaps:true,
-    });
-    datasets.push({
-      label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
-      borderColor:'#0ea5e9', pointBackgroundColor:'#0ea5e9',
-      pointBorderColor:'#fff', pointBorderWidth:1.5,
-      pointRadius: points.map(p=>p.pm.count?4:0),
-      tension:0.35, borderWidth:2, borderDash:[6,3], fill:false, spanGaps:true,
-    });
-  }
-  if (showHr) {
-    datasets.push({
-      label:'🌅 AM Heart Rate', data:points.map(p=>p.am.hr),
-      borderColor:'#22c55e', pointBackgroundColor:'#22c55e',
-      pointRadius: points.map(p=>p.am.hr?3:0),
-      tension:0.35, borderWidth:1.5, fill:false, spanGaps:true,
-    });
-    datasets.push({
-      label:'🌙 PM Heart Rate', data:points.map(p=>p.pm.hr),
-      borderColor:'#06b6d4', pointBackgroundColor:'#06b6d4',
-      pointRadius: points.map(p=>p.pm.hr?3:0),
-      tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
-    });
+
+  if (chartType === 'bar') {
+    // Bar chart: AM/PM side-by-side
+    if (showSys) {
+      datasets.push({
+        label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+        backgroundColor:'#ef4444', borderColor:'#dc2626', borderWidth:1,
+      });
+      datasets.push({
+        label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+        backgroundColor:'#f97316', borderColor:'#ea580c', borderWidth:1,
+      });
+    }
+    if (showDia) {
+      datasets.push({
+        label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
+        backgroundColor:'#3b82f6', borderColor:'#1d4ed8', borderWidth:1,
+      });
+      datasets.push({
+        label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
+        backgroundColor:'#0ea5e9', borderColor:'#0284c7', borderWidth:1,
+      });
+    }
+  } else {
+    // Line chart: all 6 lines
+    if (showSys) {
+      datasets.push({
+        label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+        borderColor:'#ef4444', pointBackgroundColor:'#ef4444',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius: points.map(p=>p.am.count?5:0),
+        tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
+      });
+      datasets.push({
+        label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+        borderColor:'#f97316', pointBackgroundColor:'#f97316',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius: points.map(p=>p.pm.count?5:0),
+        tension:0.35, borderWidth:2.5, borderDash:[6,3], fill:false, spanGaps:true,
+      });
+    }
+    if (showDia) {
+      datasets.push({
+        label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
+        borderColor:'#3b82f6', pointBackgroundColor:'#3b82f6',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius: points.map(p=>p.am.count?4:0),
+        tension:0.35, borderWidth:2, fill:false, spanGaps:true,
+      });
+      datasets.push({
+        label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
+        borderColor:'#0ea5e9', pointBackgroundColor:'#0ea5e9',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius: points.map(p=>p.pm.count?4:0),
+        tension:0.35, borderWidth:2, borderDash:[6,3], fill:false, spanGaps:true,
+      });
+    }
+    if (showHr) {
+      datasets.push({
+        label:'🌅 AM Heart Rate', data:points.map(p=>p.am.hr),
+        borderColor:'#22c55e', pointBackgroundColor:'#22c55e',
+        pointRadius: points.map(p=>p.am.hr?3:0),
+        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true,
+      });
+      datasets.push({
+        label:'🌙 PM Heart Rate', data:points.map(p=>p.pm.hr),
+        borderColor:'#06b6d4', pointBackgroundColor:'#06b6d4',
+        pointRadius: points.map(p=>p.pm.hr?3:0),
+        tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
+      });
+    }
   }
 
   const ctx = document.getElementById('bp-chart').getContext('2d');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
   chartInstance = new Chart(ctx, {
-    type:'line', data:{labels, datasets},
+    type: chartType, data:{labels, datasets},
     options:{
       responsive:true, maintainAspectRatio:false, animation:{duration:250},
       plugins:{
@@ -2085,9 +2123,15 @@ function renderAnalysis() {
   el.innerHTML = `
     <div class="card">
       <div class="card-title">📈 BP Trend</div>
-      <div class="chart-toggle">
-        <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
-        <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
+      <div style="display:flex;gap:12px;margin-bottom:14px;">
+        <div class="chart-type-toggle">
+          <button type="button" class="active" data-type="line" onclick="setChartType('line',this)">📈 Line</button>
+          <button type="button" data-type="bar" onclick="setChartType('bar',this)">📊 Bar</button>
+        </div>
+        <div class="chart-toggle">
+          <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
+          <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
+        </div>
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div class="legend-row" style="margin-top:12px;">
