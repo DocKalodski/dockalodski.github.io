@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RaycoRadar by Doc Kalodski</title>
+  <title>BloodBeeper by Doc Kalodski</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
@@ -455,14 +455,14 @@
 <div id="lock-overlay">
   <div class="lock-box">
     <div class="lock-icon">🔐</div>
-    <h2>RaycoRadar</h2>
+    <h2>BloodBeeper</h2>
     <div class="lock-sub">Enter your license key to activate.<br>You only need to do this once on this device.</div>
     <input type="text" id="lock-input" placeholder="Enter your license key" maxlength="30"
       oninput="this.value=this.value.toUpperCase()"
       onkeydown="if(event.key==='Enter')activateLicense()">
     <div class="lock-err" id="lock-err"></div>
     <button class="lock-btn" onclick="activateLicense()">Activate</button>
-    <div class="lock-licensee">Licensed copy · RaycoRadar by Doc Kalodski</div>
+    <div class="lock-licensee">Licensed copy · BloodBeeper by Doc Kalodski</div>
   </div>
 </div>
 
@@ -471,7 +471,7 @@
   <div class="header-inner">
     <div class="radar-icon">📡</div>
     <div class="header-text">
-      <h1>Rayco<span>Radar</span></h1>
+      <h1>Blood<span>Radar</span></h1>
       <p>by Doc Kalodski &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span> &nbsp;<span id="rr-sync-badge" style="display:none;font-size:0.6rem;background:rgba(14,165,233,0.2);border-radius:4px;padding:1px 5px;">☁️ synced</span></p>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
@@ -516,7 +516,7 @@
     <div id="cal-grid-container"></div>
   </div>
 
-  <div class="brand-footer">RaycoRadar · by Doc Kalodski · AHA 2017 Guidelines</div>
+  <div class="brand-footer">BloodBeeper · by Doc Kalodski · AHA 2017 Guidelines</div>
 </div>
 
 <!-- ════════════════════════════════════════════════
@@ -524,7 +524,7 @@
 ════════════════════════════════════════════════ -->
 <div id="tab-analysis" class="tab">
   <div id="analysis-content"></div>
-  <div class="brand-footer">RaycoRadar · by Doc Kalodski · AHA 2017 Guidelines</div>
+  <div class="brand-footer">BloodBeeper · by Doc Kalodski · AHA 2017 Guidelines</div>
 </div>
 
 <!-- ════════════════════════════════════════════════
@@ -534,7 +534,7 @@
 
   <!-- Getting Started notice -->
   <div class="card" style="background:#eff6ff;border-color:#bfdbfe;">
-    <div class="card-title" style="color:#1d4ed8;">👋 Welcome to RaycoRadar</div>
+    <div class="card-title" style="color:#1d4ed8;">👋 Welcome to BloodBeeper</div>
     <p style="font-size:0.8rem;color:#1e40af;line-height:1.6;margin-bottom:8px;">
       <strong>Your app is pre-loaded with 3 months of sample data</strong> so you can explore all the features right away — the chart, trends, and analysis report.
     </p>
@@ -549,7 +549,7 @@
   <div class="card">
     <div class="card-title">My Reading Schedule</div>
     <p style="font-size:0.76rem;color:var(--muted);margin-bottom:12px;">
-      Set the times you normally take your BP each day. RaycoRadar will show a reminder banner when it's time — keep the app open on your phone or browser.
+      Set the times you normally take your BP each day. BloodBeeper will show a reminder banner when it's time — keep the app open on your phone or browser.
     </p>
     <div class="setting-row" style="padding-bottom:14px;">
       <div>
@@ -624,7 +624,7 @@
       <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">RaycoRadar v1.2 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
+      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">BloodBeeper v1.2 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
     </div>
   </div>
 
@@ -634,7 +634,7 @@
     <textarea id="s-meds" rows="3" oninput="saveMedications()" placeholder="e.g. Amlodipine 5mg — once daily&#10;Losartan 50mg — once daily" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
   </div>
 
-  <div class="brand-footer">RaycoRadar v1.2 · by Doc Kalodski</div>
+  <div class="brand-footer">BloodBeeper v1.2 · by Doc Kalodski</div>
 </div>
 
 <!-- hidden print container -->
@@ -751,43 +751,43 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-function rrUserKey(){const k=localStorage.getItem('rr_license_key')||'';return k==='007'?'RR-2026-0404-DOC-0101':k;}
-function rrIsDev(){return localStorage.getItem('rr_license_key')==='007';}
-function showRRSyncBadge(){const el=document.getElementById('rr-sync-badge');if(el)el.style.display='inline';}
+function bbUserKey(){const k=localStorage.getItem('bb_license_key')||'';return k==='007'?'BB-2026-0404-DOC-0101':k;}
+function bbIsDev(){return localStorage.getItem('bb_license_key')==='007';}
+function showRRSyncBadge(){const el=document.getElementById('bb-sync-badge');if(el)el.style.display='inline';}
 
-async function rrPushToCloud(dataKey,value){
-  const uk=rrUserKey(); if(!uk) return;
-  try{ await sb.from('rr_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
+async function bbPushToCloud(dataKey,value){
+  const uk=bbUserKey(); if(!uk) return;
+  try{ await sb.from('bb_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
   catch(e){ console.warn('RR push error:',e); }
 }
 
-async function rrSyncFromCloud(){
-  const uk=rrUserKey(); if(!uk) return;
+async function bbSyncFromCloud(){
+  const uk=bbUserKey(); if(!uk) return;
   try{
-    const {data,error}=await sb.from('rr_data').select('*').eq('user_key',uk);
+    const {data,error}=await sb.from('bb_data').select('*').eq('user_key',uk);
     if(error||!data||!data.length) return;
     const cloudR=data.find(r=>r.data_key==='readings')?.value||[];
     const cloudS=data.find(r=>r.data_key==='settings')?.value||null;
-    const local=JSON.parse(localStorage.getItem('rr_readings')||'[]');
+    const local=JSON.parse(localStorage.getItem('bb_readings')||'[]');
     const localIds=new Set(local.map(r=>r.id));
     const incoming=cloudR.filter(r=>!localIds.has(r.id));
     if(incoming.length){
       const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
       _readingsCache=merged;
-      localStorage.setItem('rr_readings',JSON.stringify(merged));
+      localStorage.setItem('bb_readings',JSON.stringify(merged));
     }
-    if(cloudS&&!localStorage.getItem('rr_settings2')){
+    if(cloudS&&!localStorage.getItem('bb_settings2')){
       _settingsCache=cloudS;
-      localStorage.setItem('rr_settings2',JSON.stringify(cloudS));
+      localStorage.setItem('bb_settings2',JSON.stringify(cloudS));
     }
     showRRSyncBadge(); renderAll();
   }catch(e){ console.warn('RR sync error:',e); }
 }
 
-function rrSubscribeRealtime(){
-  const uk=rrUserKey(); if(!uk) return;
-  sb.channel('rr-'+uk)
-    .on('postgres_changes',{event:'*',schema:'public',table:'rr_data',filter:'user_key=eq.'+uk},payload=>{
+function bbSubscribeRealtime(){
+  const uk=bbUserKey(); if(!uk) return;
+  sb.channel('bb-'+uk)
+    .on('postgres_changes',{event:'*',schema:'public',table:'bb_data',filter:'user_key=eq.'+uk},payload=>{
       const d=payload.new; if(!d) return;
       if(d.data_key==='readings'){
         const cloud=d.value||[];
@@ -797,13 +797,13 @@ function rrSubscribeRealtime(){
         if(incoming.length){
           const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
           _readingsCache=merged;
-          localStorage.setItem('rr_readings',JSON.stringify(merged));
+          localStorage.setItem('bb_readings',JSON.stringify(merged));
           renderAll();
         }
       }
       if(d.data_key==='settings'&&d.value){
         _settingsCache=d.value;
-        localStorage.setItem('rr_settings2',JSON.stringify(d.value));
+        localStorage.setItem('bb_settings2',JSON.stringify(d.value));
       }
       showRRSyncBadge();
     })
@@ -818,16 +818,16 @@ function rrSubscribeRealtime(){
 const LICENSES = {
   '007':                    'Doc Kalodski Unlimited',  // no expiry — unlimited access
   'ACCI':                   'ACCI Unlimited',          // no expiry — unlimited access
-  'RR-2026-0404-DOC-0101':  'Doc Kalodski',
+  'BB-2026-0404-DOC-0101':  'Doc Kalodski',
   'SHEILA':                 'Sheila',
-  // Format: RR-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
+  // Format: BB-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
   // Beta testers — expires Apr 30, 2026
-  'RR-BETA-APR2026':        'Beta Tester',
-  // 'RR-2026-MMDD-NAME-0102': 'Next Client',
+  'BB-BETA-APR2026':        'Beta Tester',
+  // 'BB-2026-MMDD-NAME-0102': 'Next Client',
 };
 
 // Beta keys expire Apr 30 2026. Add more expiry rules here as needed.
-const BETA_EXPIRY = { 'RR-BETA-APR2026': new Date('2026-05-01') };
+const BETA_EXPIRY = { 'BB-BETA-APR2026': new Date('2026-05-01') };
 function _matchKey(input) {
   const clean = input.trim().toUpperCase().replace(/-/g, '');
   for (const [k, name] of Object.entries(LICENSES)) {
@@ -843,39 +843,39 @@ function _matchKey(input) {
 function activateLicense() {
   const raw  = document.getElementById('lock-input').value;
   const inEl = document.getElementById('lock-input');
-  const errEl = document.getElementById('lock-err');
+  const ebbEl = document.getElementById('lock-err');
   const name  = _matchKey(raw);
   if (name === '__EXPIRED__') {
     inEl.classList.add('error');
-    errEl.innerHTML = '⏳ Beta period ended Apr 30, 2026.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
+    ebbEl.innerHTML = '⏳ Beta period ended Apr 30, 2026.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
     return;
   }
   if (!name) {
     inEl.classList.add('error');
-    errEl.innerHTML = '⛔ Illegal Access — Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
+    ebbEl.innerHTML = '⛔ Illegal Access — Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
     return;
   }
-  localStorage.setItem('rr_license_key',  raw.trim().toUpperCase());
-  localStorage.setItem('rr_license_name', name);
-  if (!localStorage.getItem('rr_activated')) {
-    localStorage.setItem('rr_activated', new Date().toISOString());
+  localStorage.setItem('bb_license_key',  raw.trim().toUpperCase());
+  localStorage.setItem('bb_license_name', name);
+  if (!localStorage.getItem('bb_activated')) {
+    localStorage.setItem('bb_activated', new Date().toISOString());
   }
-  inEl.classList.remove('error');  errEl.innerHTML = '';
+  inEl.classList.remove('error');  ebbEl.innerHTML = '';
   location.reload();
 }
 
 function checkLicense() {
-  const key  = localStorage.getItem('rr_license_key');
+  const key  = localStorage.getItem('bb_license_key');
   const name = key ? _matchKey(key) : null;
   if (name) {
     document.getElementById('lock-overlay').classList.add('hidden');
     _applyLicensedTo(name);
     const bb=document.getElementById('beta-banner');
-    if(bb) bb.style.display = (key==='RR-BETA-APR2026') ? '' : 'none';
+    if(bb) bb.style.display = (key==='BB-BETA-APR2026') ? '' : 'none';
     return true;
   }
-  localStorage.removeItem('rr_license_key');
-  localStorage.removeItem('rr_license_name');
+  localStorage.removeItem('bb_license_key');
+  localStorage.removeItem('bb_license_name');
   document.getElementById('lock-overlay').classList.remove('hidden');
   return false;
 }
@@ -889,8 +889,8 @@ function _applyLicensedTo(name) {
 
 function deactivateLicense() {
   if (!confirm('Deactivate this license on this device?\nYou will need to enter a key again.')) return;
-  localStorage.removeItem('rr_license_key');
-  localStorage.removeItem('rr_license_name');
+  localStorage.removeItem('bb_license_key');
+  localStorage.removeItem('bb_license_name');
   location.reload();
 }
 
@@ -918,12 +918,12 @@ const DEFAULT_SLOTS = [
 let _settingsCache = null;
 function loadSettings() {
   if (!_settingsCache) {
-    const raw = localStorage.getItem('rr_settings2');
+    const raw = localStorage.getItem('bb_settings2');
     _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
   }
   return _settingsCache;
 }
-function persistSettings(s) { _settingsCache = s; localStorage.setItem('rr_settings2', JSON.stringify(s)); rrPushToCloud('settings', s); }
+function persistSettings(s) { _settingsCache = s; localStorage.setItem('bb_settings2', JSON.stringify(s)); bbPushToCloud('settings', s); }
 function saveMedications() { const s=loadSettings(); s.medications=document.getElementById('s-meds').value; persistSettings(s); }
 
 function saveSlots() {
@@ -1010,7 +1010,7 @@ function toggleTheme() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const next = dark ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('rr_theme', next);
+  localStorage.setItem('bb_theme', next);
   document.getElementById('theme-btn').textContent = next === 'dark' ? '☀️' : '🌙';
   const cb = document.getElementById('s-dark');
   if (cb) cb.checked = next === 'dark';
@@ -1018,7 +1018,7 @@ function toggleTheme() {
 function toggleLargeText() {
   const on = document.getElementById('s-large').checked;
   document.documentElement.setAttribute('data-large', on ? '1' : '0');
-  localStorage.setItem('rr_large', on ? '1' : '0');
+  localStorage.setItem('bb_large', on ? '1' : '0');
 }
 
 function toggleNotifications() {
@@ -1035,17 +1035,17 @@ function toggleNotifications() {
 // ── STORAGE ───────────────────────────────────────────────
 let _readingsCache = null;
 function loadReadings() {
-  if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('rr_readings') || '[]');
+  if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('bb_readings') || '[]');
   return _readingsCache;
 }
-function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('rr_readings', JSON.stringify(arr)); rrPushToCloud('readings', arr); }
+function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('bb_readings', JSON.stringify(arr)); bbPushToCloud('readings', arr); }
 
 // ── DEMO DATA ─────────────────────────────────────────────
 // Demo arc: Jan 1 2026 → today — Stage 2 → Normal trend
 function buildDemoReadings() {
   const s = loadSettings();
   // End at activation day (the day they first entered their key), not today
-  const activatedStr = localStorage.getItem('rr_activated');
+  const activatedStr = localStorage.getItem('bb_activated');
   const now = activatedStr ? new Date(activatedStr) : new Date();
   const start = new Date(2026, 0, 1); // Jan 1 2026
   const totalDays = Math.max(0, Math.floor((now - start) / 86400000));
@@ -1103,11 +1103,11 @@ function exportBackup() {
     version: 1,
     exported: new Date().toISOString(),
     readings: readings,
-    settings: JSON.parse(localStorage.getItem('rr_settings2') || 'null')
+    settings: JSON.parse(localStorage.getItem('bb_settings2') || 'null')
   };
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
-  a.download = 'RaycoRadar_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.download = 'BloodBeeper_backup_'+new Date().toISOString().slice(0,10)+'.json';
   a.click();
 }
 
@@ -1125,12 +1125,12 @@ function importBackup(input) {
       const merged = [...existing, ...backup.readings.filter(r => !existingIds.has(r.id))];
       saveReadings(merged);
       // Import settings only if this device has none yet
-      if (backup.settings && !localStorage.getItem('rr_settings2')) {
+      if (backup.settings && !localStorage.getItem('bb_settings2')) {
         persistSettings(backup.settings);
       }
       renderAll();
       alert(`Imported ${backup.readings.length} readings. Total now: ${merged.length}.`);
-    } catch { alert('Could not read backup file — make sure it\'s a valid RaycoRadar export.'); }
+    } catch { alert('Could not read backup file — make sure it\'s a valid BloodBeeper export.'); }
   };
   reader.readAsText(file);
   input.value = ''; // reset so same file can be re-imported if needed
@@ -1154,7 +1154,7 @@ function exportCSV() {
   const csv = [header,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = 'RaycoRadar_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download = 'BloodBeeper_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
 
@@ -1190,7 +1190,7 @@ function printReport() {
 
   document.getElementById('print-report').innerHTML = `
     <div class="pr-header">
-      <h2>📡 RaycoRadar — Blood Pressure Report</h2>
+      <h2>📡 BloodBeeper — Blood Pressure Report</h2>
       <p>Printed: ${now.toLocaleString('en-PH')} &nbsp;·&nbsp; AHA 2017 Guidelines &nbsp;·&nbsp; by Doc Kalodski</p>
     </div>
     <div class="pr-summary">
@@ -1989,10 +1989,10 @@ function renderAnalysis() {
   const surgeEvents = [];
   for (let i=1;i<dayKeys.length;i++) {
     const prevR = byDay[dayKeys[i-1]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    const currR = byDay[dayKeys[i]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    const prevLast = prevR[prevR.length-1], currFirst = currR[0];
-    const surge = currFirst.sys - prevLast.sys;
-    surgeEvents.push({ date: dayKeys[i], surge, morning: currFirst.sys, evening: prevLast.sys });
+    const cubbR = byDay[dayKeys[i]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const prevLast = prevR[prevR.length-1], cubbFirst = cubbR[0];
+    const surge = cubbFirst.sys - prevLast.sys;
+    surgeEvents.push({ date: dayKeys[i], surge, morning: cubbFirst.sys, evening: prevLast.sys });
   }
   const avgSurge = surgeEvents.length ? Math.round(surgeEvents.reduce((a,e)=>a+e.surge,0)/surgeEvents.length) : null;
   const highSurgeCount = surgeEvents.filter(e=>e.surge>=20).length;
@@ -2146,7 +2146,7 @@ function checkReminders() {
         document.getElementById('reminder-text').textContent = `⏰ Time for your ${sl.name} BP reading!`;
         banner.dataset.key = key;
         banner.classList.add('show');
-        if (s.notifications && Notification.permission==='granted') new Notification('RaycoRadar',{body:`Time for your ${sl.name} BP reading!`});
+        if (s.notifications && Notification.permission==='granted') new Notification('BloodBeeper',{body:`Time for your ${sl.name} BP reading!`});
         document.getElementById('in-slot').value = sl.id;
         return;
       }
@@ -2168,7 +2168,7 @@ function switchTab(id, btn) {
     if (idx>=0) navBtns[idx].classList.add('active');
   }
   if (id==='analysis') renderAnalysis();
-  if (id==='clients') rrRenderClients();
+  if (id==='clients') bbRenderClients();
   if (id==='settings') renderSlotList();
 }
 
@@ -2179,11 +2179,11 @@ function renderAll() {
 }
 
 // ── CLIENTS (DEV) ─────────────────────────────────────────
-async function rrRenderClients() {
-  const el=document.getElementById('rr-clients-list'); if(!el) return;
+async function bbRenderClients() {
+  const el=document.getElementById('bb-clients-list'); if(!el) return;
   el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading clients…</div>';
   try {
-    const {data,error}=await sb.from('rr_data').select('*').eq('data_key','readings');
+    const {data,error}=await sb.from('bb_data').select('*').eq('data_key','readings');
     if(error||!data||!data.length){el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">No clients yet.</div>';return;}
     const clients=data.filter(r=>r.user_key!=='__test__').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
     el.innerHTML=clients.map(c=>{
@@ -2218,8 +2218,8 @@ async function rrRenderClients() {
   if (!checkLicense()) return;
 
   // Migrate old settings
-  const old = localStorage.getItem('rr_settings');
-  if (old && !localStorage.getItem('rr_settings2')) {
+  const old = localStorage.getItem('bb_settings');
+  if (old && !localStorage.getItem('bb_settings2')) {
     try {
       const o = JSON.parse(old);
       persistSettings({ notifications:o.notifications||false, slots:[
@@ -2231,10 +2231,10 @@ async function rrRenderClients() {
   }
 
   // Restore theme + large-text prefs
-  const savedTheme = localStorage.getItem('rr_theme') || 'light';
+  const savedTheme = localStorage.getItem('bb_theme') || 'light';
   document.documentElement.setAttribute('data-theme', savedTheme);
   document.getElementById('theme-btn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-  const savedLarge = localStorage.getItem('rr_large') || '0';
+  const savedLarge = localStorage.getItem('bb_large') || '0';
   document.documentElement.setAttribute('data-large', savedLarge);
 
   const _s = loadSettings();
@@ -2249,10 +2249,10 @@ async function rrRenderClients() {
   checkReminders();
   setInterval(checkReminders, 60_000);
   // Show dev-only clients tab
-  if (rrIsDev()) { const b=document.getElementById('rr-clients-tab-btn'); if(b) b.style.display=''; }
+  if (bbIsDev()) { const b=document.getElementById('bb-clients-tab-btn'); if(b) b.style.display=''; }
   // Cloud sync
-  rrSyncFromCloud();
-  rrSubscribeRealtime();
+  bbSyncFromCloud();
+  bbSubscribeRealtime();
 })();
 </script>
 </body>
