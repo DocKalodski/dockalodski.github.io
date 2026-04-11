@@ -1939,6 +1939,7 @@ function renderChart() {
 
   chartInstance = new Chart(ctx, {
     type: chartType, data:{labels, datasets},
+    chartData: points,
     options:{
       responsive:true, maintainAspectRatio:false, animation:{duration:250},
       plugins:{
@@ -1982,34 +1983,36 @@ function renderChart() {
       id:'barLabels',
       afterDatasetsDraw(chart) {
         if (chartType !== 'bar') return;
-        const {ctx, data, scales:{x,y}} = chart;
-        ctx.font = 'bold 10px sans-serif';
+        const pts = chart.chartData;
+        if (!pts) return;
+
+        const {ctx, scales:{x,y}, chartArea} = chart;
+        ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#1e293b';
 
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data) return;
+        // Draw labels for each data point
+        chart.data.datasets.forEach((ds,dsIdx) => {
+          const meta = chart.getDatasetMeta(dsIdx);
+          if (!meta.data) return;
 
-        meta.data.forEach((bar,idx) => {
-          const xPos = bar.x;
-          const yPos = bar.y;
-          if (yPos === undefined) return;
+          meta.data.forEach((bar,idx) => {
+            if (!bar || bar.x === undefined) return;
 
-          // Get AM and PM values from points
-          const amSys = points[idx].am.sys;
-          const amDia = points[idx].am.dia;
-          const pmSys = points[idx].pm.sys;
-          const pmDia = points[idx].pm.dia;
+            const isAM = dsIdx < 2;
+            const isAmDia = dsIdx === 0;
+            const isPmDia = dsIdx === 2;
 
-          // Find which bar this is (AM or PM) based on dataset index
-          const isAM = bar.datasetIndex % 4 < 2;
-          const sys = isAM ? amSys : pmSys;
-          const dia = isAM ? amDia : pmDia;
+            const sys = isAM ? pts[idx].am.sys : pts[idx].pm.sys;
+            const dia = isAM ? pts[idx].am.dia : pts[idx].pm.dia;
 
-          if (sys !== null && dia !== null) {
-            ctx.fillText(`S: ${sys}`, xPos, yPos - 8);
-            ctx.fillText(`D: ${dia}`, xPos, yPos + 6);
-          }
+            // Only label on systolic bar (top of stack)
+            if (!isAmDia && !isPmDia && sys !== null && dia !== null) {
+              const labelY = bar.y - 6;
+              ctx.fillText(`S:${sys} D:${dia}`, bar.x, labelY);
+            }
+          });
         });
       }
     }]
