@@ -1934,11 +1934,13 @@ function renderChart() {
         legend:{display:true, position:'top', labels:{font:{size:11}, padding:12, usePointStyle:true}},
         tooltip:{
           enabled: chartType !== 'bar',
+          mode: 'none',
+          intersect: false,
           callbacks:{
             label: item => {
+              if (chartType === 'bar') return '';
               if (item.parsed.y === null) return '';
               const suf = item.dataset.label.includes('Heart Rate') ? ' bpm' : ' mmHg';
-              const ampm = item.dataset.label.includes('AM') || item.dataset.label.includes('PM') ? '' : '';
               return `${item.dataset.label}: ${item.parsed.y}${suf}`;
             }
           }
