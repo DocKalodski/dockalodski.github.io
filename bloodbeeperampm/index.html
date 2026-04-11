@@ -1933,6 +1933,7 @@ function renderChart() {
       plugins:{
         legend:{display:true, position:'top', labels:{font:{size:11}, padding:12, usePointStyle:true}},
         tooltip:{
+          enabled: chartType !== 'bar',
           callbacks:{
             label: item => {
               if (item.parsed.y === null) return '';
