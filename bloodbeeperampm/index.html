@@ -1765,39 +1765,39 @@ function setChartView(v, btn) {
 }
 
 function groupByDay(readings, nDays=7) {
-  // Returns array of {label, sys, dia, hr, count} for last nDays days
+  // Returns array of {label, am:{sys,dia,hr}, pm:{sys,dia,hr}, count} for last nDays days
   const now = new Date();
   const result = [];
   for (let d = nDays-1; d >= 0; d--) {
     const day = new Date(now); day.setDate(day.getDate()-d);
     const dayStr = day.toDateString();
     const dayR = readings.filter(r => new Date(r.timestamp).toDateString() === dayStr);
+    const dayRam = dayR.filter(isAM);
+    const dayRpm = dayR.filter(isPM);
     const label = day.toLocaleDateString('en-PH', nDays <= 7
       ? {weekday:'short',month:'short',day:'numeric'}
       : {month:'short',day:'numeric'});
-    if (dayR.length > 0) {
-      const avgSys = Math.round(dayR.reduce((a,r)=>a+r.sys,0)/dayR.length);
-      const avgDia = Math.round(dayR.reduce((a,r)=>a+r.dia,0)/dayR.length);
-      // worst reading of the day drives the dot color
-      const worstR = dayR.reduce((w,r)=> (SEVERITY[classify(r.sys,r.dia).key]||0) > (SEVERITY[classify(w.sys,w.dia).key]||0) ? r : w, dayR[0]);
-      result.push({
-        label,
-        sys:     avgSys,
-        dia:     avgDia,
-        worstSys: worstR.sys,
-        worstDia: worstR.dia,
-        hr:    dayR.some(r=>r.hr) ? Math.round(dayR.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayR.filter(r=>r.hr).length) : null,
-        count: dayR.length,
-      });
-    } else {
-      result.push({ label, sys:null, dia:null, hr:null, count:0 });
-    }
+
+    const amSys = dayRam.length ? Math.round(dayRam.reduce((a,r)=>a+r.sys,0)/dayRam.length) : null;
+    const amDia = dayRam.length ? Math.round(dayRam.reduce((a,r)=>a+r.dia,0)/dayRam.length) : null;
+    const amHr = dayRam.some(r=>r.hr) ? Math.round(dayRam.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayRam.filter(r=>r.hr).length) : null;
+
+    const pmSys = dayRpm.length ? Math.round(dayRpm.reduce((a,r)=>a+r.sys,0)/dayRpm.length) : null;
+    const pmDia = dayRpm.length ? Math.round(dayRpm.reduce((a,r)=>a+r.dia,0)/dayRpm.length) : null;
+    const pmHr = dayRpm.some(r=>r.hr) ? Math.round(dayRpm.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayRpm.filter(r=>r.hr).length) : null;
+
+    result.push({
+      label,
+      am: {sys: amSys, dia: amDia, hr: amHr, count: dayRam.length},
+      pm: {sys: pmSys, dia: pmDia, hr: pmHr, count: dayRpm.length},
+      count: dayR.length,
+    });
   }
   return result;
 }
 
 function groupByWeek(readings) {
-  // Returns array of {label, sys, dia, hr, count} for last 13 weeks
+  // Returns array of {label, am:{sys,dia,hr}, pm:{sys,dia,hr}, count} for last 13 weeks
   const now = new Date();
   const result = [];
   for (let w = 12; w >= 0; w--) {
@@ -1805,18 +1805,24 @@ function groupByWeek(readings) {
     weekStart.setHours(0,0,0,0);
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
     const weekR = readings.filter(r => { const t=new Date(r.timestamp); return t>=weekStart && t<weekEnd; });
+    const weekRam = weekR.filter(isAM);
+    const weekRpm = weekR.filter(isPM);
     const label = weekStart.toLocaleDateString('en-PH',{month:'short',day:'numeric'});
-    if (weekR.length > 0) {
-      result.push({
-        label,
-        sys:   Math.round(weekR.reduce((a,r)=>a+r.sys,0)/weekR.length),
-        dia:   Math.round(weekR.reduce((a,r)=>a+r.dia,0)/weekR.length),
-        hr:    weekR.some(r=>r.hr) ? Math.round(weekR.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekR.filter(r=>r.hr).length) : null,
-        count: weekR.length,
-      });
-    } else {
-      result.push({ label, sys:null, dia:null, hr:null, count:0 });
-    }
+
+    const amSys = weekRam.length ? Math.round(weekRam.reduce((a,r)=>a+r.sys,0)/weekRam.length) : null;
+    const amDia = weekRam.length ? Math.round(weekRam.reduce((a,r)=>a+r.dia,0)/weekRam.length) : null;
+    const amHr = weekRam.some(r=>r.hr) ? Math.round(weekRam.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekRam.filter(r=>r.hr).length) : null;
+
+    const pmSys = weekRpm.length ? Math.round(weekRpm.reduce((a,r)=>a+r.sys,0)/weekRpm.length) : null;
+    const pmDia = weekRpm.length ? Math.round(weekRpm.reduce((a,r)=>a+r.dia,0)/weekRpm.length) : null;
+    const pmHr = weekRpm.some(r=>r.hr) ? Math.round(weekRpm.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekRpm.filter(r=>r.hr).length) : null;
+
+    result.push({
+      label,
+      am: {sys: amSys, dia: amDia, hr: amHr, count: weekRam.length},
+      pm: {sys: pmSys, dia: pmDia, hr: pmHr, count: weekRpm.length},
+      count: weekR.length,
+    });
   }
   return result;
 }
@@ -1843,28 +1849,52 @@ function renderChart() {
     ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
 
   const datasets = [];
-  if (showSys) datasets.push({
-    label:'Systolic', data:points.map(p=>p.sys),
-    borderColor:'#ef4444',
-    pointBackgroundColor: points.map(p=>dotColor(p.worstSys??p.sys,p.worstDia??p.dia)),
-    pointBorderColor:'#fff', pointBorderWidth:1.5,
-    pointRadius: points.map(p=>p.count?5:0),
-    tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
-  });
-  if (showDia) datasets.push({
-    label:'Diastolic', data:points.map(p=>p.dia),
-    borderColor:'#3b82f6',
-    pointBackgroundColor: points.map(p=>dotColor(p.worstSys??p.sys,p.worstDia??p.dia)),
-    pointBorderColor:'#fff', pointBorderWidth:1.5,
-    pointRadius: points.map(p=>p.count?4:0),
-    tension:0.35, borderWidth:2, fill:false, spanGaps:true,
-  });
-  if (showHr) datasets.push({
-    label:'Heart Rate', data:points.map(p=>p.hr),
-    borderColor:'#8b5cf6', pointBackgroundColor:'#8b5cf6',
-    pointRadius: points.map(p=>p.hr?3:0),
-    tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
-  });
+  if (showSys) {
+    datasets.push({
+      label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+      borderColor:'#ef4444', pointBackgroundColor:'#ef4444',
+      pointBorderColor:'#fff', pointBorderWidth:1.5,
+      pointRadius: points.map(p=>p.am.count?5:0),
+      tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
+    });
+    datasets.push({
+      label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+      borderColor:'#f97316', pointBackgroundColor:'#f97316',
+      pointBorderColor:'#fff', pointBorderWidth:1.5,
+      pointRadius: points.map(p=>p.pm.count?5:0),
+      tension:0.35, borderWidth:2.5, borderDash:[6,3], fill:false, spanGaps:true,
+    });
+  }
+  if (showDia) {
+    datasets.push({
+      label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
+      borderColor:'#3b82f6', pointBackgroundColor:'#3b82f6',
+      pointBorderColor:'#fff', pointBorderWidth:1.5,
+      pointRadius: points.map(p=>p.am.count?4:0),
+      tension:0.35, borderWidth:2, fill:false, spanGaps:true,
+    });
+    datasets.push({
+      label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
+      borderColor:'#0ea5e9', pointBackgroundColor:'#0ea5e9',
+      pointBorderColor:'#fff', pointBorderWidth:1.5,
+      pointRadius: points.map(p=>p.pm.count?4:0),
+      tension:0.35, borderWidth:2, borderDash:[6,3], fill:false, spanGaps:true,
+    });
+  }
+  if (showHr) {
+    datasets.push({
+      label:'🌅 AM Heart Rate', data:points.map(p=>p.am.hr),
+      borderColor:'#22c55e', pointBackgroundColor:'#22c55e',
+      pointRadius: points.map(p=>p.am.hr?3:0),
+      tension:0.35, borderWidth:1.5, fill:false, spanGaps:true,
+    });
+    datasets.push({
+      label:'🌙 PM Heart Rate', data:points.map(p=>p.pm.hr),
+      borderColor:'#06b6d4', pointBackgroundColor:'#06b6d4',
+      pointRadius: points.map(p=>p.pm.hr?3:0),
+      tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
+    });
+  }
 
   const ctx = document.getElementById('bp-chart').getContext('2d');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
