@@ -1962,6 +1962,7 @@ function renderChart() {
     plugins:[{
       id:'bpZones',
       beforeDraw(chart) {
+        if (chartType !== 'line') return;
         const {ctx,chartArea,scales:{y}} = chart;
         if (!y||!chartArea) return;
         const {left,right,top,bottom} = chartArea;
@@ -1975,6 +1976,40 @@ function renderChart() {
         [{v:80,c:'#86efac'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
           const py=y.getPixelForValue(v);
           if(py>=top&&py<=bottom){ctx.save();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke();ctx.restore();}
+        });
+      }
+    },{
+      id:'barLabels',
+      afterDatasetsDraw(chart) {
+        if (chartType !== 'bar') return;
+        const {ctx, data, scales:{x,y}} = chart;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1e293b';
+
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data) return;
+
+        meta.data.forEach((bar,idx) => {
+          const xPos = bar.x;
+          const yPos = bar.y;
+          if (yPos === undefined) return;
+
+          // Get AM and PM values from points
+          const amSys = points[idx].am.sys;
+          const amDia = points[idx].am.dia;
+          const pmSys = points[idx].pm.sys;
+          const pmDia = points[idx].pm.dia;
+
+          // Find which bar this is (AM or PM) based on dataset index
+          const isAM = bar.datasetIndex % 4 < 2;
+          const sys = isAM ? amSys : pmSys;
+          const dia = isAM ? amDia : pmDia;
+
+          if (sys !== null && dia !== null) {
+            ctx.fillText(`S: ${sys}`, xPos, yPos - 8);
+            ctx.fillText(`D: ${dia}`, xPos, yPos + 6);
+          }
         });
       }
     }]
