@@ -1851,6 +1851,7 @@ function renderChart() {
 
   // Bar chart only supports 7-day view
   const points = groupByDay(readings);
+  window._chartPoints = points;  // Store for barLabels plugin
 
   const labels = points.map(p => p.label);
   const showSys = document.getElementById('toggle-sys').checked;
@@ -1974,8 +1975,8 @@ function renderChart() {
       id:'barLabels',
       afterDatasetsDraw(chart) {
         if (chartType !== 'bar') return;
-        const pts = chart.chartData;
-        if (!pts) return;
+        const pts = window._chartPoints;
+        if (!pts || !pts.length) return;
 
         const {ctx} = chart;
         ctx.font = 'bold 11px sans-serif';
@@ -1986,10 +1987,10 @@ function renderChart() {
         // Draw S/D/HR labels on top of each bar
         chart.data.datasets.forEach((ds, dsIdx) => {
           const meta = chart.getDatasetMeta(dsIdx);
-          if (!meta.data) return;
+          if (!meta || !meta.data) return;
 
           meta.data.forEach((bar, idx) => {
-            if (!bar || bar.y === undefined) return;
+            if (!bar || bar.y === undefined || !pts[idx]) return;
 
             const isAM = dsIdx === 0;
             const sys = isAM ? pts[idx].am.sys : pts[idx].pm.sys;
