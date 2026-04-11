@@ -1863,14 +1863,14 @@ function renderChart() {
   const datasets = [];
 
   if (chartType === 'bar') {
-    // 2 simple bars: AM and PM (showing systolic height, with S/D label on top)
+    // 2 simple bars: AM and PM (showing systolic height, with S/D/HR label on top)
     datasets.push({
       label:'🌅 AM', data:points.map(p=>p.am.sys),
-      backgroundColor:'#ef4444', borderColor:'#dc2626', borderWidth:1,
+      backgroundColor:'#eab308', borderColor:'#ca8a04', borderWidth:1,
     });
     datasets.push({
       label:'🌙 PM', data:points.map(p=>p.pm.sys),
-      backgroundColor:'#f97316', borderColor:'#ea580c', borderWidth:1,
+      backgroundColor:'#7dd3fc', borderColor:'#0ea5e9', borderWidth:1,
     });
   } else {
     // Line chart: all 6 lines
@@ -1974,13 +1974,13 @@ function renderChart() {
         const pts = chart.chartData;
         if (!pts) return;
 
-        const {ctx, scales:{y}} = chart;
+        const {ctx} = chart;
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#1e293b';
 
-        // Draw S/D labels on top of each bar
+        // Draw S/D/HR labels on top of each bar
         chart.data.datasets.forEach((ds, dsIdx) => {
           const meta = chart.getDatasetMeta(dsIdx);
           if (!meta.data) return;
@@ -1991,11 +1991,17 @@ function renderChart() {
             const isAM = dsIdx === 0;
             const sys = isAM ? pts[idx].am.sys : pts[idx].pm.sys;
             const dia = isAM ? pts[idx].am.dia : pts[idx].pm.dia;
+            const hr = isAM ? pts[idx].am.hr : pts[idx].pm.hr;
 
             if (sys !== null && dia !== null) {
-              const labelY = bar.y - 6;
+              let labelY = bar.y - 8;
               ctx.fillText(`S:${sys}`, bar.x, labelY);
-              ctx.fillText(`D:${dia}`, bar.x, labelY + 12);
+              labelY += 13;
+              ctx.fillText(`D:${dia}`, bar.x, labelY);
+              if (hr !== null) {
+                labelY += 13;
+                ctx.fillText(`HR:${hr}`, bar.x, labelY);
+              }
             }
           });
         });
