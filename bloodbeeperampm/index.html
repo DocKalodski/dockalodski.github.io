@@ -1863,26 +1863,14 @@ function renderChart() {
   const datasets = [];
 
   if (chartType === 'bar') {
-    // Stacked bar: AM and PM, each showing Diastolic + Systolic
+    // 2 simple bars: AM and PM (showing systolic height, with S/D label on top)
     datasets.push({
-      label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
-      backgroundColor:'#3b82f6', borderColor:'#1d4ed8', borderWidth:1,
-      stack: 'AM',
-    });
-    datasets.push({
-      label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+      label:'🌅 AM', data:points.map(p=>p.am.sys),
       backgroundColor:'#ef4444', borderColor:'#dc2626', borderWidth:1,
-      stack: 'AM',
     });
     datasets.push({
-      label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
-      backgroundColor:'#0ea5e9', borderColor:'#0284c7', borderWidth:1,
-      stack: 'PM',
-    });
-    datasets.push({
-      label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+      label:'🌙 PM', data:points.map(p=>p.pm.sys),
       backgroundColor:'#f97316', borderColor:'#ea580c', borderWidth:1,
-      stack: 'PM',
     });
   } else {
     // Line chart: all 6 lines
@@ -1956,8 +1944,8 @@ function renderChart() {
         }
       },
       scales:{
-        x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'}, stacked: chartType==='bar' },
-        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'}, stacked: chartType==='bar' }
+        x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'} },
+        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'} }
       }
     },
     plugins:[{
@@ -1986,31 +1974,28 @@ function renderChart() {
         const pts = chart.chartData;
         if (!pts) return;
 
-        const {ctx, scales:{x,y}, chartArea} = chart;
+        const {ctx, scales:{y}} = chart;
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillStyle = '#1e293b';
 
-        // Draw labels for each data point
-        chart.data.datasets.forEach((ds,dsIdx) => {
+        // Draw S/D labels on top of each bar
+        chart.data.datasets.forEach((ds, dsIdx) => {
           const meta = chart.getDatasetMeta(dsIdx);
           if (!meta.data) return;
 
-          meta.data.forEach((bar,idx) => {
-            if (!bar || bar.x === undefined) return;
+          meta.data.forEach((bar, idx) => {
+            if (!bar || bar.y === undefined) return;
 
-            const isAM = dsIdx < 2;
-            const isAmDia = dsIdx === 0;
-            const isPmDia = dsIdx === 2;
-
+            const isAM = dsIdx === 0;
             const sys = isAM ? pts[idx].am.sys : pts[idx].pm.sys;
             const dia = isAM ? pts[idx].am.dia : pts[idx].pm.dia;
 
-            // Only label on systolic bar (top of stack)
-            if (!isAmDia && !isPmDia && sys !== null && dia !== null) {
+            if (sys !== null && dia !== null) {
               const labelY = bar.y - 6;
-              ctx.fillText(`S:${sys} D:${dia}`, bar.x, labelY);
+              ctx.fillText(`S:${sys}`, bar.x, labelY);
+              ctx.fillText(`D:${dia}`, bar.x, labelY + 12);
             }
           });
         });
