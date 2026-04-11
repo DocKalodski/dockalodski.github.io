@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BloodBeeperAMPM by Doc Kalodski</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --normal:   #22c55e;  --elevated: #eab308;
+      --stage1:   #f97316;  --stage2:   #ef4444;
+      --crisis:   #7f1d1d;
+      --bg:       #f8fafc;  --card:     #ffffff;
+      --border:   #e2e8f0;  --text:     #1e293b;
+      --muted:    #4b5563;  --accent:   #0ea5e9;
+      --radius:   12px;
+    }
+    /* ── Dark mode ───────────────────────────── */
+    [data-theme="dark"] {
+      --bg:     #0f172a; --card:   #1e293b;
+      --border: #334155; --text:   #f1f5f9;
+      --muted:  #94a3b8; --accent: #38bdf8;
+    }
+    [data-theme="dark"] .advisory  { background:#431407; color:#fed7aa; }
+    [data-theme="dark"] .good-news { background:#052e16; color:#bbf7d0; }
+    [data-theme="dark"] .stat-box  { background:#0f172a; }
+    [data-theme="dark"] .date-header { background:#1e293b; }
+    [data-theme="dark"] .date-header:hover { background:#334155; }
+    [data-theme="dark"] .cal-row   { background:#1e293b; }
+    [data-theme="dark"] .cal-day-detail { background:#0f172a; }
+    [data-theme="dark"] .month-card { background:#1e293b; }
+    [data-theme="dark"] #slot-time-sheet { background:#1e293b; }
+    [data-theme="dark"] .drum-wrap::after { background: linear-gradient(to bottom,#1e293b 0%,rgba(30,41,59,0.75) 22%,transparent 38%,transparent 62%,rgba(30,41,59,0.75) 78%,#1e293b 100%); }
+    [data-theme="dark"] nav { background:#1e293b; }
+    [data-theme="dark"] #inline-form { background:#1e293b; }
+    [data-theme="dark"] .slot-time-btn { background:#0f172a; color:#f1f5f9; border-color:#334155; }
+    [data-theme="dark"] .slot-name-input,.slot-emoji-input { background:#0f172a; color:#f1f5f9; }
+
+    /* ── SC Large-text mode ──────────────────── */
+    [data-large="1"] body, [data-large="1"] { font-size: 21px; }
+    [data-large="1"] .stat-box .slabel { font-size: 0.82rem; }
+    [data-large="1"] .stat-box .ssub   { font-size: 0.84rem; }
+    [data-large="1"] .slot-table       { font-size: 0.95rem; }
+    [data-large="1"] .slot-table th    { font-size: 0.8rem; }
+    [data-large="1"] .advisory,
+    [data-large="1"] .good-news        { font-size: 0.95rem; }
+    [data-large="1"] .card-title       { font-size: 1rem; }
+    [data-large="1"] .badge            { font-size: 1rem; padding: 7px 16px; }
+    [data-large="1"] nav button        { font-size: 1.15rem; }
+
+    /* ── Theme toggle button ─────────────────── */
+    #theme-btn { background:none; border:none; cursor:pointer; font-size:1.4rem; padding:6px; border-radius:8px; color:white; margin-left:auto; min-width:44px; min-height:44px; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 18px; line-height: 1.6; }
+
+
+    /* ── Header ───────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #0c1445 0%, #1a2875 50%, #0e3a6e 100%);
+      color: white; padding: 14px 20px 12px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .header-inner { display: flex; align-items: center; gap: 14px; }
+    .radar-icon {
+      width: 38px; height: 38px; background: rgba(14,165,233,0.2);
+      border: 2px solid rgba(14,165,233,0.5); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; animation: rpulse 2.5s ease-in-out infinite;
+    }
+    @keyframes rpulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(14,165,233,0.4); }
+      50%      { box-shadow: 0 0 0 8px rgba(14,165,233,0); }
+    }
+    .header-text h1 { font-size: 1.2rem; font-weight: 800; }
+    .header-text h1 span { color: #38bdf8; }
+    .header-text p { font-size: 0.68rem; opacity: 0.5; margin-top: 1px; }
+
+    /* ── Reminder Banner ──────────────────────── */
+    #reminder-banner {
+      background: #fef3c7; border-left: 4px solid #f59e0b;
+      padding: 10px 16px; font-size: 0.84rem;
+      display: none; align-items: center; gap: 10px;
+    }
+    #reminder-banner.show { display: flex; }
+    #reminder-banner span { flex: 1; }
+    #reminder-dismiss { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px 8px; color: #92400e; font-weight: 700; }
+
+    /* ── Nav ──────────────────────────────────── */
+    nav { display: flex; background: var(--card); border-bottom: 1px solid var(--border); overflow-x: auto; }
+    nav button {
+      flex: 1; padding: 17px 8px; border: none; background: none; cursor: pointer;
+      font-size: 1.05rem; font-weight: 700; color: var(--muted);
+      border-bottom: 4px solid transparent; white-space: nowrap; transition: all 0.15s; min-width: 80px; min-height: 58px;
+    }
+    nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+    nav button:hover:not(.active) { color: var(--text); background: var(--bg); }
+
+    /* ── Tabs ─────────────────────────────────── */
+    .tab { display: none; padding: 16px; max-width: 800px; margin: 0 auto; padding-bottom: 50px; }
+    .tab.active { display: block; }
+
+    /* ── Cards ────────────────────────────────── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+    .card-title { font-size: 0.88rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+
+    /* ── Today Status Bar ─────────────────────── */
+    .dash-main {
+      display: block; margin-bottom: 10px;
+    }
+    .dash-chart-card { margin-bottom: 0 !important; display: flex; flex-direction: column; padding: 8px !important; }
+    #today-status { display: flex; flex-direction: column; gap: 8px; }
+    #today-status .status-tile { flex-shrink: 0; }
+    #dash-trend-overlay {
+      margin-top: 8px; border-top: 1px solid var(--border); padding-top: 7px;
+    }
+    /* ── Calendar Groups ─────────────────────────── */
+    .date-group { margin-bottom: 3px; }
+    .date-header {
+      display: flex; align-items: center; gap: 12px; padding: 18px 16px;
+      background: var(--bg); border-radius: 10px; cursor: pointer;
+      user-select: none; -webkit-user-select: none; transition: background 0.15s; min-height: 66px;
+    }
+    .date-header:hover { background: #e8f0fe; }
+    .dg-arrow { font-size: 1rem; color: var(--muted); width: 16px; flex-shrink: 0; }
+    .dg-date  { font-weight: 700; font-size: 1.2rem; color: var(--text); }
+    .dg-count { font-size: 0.95rem; color: var(--muted); }
+    .dg-avg   { font-size: 1.05rem; font-weight: 700; margin-left: auto; }
+    .date-body { padding: 6px 0 6px 6px; }
+    .date-body.collapsed { display: none; }
+
+    /* ── Reading mini-card ───────────────────────── */
+    .cal-row {
+      display: block;
+      padding: 14px 16px 12px;
+      border-left: 5px solid var(--border);
+      margin-bottom: 8px;
+      border-radius: 0 12px 12px 0;
+      background: var(--card);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .cal-row:hover { background: #f8fafc; }
+    .cr-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .cr-time { font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+    .cr-actions { display: flex; gap: 2px; margin-right: -6px; }
+    .cr-main { display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px; }
+    .cr-bp { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; }
+    .cr-hr { font-size: 1.05rem; color: var(--muted); font-weight: 500; }
+    .cr-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .cr-slot { font-size: 0.92rem; color: var(--muted); }
+    .cr-notes { font-size: 0.88rem; color: var(--muted); font-style: italic; }
+
+    /* ── Monthly Calendar Grid ───────────────────── */
+    .month-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+    .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .month-nav-title { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .month-nav-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; }
+    .month-nav-btn:hover { background: #e2e8f0; }
+    .month-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+    .cal-dow { font-size: 0.65rem; text-align: center; color: var(--muted); font-weight: 700; padding: 4px 0; }
+    .cal-cell {
+      aspect-ratio: 1; border-radius: 50%; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; cursor: pointer; position: relative;
+      transition: transform 0.1s, box-shadow 0.1s; min-height: 40px;
+    }
+    .cal-cell:hover { transform: scale(1.12); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .cal-cell.empty { background: transparent; cursor: default; pointer-events: none; }
+    .cal-cell.no-data { cursor: pointer; }
+    .cal-cell.has-data { font-weight: 700; color: white; }
+    .cal-cell.has-data .cday { font-size: 0.8rem; font-weight: 800; line-height: 1; }
+    .cal-cell.has-data .cavg { font-size: 0.45rem; opacity: 0.9; line-height: 1.3; }
+    .cal-cell.no-data { background: var(--bg); color: var(--muted); }
+    .cal-cell.no-data .cday { font-size: 0.75rem; font-weight: 400; }
+    .cal-cell.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .cal-day-detail { display: none; background: #f1f5f9; border-radius: 10px; padding: 10px; margin-top: 8px; }
+    .cal-day-detail.open { display: block; }
+
+    .status-bar {
+      display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; flex-wrap: nowrap; overflow-x: auto;
+    }
+    .status-tile {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 8px 12px; flex: 1; min-width: 130px;
+    }
+    .status-tile .st-label { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px; }
+    .status-tile .st-value { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .status-tile .st-sub { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Quick Log Form ───────────────────────── */
+    .qlog-grid { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 10px; margin-bottom: 10px; }
+    .qlog-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.68rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px 11px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.95rem; background: var(--bg); color: var(--text); transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+    .form-group input[type="datetime-local"] { font-size: 0.84rem; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    /* live preview */
+    #bp-preview-display {
+      text-align: center; font-size: 2.3rem; font-weight: 800; letter-spacing: -1.5px;
+      color: var(--text); padding: 6px 0 2px; min-height: 50px;
+    }
+    #bp-preview-display .sep { color: var(--muted); font-weight: 300; }
+    #bp-preview-display .unit { font-size: 1rem; color: var(--muted); font-weight: 400; }
+    #preview-badge { text-align: center; margin-bottom: 8px; min-height: 20px; }
+
+    /* edit bar */
+    #edit-mode-bar { display: none; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 8px 14px; margin-bottom: 10px; font-size: 0.82rem; color: #1d4ed8; align-items: center; gap: 10px; }
+    #edit-mode-bar.show { display: flex; }
+    #edit-mode-bar span { flex: 1; }
+    #cancel-edit { background: none; border: none; cursor: pointer; font-size: 0.82rem; color: #1d4ed8; font-weight: 700; text-decoration: underline; }
+
+    /* ── Inline Log Form ─────────────────────────── */
+    #inline-form {
+      display: none;
+      background: var(--card);
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 10px;
+    }
+
+
+    /* ── Drum Picker ──────────────────────────────── */
+    .drum-row { display: flex; gap: 6px; margin-bottom: 16px; align-items: flex-start; }
+    .drum-col { flex: 1; text-align: center; min-width: 0; }
+    .drum-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+    .drum-wrap {
+      position: relative; height: 300px; overflow: hidden;
+      border-radius: 16px; border: 1.5px solid var(--border);
+    }
+    .drum-scroll {
+      height: 100%; overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none; -ms-overflow-style: none;
+      padding: 120px 0;
+    }
+    .drum-scroll::-webkit-scrollbar { display: none; }
+    .drum-item {
+      height: 60px; scroll-snap-align: center;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem; font-weight: 400; color: rgba(30,41,59,0.18);
+      user-select: none; -webkit-user-select: none;
+    }
+    .drum-item.drum-adj { font-size: 1.5rem; font-weight: 600; color: rgba(30,41,59,0.42); }
+    .drum-item.drum-sel { font-size: 2.5rem; font-weight: 800; color: var(--text); }
+    .drum-wrap::before {
+      content: '';
+      position: absolute; left: 6%; right: 6%;
+      top: calc(50% - 30px); height: 60px;
+      background: rgba(14,165,233,0.08);
+      border: 2px solid rgba(14,165,233,0.38);
+      border-radius: 12px; pointer-events: none; z-index: 2;
+    }
+    .drum-wrap::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom,
+        #ffffff 0%, rgba(255,255,255,0.75) 22%, transparent 38%,
+        transparent 62%, rgba(255,255,255,0.75) 78%, #ffffff 100%);
+      pointer-events: none; z-index: 1;
+    }
+    .drum-sep { display: flex; align-items: center; padding-top: 168px; font-size: 2rem; font-weight: 300; color: var(--muted); flex-shrink: 0; }
+
+    /* ── Buttons ──────────────────────────────── */
+    .btn { padding: 16px 22px; border-radius: 10px; border: none; cursor: pointer; font-size: 1.05rem; font-weight: 700; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: white; width: 100%; }
+    .btn-primary:hover { background: #0284c7; }
+    .btn-primary.editing { background: #7c3aed; }
+    .btn-primary.editing:hover { background: #6d28d9; }
+    .btn-sm { background: none; border: 2px solid var(--border); color: var(--muted); font-size: 1rem; padding: 12px 20px; border-radius: 8px; cursor: pointer; min-height: 52px; font-weight: 600; }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: none; border: 1.5px solid #fee2e2; color: var(--stage2); font-size: 1rem; padding: 12px 20px; border-radius: 8px; cursor: pointer; min-height: 52px; font-weight: 600; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-icon { background: none; border: none; cursor: pointer; padding: 10px; font-size: 1.15rem; border-radius: 8px; color: var(--muted); transition: all 0.12s; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-icon:hover { background: var(--bg); color: var(--text); }
+    .btn-icon.del:hover { background: #fee2e2; color: var(--stage2); }
+
+    /* ── Badges ───────────────────────────────── */
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 0.92rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .badge-normal   { background: #dcfce7; color: #166534; }
+    .badge-elevated { background: #fef9c3; color: #854d0e; }
+    .badge-stage1   { background: #ffedd5; color: #9a3412; }
+    .badge-stage2   { background: #fee2e2; color: #991b1b; }
+    .badge-crisis   { background: #7f1d1d; color: white; }
+    .slot-pill { display: inline-block; padding: 4px 11px; border-radius: 20px; font-size: 0.88rem; background: #f1f5f9; color: var(--muted); }
+
+    /* ── Reading List ─────────────────────────── */
+    .reading-item { display: flex; align-items: center; gap: 14px; padding: 22px 0; border-bottom: 1px solid var(--border); }
+    .reading-item:last-child { border-bottom: none; }
+    .reading-item.highlight { background: #eff6ff; border-radius: 8px; padding: 10px; margin: 0 -10px; }
+    .ri-icon { font-size: 1.8rem; width: 36px; text-align: center; flex-shrink: 0; }
+    .ri-body { flex: 1; min-width: 0; }
+    .ri-bp { font-size: 1.75rem; font-weight: 800; line-height: 1.2; }
+    .ri-meta { font-size: 1rem; color: var(--muted); margin-top: 4px; }
+    .ri-right { text-align: right; flex-shrink: 0; }
+    .ri-pp { font-size: 0.9rem; color: var(--muted); margin-top: 5px; }
+    .ri-actions { display: flex; gap: 2px; margin-top: 3px; justify-content: flex-end; }
+
+    /* ── Chart Controls ───────────────────────── */
+    .chart-toggle { display: flex; gap: 0; margin-bottom: 14px; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
+    .chart-toggle button { padding: 7px 18px; font-size: 0.8rem; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+    .chart-toggle button.active { background: var(--accent); color: white; }
+    .chart-canvas-wrap { position: relative; height: 260px; }
+    .legend-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.95rem; margin-top: 12px; }
+    .legend-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+    .zone-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; font-size: 0.76rem; }
+    .zone-legend-item { display: flex; align-items: center; gap: 7px; }
+    .zone-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ── Analysis / AI ────────────────────────── */
+    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+    .stat-box { background: var(--bg); border-radius: 8px; padding: 12px 14px; }
+    .stat-box .slabel { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 3px; }
+    .stat-box .sval { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .stat-box .ssub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
+    .trend-up { color: var(--stage2); } .trend-down { color: var(--normal); } .trend-stable { color: var(--muted); }
+    .slot-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .slot-table th { text-align: left; padding: 8px 6px; font-size: 0.78rem; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .slot-table td { padding: 10px 6px; border-bottom: 1px solid var(--border); }
+    .slot-table tr:last-child td { border-bottom: none; }
+    .slot-highest td { background: #fff7ed; }
+    .advisory { background: #fff7ed; border-left: 4px solid var(--stage1); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.95rem; color: #7c2d12; margin-top: 12px; line-height: 1.7; }
+    .good-news { background: #f0fdf4; border-left: 4px solid var(--normal); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.95rem; color: #14532d; margin-top: 12px; line-height: 1.7; }
+    .class-display { display: flex; align-items: center; gap: 14px; padding: 6px 0; }
+    .class-display .big-reading { font-size: 2rem; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+
+    /* AI report block */
+    .ai-report {
+      background: var(--bg); color: var(--text); border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 16px 18px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem;
+      line-height: 1.8; white-space: pre-wrap; overflow-x: auto;
+    }
+    .ai-report .ai-head { color: #0369a1; font-weight: 700; font-size: 0.85rem; }
+    .ai-report .ai-label { color: var(--muted); }
+    .ai-report .ai-ok { color: #15803d; font-weight: 600; }
+    .ai-report .ai-warn { color: #c2410c; font-weight: 600; }
+    .ai-report .ai-bad { color: #b91c1c; font-weight: 700; }
+    .ai-report .ai-line { color: #cbd5e1; }
+
+    /* ── Settings Slot Manager ────────────────── */
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 1rem; font-weight: 600; }
+    .setting-sub { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
+    .slot-row { display: grid; grid-template-columns: 36px 1fr 140px 40px; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .slot-row:last-child { border-bottom: none; }
+    .slot-emoji-input { width: 40px; height: 44px; text-align: center; font-size: 1.1rem; border: 1.5px solid var(--border); border-radius: 7px; background: var(--bg); }
+    .slot-name-input { padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 1rem; background: var(--bg); color: var(--text); width: 100%; }
+    .slot-name-input:focus, .slot-emoji-input:focus { outline: none; border-color: var(--accent); }
+    .slot-time-btn { width: 100%; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 1rem; background: var(--bg); color: var(--text); cursor: pointer; text-align: left; font-weight: 600; }
+    .slot-time-btn:hover { border-color: var(--accent); }
+    /* ── Slot Time Picker Modal ── */
+    #slot-time-modal { display: none; position: fixed; inset: 0; z-index: 300; }
+    #slot-time-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.45); }
+    #slot-time-sheet { position: absolute; bottom: 0; left: 0; right: 0; background: var(--card); border-radius: 20px 20px 0 0; padding: 20px 20px 36px; }
+    .btn-remove-slot { background: none; border: none; cursor: pointer; font-size: 0.95rem; color: #fca5a5; padding: 4px 5px; border-radius: 5px; }
+    .btn-remove-slot:hover { background: #fee2e2; color: var(--stage2); }
+    .count-stepper { display: flex; align-items: center; gap: 10px; }
+    .count-stepper button { width: 30px; height: 30px; border-radius: 7px; border: 1.5px solid var(--border); background: var(--bg); font-size: 1.1rem; cursor: pointer; font-weight: 700; color: var(--text); }
+    .count-stepper button:hover { border-color: var(--accent); color: var(--accent); }
+    .count-stepper span { font-size: 1.1rem; font-weight: 700; min-width: 20px; text-align: center; }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; border-radius: 24px; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+    .empty-state { text-align: center; padding: 32px 20px; color: var(--muted); }
+    .empty-state .big { font-size: 2rem; }
+    .empty-state p { margin-top: 8px; font-size: 0.82rem; line-height: 1.5; }
+    .brand-footer { text-align: center; font-size: 0.66rem; color: var(--muted); margin-top: 6px; padding-bottom: 6px; letter-spacing: 0.3px; }
+
+    /* ── License Lock Overlay ───────────────────── */
+    #lock-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0c1445 0%, #1a2875 50%, #0e3a6e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #lock-overlay.hidden { display: none; }
+    .lock-box {
+      background: white; border-radius: 16px; padding: 32px 28px;
+      max-width: 340px; width: 90%; text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .lock-box .lock-icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .lock-box h2 { font-size: 1.2rem; font-weight: 800; color: #0c1445; margin-bottom: 4px; }
+    .lock-box .lock-sub { font-size: 0.78rem; color: #64748b; margin-bottom: 20px; line-height: 1.5; }
+    .lock-box input {
+      width: 100%; padding: 12px 14px; border: 2px solid #e2e8f0;
+      border-radius: 10px; font-size: 1rem; font-family: monospace;
+      letter-spacing: 2px; text-align: center; text-transform: uppercase;
+      outline: none; margin-bottom: 10px;
+    }
+    .lock-box input:focus { border-color: #0ea5e9; }
+    .lock-box input.error { border-color: #ef4444; }
+    .lock-box .lock-err { font-size: 0.75rem; color: #ef4444; min-height: 18px; margin-bottom: 8px; }
+    .lock-box .lock-btn {
+      width: 100%; padding: 13px; background: #0ea5e9; color: white;
+      border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .lock-box .lock-btn:hover { background: #0284c7; }
+    .lock-box .lock-licensee { font-size: 0.7rem; color: #94a3b8; margin-top: 16px; }
+
+    /* ── Print styles ────────────────────────────── */
+    #print-report { display: none; }
+    @media print {
+      body > *:not(#print-report) { display: none !important; }
+      #print-report { display: block !important; font-family: Arial, sans-serif; font-size: 11pt; color: #000; padding: 12pt; }
+      .pr-header { text-align: center; margin-bottom: 14pt; border-bottom: 2px solid #000; padding-bottom: 8pt; }
+      .pr-header h2 { font-size: 16pt; margin: 0 0 3pt; }
+      .pr-header p  { font-size: 9pt; color: #555; margin: 0; }
+      .pr-summary { display: flex; gap: 24pt; margin-bottom: 10pt; font-size: 10pt; flex-wrap: wrap; }
+      .pr-summary span { flex: 1; min-width: 100pt; }
+      .pr-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 10pt; }
+      .pr-table th { background: #eee; border: 1px solid #bbb; padding: 4pt 5pt; text-align: left; font-size: 8pt; text-transform: uppercase; }
+      .pr-table td { border: 1px solid #ddd; padding: 3pt 5pt; }
+      .pr-table tr:nth-child(even) td { background: #f8f8f8; }
+      .pr-zones { display: grid; grid-template-columns: repeat(4,1fr); gap: 6pt; margin-top: 10pt; font-size: 8pt; }
+      .pr-zone  { border: 1px solid #ddd; border-radius: 4pt; padding: 4pt 6pt; }
+      .pr-footer { font-size: 8pt; color: #777; text-align: center; margin-top: 10pt; border-top: 1px solid #ddd; padding-top: 6pt; }
+    }
+
+    @media (max-width: 500px) {
+      .qlog-grid { grid-template-columns: 1fr 1fr; }
+      .qlog-grid2 { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .status-bar { flex-wrap: wrap; }
+      .dash-main { grid-template-columns: 1fr; }
+
+      .tab { padding: 12px; }
+      .card { padding: 18px; }
+      nav button { font-size: 1rem; padding: 16px 4px; }
+      .dg-date { font-size: 1.15rem; }
+      .ri-bp { font-size: 1.75rem; }
+      .reading-item { padding: 20px 0; }
+      .btn-sm, .btn-danger { width: 100%; margin-top: 8px; }
+      .setting-row { flex-wrap: wrap; }
+      .cal-row { padding: 14px 12px; }
+      .date-header { padding: 16px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── License Lock Overlay ──────────────────────── -->
+<div id="lock-overlay">
+  <div class="lock-box">
+    <div class="lock-icon">🔐</div>
+    <h2>BloodBeeperAMPM</h2>
+    <div class="lock-sub">Enter your license key to activate.<br>You only need to do this once on this device.</div>
+    <input type="text" id="lock-input" placeholder="Enter your license key" maxlength="30"
+      oninput="this.value=this.value.toUpperCase()"
+      onkeydown="if(event.key==='Enter')activateLicense()">
+    <div class="lock-err" id="lock-err"></div>
+    <button class="lock-btn" onclick="activateLicense()">Activate</button>
+    <div class="lock-licensee">Licensed copy · BloodBeeperAMPM by Doc Kalodski</div>
+  </div>
+</div>
+
+<!-- ── Header ────────────────────────────────────── -->
+<header>
+  <div class="header-inner">
+    <div class="radar-icon">📡</div>
+    <div class="header-text">
+      <h1>Blood<span>BeeperAMPM</span></h1>
+      <p>by Doc Kalodski &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span> &nbsp;<span id="rr-sync-badge" style="display:none;font-size:0.6rem;background:rgba(14,165,233,0.2);border-radius:4px;padding:1px 5px;">☁️ synced</span></p>
+    </div>
+    <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
+  </div>
+</header>
+
+<!-- ── Reminder Banner ───────────────────────────── -->
+<div id="reminder-banner">
+  <span id="reminder-text"></span>
+  <button type="button" id="reminder-dismiss" onclick="dismissReminder()">✕</button>
+</div>
+
+<!-- ── Nav ───────────────────────────────────────── -->
+<nav>
+  <button type="button" class="active" onclick="switchTab('dash', this)">🏠 Dashboard</button>
+  <button type="button" onclick="switchTab('analysis', this)">🤖 Analysis</button>
+  <button type="button" onclick="switchTab('settings', this)">⚙️ Settings</button>
+  <button type="button" id="rr-clients-tab-btn" style="display:none;" onclick="switchTab('clients', this)">👥 Clients</button>
+</nav>
+
+<!-- Beta banner -->
+<div id="beta-banner" style="display:none;background:#fef9c3;border-left:4px solid #f59e0b;padding:9px 16px;font-size:0.83rem;color:#78350f;text-align:center;">
+  👋 You're on the shared beta key — ask Doc Kalodski for your own key so your data stays yours!
+</div>
+
+<!-- ════════════════════════════════════════════════
+     DASHBOARD TAB
+════════════════════════════════════════════════ -->
+<div id="tab-dash" class="tab active">
+
+  <!-- Log Now Button -->
+  <div class="card" id="log-now-card" style="padding:14px;margin-bottom:14px;">
+    <button type="button" class="btn btn-primary" onclick="openSheet(this.closest('.card'))">✚ Log a Reading</button>
+  </div>
+
+  <!-- 7-Day Summary Card -->
+  <div id="dash-summary-card" class="card" style="margin-bottom:14px;"></div>
+
+  <!-- Reading History Calendar -->
+  <div class="card">
+    <div class="card-title">Reading History</div>
+    <div id="cal-grid-container"></div>
+  </div>
+
+  <div class="brand-footer">BloodBeeperAMPM · by Doc Kalodski · AHA 2017 Guidelines</div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     ANALYSIS TAB
+════════════════════════════════════════════════ -->
+<div id="tab-analysis" class="tab">
+  <div id="analysis-content"></div>
+  <div class="brand-footer">BloodBeeperAMPM · by Doc Kalodski · AHA 2017 Guidelines</div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     SETTINGS TAB
+════════════════════════════════════════════════ -->
+<div id="tab-settings" class="tab">
+
+  <!-- Getting Started notice -->
+  <div class="card" style="background:#eff6ff;border-color:#bfdbfe;">
+    <div class="card-title" style="color:#1d4ed8;">👋 Welcome to BloodBeeperAMPM</div>
+    <p style="font-size:0.8rem;color:#1e40af;line-height:1.6;margin-bottom:8px;">
+      <strong>Your app is pre-loaded with 3 months of sample data</strong> so you can explore all the features right away — the chart, trends, and analysis report.
+    </p>
+    <p style="font-size:0.8rem;color:#1e40af;line-height:1.6;margin-bottom:8px;">
+      When you're ready to track your <em>real</em> BP readings, go to <strong>Your Data → Erase All</strong> below and start fresh.
+    </p>
+    <p style="font-size:0.75rem;color:#3b82f6;line-height:1.5;">
+      ☁️ Data syncs across all your devices automatically. Use <strong>Save to Spreadsheet</strong> to export a copy for your doctor.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">My Reading Schedule</div>
+    <p style="font-size:0.76rem;color:var(--muted);margin-bottom:12px;">
+      Set the times you normally take your BP each day. BloodBeeperAMPM will show a reminder banner when it's time — keep the app open on your phone or browser.
+    </p>
+    <div class="setting-row" style="padding-bottom:14px;">
+      <div>
+        <div class="setting-label">How many times a day?</div>
+        <div class="setting-sub">Up to 6 reading slots</div>
+      </div>
+      <div class="count-stepper">
+        <button type="button" onclick="changeSlotCount(-1)">−</button>
+        <span id="slot-count-display">3</span>
+        <button type="button" onclick="changeSlotCount(+1)">+</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:34px 1fr 96px 30px;gap:8px;padding-bottom:5px;">
+      <span style="font-size:0.62rem;text-transform:uppercase;color:var(--muted);">Icon</span>
+      <span style="font-size:0.62rem;text-transform:uppercase;color:var(--muted);">Name</span>
+      <span style="font-size:0.62rem;text-transform:uppercase;color:var(--muted);">Time</span>
+      <span></span>
+    </div>
+    <div id="slot-list"></div>
+    <button type="button" class="btn-sm" id="add-slot-btn" onclick="addSlot()" style="width:100%;margin-top:8px;text-align:center;">+ Add Slot</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Display</div>
+    <div class="setting-row">
+      <div><div class="setting-label">🌙 Dark Mode</div><div class="setting-sub">Dark background — easier on eyes at night</div></div>
+      <label class="toggle"><input type="checkbox" id="s-dark" onchange="toggleTheme()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🔠 Large Text</div><div class="setting-sub">Bigger fonts throughout the app</div></div>
+      <label class="toggle"><input type="checkbox" id="s-large" onchange="toggleLargeText()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Reminders</div>
+    <div class="setting-row">
+      <div><div class="setting-label">Enable Reminder Banners</div><div class="setting-sub">Shows a reminder at the top of the app when it's time to take a reading. Keep the app open on your device.</div></div>
+      <label class="toggle"><input type="checkbox" id="s-notif" title="Enable browser notifications" aria-label="Enable browser notifications" onchange="toggleNotifications()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Your Data</div>
+    <div class="setting-row">
+      <div><div class="setting-label">🖨️ Print Report</div><div class="setting-sub">Prints a full summary of your readings — save as PDF to bring to your doctor</div></div>
+      <button type="button" class="btn-sm" onclick="printReport()">Print</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📥 Save to Spreadsheet</div><div class="setting-sub">Downloads all your readings as a file you can open in Excel or Google Sheets</div></div>
+      <button type="button" class="btn-sm" onclick="exportCSV()">Download</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📤 Export Data Backup</div><div class="setting-sub">Downloads all readings + settings as a backup file — use this to transfer to another device</div></div>
+      <button type="button" class="btn-sm" onclick="exportBackup()">Export</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">📲 Load Data from Another Device</div><div class="setting-sub">Import a backup file exported from another device — merges readings, keeps your newest settings</div></div>
+      <button type="button" class="btn-sm" onclick="document.getElementById('import-file').click()">Import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackup(this)">
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🔄 Reload Sample Data</div><div class="setting-sub">Restores the 3-month demo dataset — replaces your current readings</div></div>
+      <button type="button" class="btn-sm" onclick="loadDemoData()">Reload Demo</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">🗑️ Erase All &amp; Start Fresh</div><div class="setting-sub">Deletes everything — use this when you're ready to log your real BP readings</div></div>
+      <button type="button" class="btn-danger" onclick="clearAllData()">Erase All</button>
+    </div>
+    <div class="setting-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:16px;">
+      <div><div class="setting-label">🔑 License</div><div class="setting-sub" id="settings-licensed-to">—</div></div>
+      <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">BloodBeeperAMPM v1.2 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💊 Current Medications</div>
+    <p style="font-size:0.76rem;color:var(--muted);margin-bottom:10px;">List any medications you're taking (e.g. Amlodipine 5mg, Losartan 50mg). This appears on your printed report.</p>
+    <textarea id="s-meds" rows="3" oninput="saveMedications()" placeholder="e.g. Amlodipine 5mg — once daily&#10;Losartan 50mg — once daily" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;background:var(--bg);color:var(--text);resize:vertical;font-family:inherit;line-height:1.6;"></textarea>
+  </div>
+
+  <div class="brand-footer">BloodBeeperAMPM v1.2 · by Doc Kalodski</div>
+</div>
+
+<!-- hidden print container -->
+<!-- ══════════ CLIENTS (DEV ONLY) ══════════ -->
+<div id="tab-clients" class="tab">
+  <div class="card">
+    <div class="card-title">👥 Client Overview</div>
+    <div id="rr-clients-list"><div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading…</div></div>
+  </div>
+</div>
+
+<div id="print-report"></div>
+
+<!-- ── Slot Time Picker Modal ── -->
+<div id="slot-time-modal">
+  <div id="slot-time-overlay" onclick="closeSlotTimePicker()"></div>
+  <div id="slot-time-sheet">
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;" id="slot-time-label">Set Time</div>
+    <div class="drum-row" style="margin-bottom:16px;">
+      <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-hour"></div></div></div>
+      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-min"></div></div></div>
+      <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-ampm"></div></div></div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn-sm" onclick="closeSlotTimePicker()">Cancel</button>
+      <button type="button" class="btn btn-primary" style="flex:1;" onclick="confirmSlotTime()">✓ Confirm Time</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Inline Log Form (moved in DOM by JS to below clicked button) ── -->
+<div id="inline-form">
+  <div id="edit-mode-bar">
+    <span style="flex:1;">✏️ Editing this reading</span>
+    <button id="cancel-edit" onclick="cancelEdit()">Cancel</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div class="card-title" id="sheet-title" style="margin-bottom:0;">🩺 New Record</div>
+    <button type="button" class="btn-icon" onclick="cancelEdit()" title="Close">✕</button>
+  </div>
+  <div class="drum-row">
+    <div class="drum-col">
+      <div class="drum-label">Systolic</div>
+      <div class="drum-wrap"><div class="drum-scroll" id="drum-sys"></div></div>
+    </div>
+    <div class="drum-sep">/</div>
+    <div class="drum-col">
+      <div class="drum-label">Diastolic</div>
+      <div class="drum-wrap"><div class="drum-scroll" id="drum-dia"></div></div>
+    </div>
+    <div class="drum-sep" style="font-size:1.4rem;padding-top:174px;">♥</div>
+    <div class="drum-col">
+      <div class="drum-label">Pulse</div>
+      <div class="drum-wrap"><div class="drum-scroll" id="drum-hr"></div></div>
+    </div>
+  </div>
+  <input type="hidden" id="in-sys" value="120">
+  <input type="hidden" id="in-dia" value="80">
+  <input type="hidden" id="in-hr" value="70">
+  <input type="hidden" id="editing-id" value="">
+  <div id="bp-preview-display" style="text-align:center;font-size:2.3rem;font-weight:800;letter-spacing:-1.5px;color:var(--text);padding:4px 0;min-height:48px;"></div>
+  <div id="preview-badge" style="text-align:center;margin-bottom:14px;min-height:28px;"></div>
+  <div class="qlog-grid2" style="margin-bottom:10px;">
+    <div class="form-group">
+      <label>Reading Slot</label>
+      <select id="in-slot" style="font-size:1rem;"></select>
+    </div>
+    <div class="form-group">
+      <label>Arm / Position</label>
+      <select id="in-arm" style="font-size:1rem;">
+        <option value="">— not specified</option>
+        <option value="L-sit">Left arm, sitting</option>
+        <option value="R-sit">Right arm, sitting</option>
+        <option value="L-std">Left arm, standing</option>
+        <option value="R-std">Right arm, standing</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>Notes <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+    <input type="text" id="in-notes" placeholder="e.g. after coffee…" maxlength="100" style="font-size:1rem;">
+  </div>
+  <div style="margin-bottom:12px;">
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Date</div>
+    <div class="drum-row" style="margin-bottom:8px;">
+      <div class="drum-col"><div class="drum-label">Month</div><div class="drum-wrap"><div class="drum-scroll" id="drum-month"></div></div></div>
+      <div class="drum-col"><div class="drum-label">Day</div><div class="drum-wrap"><div class="drum-scroll" id="drum-day"></div></div></div>
+      <div class="drum-col"><div class="drum-label">Year</div><div class="drum-wrap"><div class="drum-scroll" id="drum-year"></div></div></div>
+    </div>
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Time</div>
+    <div class="drum-row" style="margin-bottom:0;">
+      <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dhour"></div></div></div>
+      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dmin"></div></div></div>
+      <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dampm"></div></div></div>
+    </div>
+    <input type="hidden" id="in-datetime" value="">
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button type="button" class="btn-sm" onclick="cancelEdit()">← Back</button>
+    <button type="button" class="btn btn-primary" id="submit-btn" style="flex:1;" onclick="saveReading()">✚ Log This Reading</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── SUPABASE SYNC ─────────────────────────────────────────
+const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+function bbampmUserKey(){const k=localStorage.getItem('bbampmampm_license_key')||'';return k==='007'?'BBAMPM-2026-0404-DOC-0101':k;}
+function bbampmIsDev(){return localStorage.getItem('bbampmampm_license_key')==='007';}
+function showRRSyncBadge(){const el=document.getElementById('bbampm-sync-badge');if(el)el.style.display='inline';}
+
+async function bbampmPushToCloud(dataKey,value){
+  const uk=bbampmUserKey(); if(!uk) return;
+  try{ await sb.from('bbampmampm_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
+  catch(e){ console.warn('RR push error:',e); }
+}
+
+async function bbampmSyncFromCloud(){
+  const uk=bbampmUserKey(); if(!uk) return;
+  try{
+    const {data,error}=await sb.from('bbampmampm_data').select('*').eq('user_key',uk);
+    if(error||!data||!data.length) return;
+    const cloudR=data.find(r=>r.data_key==='readings')?.value||[];
+    const cloudS=data.find(r=>r.data_key==='settings')?.value||null;
+    const local=JSON.parse(localStorage.getItem('bbampmampm_readings')||'[]');
+    const localIds=new Set(local.map(r=>r.id));
+    const incoming=cloudR.filter(r=>!localIds.has(r.id));
+    if(incoming.length){
+      const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+      _readingsCache=merged;
+      localStorage.setItem('bbampmampm_readings',JSON.stringify(merged));
+    }
+    if(cloudS&&!localStorage.getItem('bbampmampm_settings2')){
+      _settingsCache=cloudS;
+      localStorage.setItem('bbampmampm_settings2',JSON.stringify(cloudS));
+    }
+    showRRSyncBadge(); renderAll();
+  }catch(e){ console.warn('RR sync error:',e); }
+}
+
+function bbampmSubscribeRealtime(){
+  const uk=bbampmUserKey(); if(!uk) return;
+  sb.channel('bbampm-'+uk)
+    .on('postgres_changes',{event:'*',schema:'public',table:'bbampmampm_data',filter:'user_key=eq.'+uk},payload=>{
+      const d=payload.new; if(!d) return;
+      if(d.data_key==='readings'){
+        const cloud=d.value||[];
+        const local=loadReadings();
+        const localIds=new Set(local.map(r=>r.id));
+        const incoming=cloud.filter(r=>!localIds.has(r.id));
+        if(incoming.length){
+          const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+          _readingsCache=merged;
+          localStorage.setItem('bbampmampm_readings',JSON.stringify(merged));
+          renderAll();
+        }
+      }
+      if(d.data_key==='settings'&&d.value){
+        _settingsCache=d.value;
+        localStorage.setItem('bbampmampm_settings2',JSON.stringify(d.value));
+      }
+      showRRSyncBadge();
+    })
+    .subscribe();
+}
+
+// ── LICENSE ───────────────────────────────────────────────
+// ╔══════════════════════════════════════════════════════════╗
+// ║  ASSIGN KEYS HERE — add  'KEY': 'Full Name'  pairs     ║
+// ║  Key can be any string (no spaces). 007 = developer.   ║
+// ╚══════════════════════════════════════════════════════════╝
+const LICENSES = {
+  '007':                    'Doc Kalodski Unlimited',  // no expiry — unlimited access
+  'ACCI':                   'ACCI Unlimited',          // no expiry — unlimited access
+  'BBAMPM-2026-0404-DOC-0101':  'Doc Kalodski',
+  'SHEILA':                 'Sheila',
+  // Format: BBAMPM-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
+  // Beta testers — expires Apr 30, 2026
+  'BBAMPM-BETA-APR2026':        'Beta Tester',
+  // 'BBAMPM-2026-MMDD-NAME-0102': 'Next Client',
+};
+
+// Beta keys expire Apr 30 2026. Add more expiry rules here as needed.
+const BETA_EXPIRY = { 'BBAMPM-BETA-APR2026': new Date('2026-05-01') };
+function _matchKey(input) {
+  const clean = input.trim().toUpperCase().replace(/-/g, '');
+  for (const [k, name] of Object.entries(LICENSES)) {
+    if (k.replace(/-/g, '').toUpperCase() === clean) {
+      const exp = BETA_EXPIRY[k];
+      if (exp && new Date() >= exp) return '__EXPIRED__';
+      return name;
+    }
+  }
+  return null;
+}
+
+function activateLicense() {
+  const raw  = document.getElementById('lock-input').value;
+  const inEl = document.getElementById('lock-input');
+  const ebbampmEl = document.getElementById('lock-err');
+  const name  = _matchKey(raw);
+  if (name === '__EXPIRED__') {
+    inEl.classList.add('error');
+    ebbampmEl.innerHTML = '⏳ Beta period ended Apr 30, 2026.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
+    return;
+  }
+  if (!name) {
+    inEl.classList.add('error');
+    ebbampmEl.innerHTML = '⛔ Illegal Access — Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
+    return;
+  }
+  localStorage.setItem('bbampmampm_license_key',  raw.trim().toUpperCase());
+  localStorage.setItem('bbampmampm_license_name', name);
+  if (!localStorage.getItem('bbampmampm_activated')) {
+    localStorage.setItem('bbampmampm_activated', new Date().toISOString());
+  }
+  inEl.classList.remove('error');  ebbampmEl.innerHTML = '';
+  location.reload();
+}
+
+function checkLicense() {
+  const key  = localStorage.getItem('bbampmampm_license_key');
+  const name = key ? _matchKey(key) : null;
+  if (name) {
+    document.getElementById('lock-overlay').classList.add('hidden');
+    _applyLicensedTo(name);
+    const bb=document.getElementById('beta-banner');
+    if(bb) bb.style.display = (key==='BBAMPM-BETA-APR2026') ? '' : 'none';
+    return true;
+  }
+  localStorage.removeItem('bbampmampm_license_key');
+  localStorage.removeItem('bbampmampm_license_name');
+  document.getElementById('lock-overlay').classList.remove('hidden');
+  return false;
+}
+
+function _applyLicensedTo(name) {
+  const el = document.getElementById('licensee-name');
+  if (el) el.textContent = name;
+  const sl = document.getElementById('settings-licensed-to');
+  if (sl) sl.textContent = 'Licensed to ' + name;
+}
+
+function deactivateLicense() {
+  if (!confirm('Deactivate this license on this device?\nYou will need to enter a key again.')) return;
+  localStorage.removeItem('bbampmampm_license_key');
+  localStorage.removeItem('bbampmampm_license_name');
+  location.reload();
+}
+
+// ── CLASSIFICATION ────────────────────────────────────────
+function classify(sys, dia) {
+  if (sys > 180 || dia > 120) return { key:'crisis',   label:'DANGER — Seek help now', cls:'badge-crisis'   };
+  if (sys >= 140 || dia >= 90) return { key:'stage2',   label:'Very High',              cls:'badge-stage2'   };
+  if (sys >= 130 || dia >= 80) return { key:'stage1',   label:'High',                   cls:'badge-stage1'   };
+  if (sys >= 120 && dia <  80) return { key:'elevated', label:'A little high',           cls:'badge-elevated' };
+  return                              { key:'normal',   label:'Normal',                 cls:'badge-normal'   };
+}
+function badgeHTML(sys, dia) { const c = classify(sys,dia); return `<span class="badge ${c.cls}">${c.label}</span>`; }
+// ── AM/PM CLASSIFICATION ──────────────────────────────────
+function isAM(r) { const h = new Date(r.timestamp).getHours(); return h >= 5 && h < 12; }
+function isPM(r) { const h = new Date(r.timestamp).getHours(); return h >= 18 && h < 24; }
+function getAMPM(r) { return isAM(r) ? '🌅 AM' : isPM(r) ? '🌙 PM' : '⏰ Other'; }
+function pulsePressure(sys, dia) {
+  const pp = sys - dia;
+  return { pp, note: pp > 60 ? ' · Wide PP ⚠' : pp < 25 ? ' · Narrow PP ⚠' : '' };
+}
+
+// ── SETTINGS ──────────────────────────────────────────────
+const DEFAULT_SLOTS = [
+  { id:'s1', emoji:'🌅', name:'After Breakfast', time:'07:00' },
+  { id:'s2', emoji:'🌞', name:'After Lunch',     time:'12:00' },
+  { id:'s3', emoji:'🌙', name:'After Dinner',    time:'18:00' },
+];
+
+let _settingsCache = null;
+function loadSettings() {
+  if (!_settingsCache) {
+    const raw = localStorage.getItem('bbampmampm_settings2');
+    _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
+  }
+  return _settingsCache;
+}
+function persistSettings(s) { _settingsCache = s; localStorage.setItem('bbampmampm_settings2', JSON.stringify(s)); bbampmPushToCloud('settings', s); }
+function saveMedications() { const s=loadSettings(); s.medications=document.getElementById('s-meds').value; persistSettings(s); }
+
+function saveSlots() {
+  const s = loadSettings();
+  s.slots = Array.from(document.querySelectorAll('.slot-row')).map(row => ({
+    id:    row.dataset.id,
+    emoji: row.querySelector('.slot-emoji-input').value.trim() || '💊',
+    name:  row.querySelector('.slot-name-input').value.trim() || 'Reading',
+    time:  row.querySelector('.slot-time-input').value,
+  }));
+  persistSettings(s);
+  populateSlotDropdown();
+  checkReminders();
+}
+
+function renderSlotList() {
+  const s = loadSettings();
+  const dkCb = document.getElementById('s-dark');
+  if (dkCb) dkCb.checked = document.documentElement.getAttribute('data-theme') === 'dark';
+  const lgCb = document.getElementById('s-large');
+  if (lgCb) lgCb.checked = document.documentElement.getAttribute('data-large') === '1';
+  document.getElementById('slot-list').innerHTML = s.slots.map(sl => `
+    <div class="slot-row" data-id="${sl.id}">
+      <input class="slot-emoji-input" type="text" value="${sl.emoji}" maxlength="2" oninput="saveSlots()">
+      <input class="slot-name-input" type="text" value="${sl.name}" placeholder="Name" oninput="saveSlots()">
+      <button type="button" class="slot-time-btn" onclick="openSlotTimePicker('${sl.id}','${sl.time}')">${fmt12(sl.time)}</button>
+      <input type="hidden" class="slot-time-input" value="${sl.time}">
+      <button class="btn-remove-slot" onclick="removeSlot('${sl.id}')" title="Remove">✕</button>
+    </div>`).join('');
+  document.getElementById('slot-count-display').textContent = s.slots.length;
+  document.getElementById('add-slot-btn').style.display = s.slots.length >= 6 ? 'none' : '';
+}
+
+function addSlot() {
+  const s = loadSettings();
+  if (s.slots.length >= 6) return;
+  s.slots.push({ id:'sx'+Date.now(), emoji:'💊', name:'Reading '+(s.slots.length+1), time:'09:00' });
+  persistSettings(s); renderSlotList(); populateSlotDropdown();
+}
+
+function removeSlot(id) {
+  const s = loadSettings();
+  if (s.slots.length <= 1) { alert('Need at least 1 slot.'); return; }
+  s.slots = s.slots.filter(sl => sl.id !== id);
+  persistSettings(s); renderSlotList(); populateSlotDropdown();
+}
+
+function changeSlotCount(delta) {
+  const s = loadSettings();
+  const n = Math.min(6, Math.max(1, s.slots.length + delta));
+  if (n > s.slots.length) addSlot();
+  else if (n < s.slots.length) removeSlot(s.slots[s.slots.length-1].id);
+}
+
+function populateSlotDropdown() {
+  const s = loadSettings();
+  const sel = document.getElementById('in-slot');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select slot —</option>' +
+    s.slots.map(sl => `<option value="${sl.id}">${sl.emoji} ${sl.name}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function autoDetectSlot() {
+  const s = loadSettings();
+  const dtVal = document.getElementById('in-datetime').value;
+  if (!dtVal) return;
+  const dt = new Date(dtVal);
+  const hhmm = dt.getHours()*60 + dt.getMinutes();
+  let best = null, bestDist = 90;
+  s.slots.forEach(sl => {
+    const dist = Math.abs(hhmm - toMin(sl.time));
+    if (dist < bestDist) { bestDist = dist; best = sl.id; }
+  });
+  if (best) document.getElementById('in-slot').value = best;
+}
+
+function getSlot(id) {
+  return loadSettings().slots.find(s=>s.id===id) || { id:'other', emoji:'💊', name:'Manual', time:'00:00' };
+}
+
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = dark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('bbampmampm_theme', next);
+  document.getElementById('theme-btn').textContent = next === 'dark' ? '☀️' : '🌙';
+  const cb = document.getElementById('s-dark');
+  if (cb) cb.checked = next === 'dark';
+}
+function toggleLargeText() {
+  const on = document.getElementById('s-large').checked;
+  document.documentElement.setAttribute('data-large', on ? '1' : '0');
+  localStorage.setItem('bbampmampm_large', on ? '1' : '0');
+}
+
+function toggleNotifications() {
+  const on = document.getElementById('s-notif').checked;
+  const s  = loadSettings();
+  if (on) {
+    Notification.requestPermission().then(perm => {
+      if (perm !== 'granted') { alert('Permission denied. Enable in browser settings.'); document.getElementById('s-notif').checked=false; return; }
+      s.notifications = true; persistSettings(s);
+    });
+  } else { s.notifications = false; persistSettings(s); }
+}
+
+// ── STORAGE ───────────────────────────────────────────────
+let _readingsCache = null;
+function loadReadings() {
+  if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('bbampmampm_readings') || '[]');
+  return _readingsCache;
+}
+function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('bbampmampm_readings', JSON.stringify(arr)); bbampmPushToCloud('readings', arr); }
+
+// ── DEMO DATA ─────────────────────────────────────────────
+// Demo arc: Jan 1 2026 → today — Stage 2 → Normal trend
+function buildDemoReadings() {
+  const s = loadSettings();
+  // End at activation day (the day they first entered their key), not today
+  const activatedStr = localStorage.getItem('bbampmampm_activated');
+  const now = activatedStr ? new Date(activatedStr) : new Date();
+  const start = new Date(2026, 0, 1); // Jan 1 2026
+  const totalDays = Math.max(0, Math.floor((now - start) / 86400000));
+  const out = [];
+
+  for (let d = totalDays; d >= 0; d--) {
+    const base = new Date(now);
+    base.setDate(base.getDate() - d);
+    base.setHours(0, 0, 0, 0);
+
+    // Systolic trend: 148 → 120 over full date range + noise
+    const progress = totalDays > 0 ? (totalDays - d) / totalDays : 1; // 0 to 1
+    const baseSys = Math.round(148 - progress * 28 + (Math.random() * 8 - 4));
+    const baseDia = Math.round(94 - progress * 16 + (Math.random() * 6 - 3));
+    const baseHr  = Math.round(76 - progress * 8  + (Math.random() * 6 - 3));
+
+    s.slots.forEach((sl, si) => {
+      // Morning slightly higher, evening slightly lower
+      const offset = [3, 0, -2][si] || 0;
+      const [h, m] = sl.time.split(':').map(Number);
+      const t = new Date(base);
+      t.setHours(h, m + Math.floor(Math.random() * 8 - 4), 0, 0);
+      if (t > now) return;
+
+      out.push({
+        id: 3000000 + d * 100 + si,
+        timestamp: t.toISOString(),
+        sys:   Math.max(100, baseSys + offset + Math.floor(Math.random()*6 - 3)),
+        dia:   Math.max(60,  baseDia + Math.floor(offset/2) + Math.floor(Math.random()*4 - 2)),
+        hr:    Math.max(55,  baseHr  + Math.floor(Math.random()*4 - 2)),
+        notes: ['','','stressful day','after walk','rested','after meds',''][Math.floor(Math.random()*7)],
+        slotId: sl.id,
+      });
+    });
+  }
+  return out;
+}
+
+function loadDemoData() {
+  if (!confirm('Replace all data with a 3-month demo dataset?')) return;
+  saveReadings(buildDemoReadings());
+  renderAll();
+  alert('Demo data loaded — 3 months of BP readings.');
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL readings? Cannot be undone.')) return;
+  saveReadings([]); renderAll();
+}
+
+function exportBackup() {
+  const readings = loadReadings();
+  if (!readings.length) { alert('No data to export.'); return; }
+  const backup = {
+    version: 1,
+    exported: new Date().toISOString(),
+    readings: readings,
+    settings: JSON.parse(localStorage.getItem('bbampmampm_settings2') || 'null')
+  };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}));
+  a.download = 'BloodBeeperAMPM_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.readings || !Array.isArray(backup.readings)) { alert('Invalid backup file.'); return; }
+      // Merge readings — deduplicate by id, incoming wins on conflict
+      const existing = loadReadings();
+      const existingIds = new Set(existing.map(r => r.id));
+      const merged = [...existing, ...backup.readings.filter(r => !existingIds.has(r.id))];
+      saveReadings(merged);
+      // Import settings only if this device has none yet
+      if (backup.settings && !localStorage.getItem('bbampmampm_settings2')) {
+        persistSettings(backup.settings);
+      }
+      renderAll();
+      alert(`Imported ${backup.readings.length} readings. Total now: ${merged.length}.`);
+    } catch { alert('Could not read backup file — make sure it\'s a valid BloodBeeperAMPM export.'); }
+  };
+  reader.readAsText(file);
+  input.value = ''; // reset so same file can be re-imported if needed
+}
+
+function exportCSV() {
+  const r = loadReadings();
+  if (!r.length) { alert('No data to export.'); return; }
+  const header = ['Date','Time','Systolic','Diastolic','Heart Rate','Slot','Status','Notes'];
+  const rows = r.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).map(rd => {
+    const dt = new Date(rd.timestamp);
+    const sl = getSlot(rd.slotId);
+    return [
+      dt.toLocaleDateString('en-PH'),
+      dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),
+      rd.sys, rd.dia, rd.hr||'',
+      sl.name, classify(rd.sys,rd.dia).label,
+      rd.notes||''
+    ];
+  });
+  const csv = [header,...rows].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = 'BloodBeeperAMPM_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function printReport() {
+  const readings = loadReadings();
+  if (!readings.length) { alert('No data to print.'); return; }
+  const now = new Date();
+  const sorted = readings.slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+  const cut7 = new Date(now); cut7.setDate(cut7.getDate()-7);
+  const week7 = readings.filter(r=>new Date(r.timestamp)>=cut7);
+  const avg7Sys = week7.length ? Math.round(week7.reduce((a,r)=>a+r.sys,0)/week7.length) : null;
+  const avg7Dia = week7.length ? Math.round(week7.reduce((a,r)=>a+r.dia,0)/week7.length) : null;
+  const first = new Date(sorted[sorted.length-1].timestamp);
+  const last  = new Date(sorted[0].timestamp);
+  const fmt   = d => d.toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'});
+
+  const tableRows = sorted.map(r => {
+    const dt = new Date(r.timestamp);
+    const sl = getSlot(r.slotId);
+    const cl = classify(r.sys,r.dia);
+    const armTxt = {'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||'—';
+    return `<tr>
+      <td>${fmt(dt)}</td>
+      <td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td><strong>${r.sys}/${r.dia}</strong></td>
+      <td>${r.hr||'—'}</td>
+      <td>${sl.name}</td>
+      <td>${armTxt}</td>
+      <td>${cl.label}</td>
+      <td>${r.notes||''}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('print-report').innerHTML = `
+    <div class="pr-header">
+      <h2>📡 BloodBeeperAMPM — Blood Pressure Report</h2>
+      <p>Printed: ${now.toLocaleString('en-PH')} &nbsp;·&nbsp; AHA 2017 Guidelines &nbsp;·&nbsp; by Doc Kalodski</p>
+    </div>
+    <div class="pr-summary">
+      <span><strong>Total Readings:</strong> ${readings.length}</span>
+      <span><strong>Date Range:</strong> ${fmt(first)} – ${fmt(last)}</span>
+      ${avg7Sys ? `<span><strong>7-Day Avg:</strong> ${avg7Sys}/${avg7Dia} mmHg &nbsp;(${classify(avg7Sys,avg7Dia).label})</span>` : ''}
+      ${loadSettings().medications ? `<span><strong>Medications:</strong> ${loadSettings().medications.replace(/\n/g,', ')}</span>` : ''}
+    </div>
+    <table class="pr-table">
+      <thead><tr><th>Date</th><th>Time</th><th>BP (mmHg)</th><th>HR</th><th>Slot</th><th>Arm</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>
+    <div class="pr-zones">
+      <div class="pr-zone">🟢 <strong>Normal</strong> &lt;120/80</div>
+      <div class="pr-zone">🟡 <strong>A little high</strong> 120–129/&lt;80</div>
+      <div class="pr-zone">🟠 <strong>High</strong> 130–139/80–89</div>
+      <div class="pr-zone">🔴 <strong>Very High</strong> ≥140/≥90</div>
+    </div>
+    <p class="pr-footer">For personal monitoring only. Not a substitute for professional medical diagnosis or treatment.</p>`;
+  window.print();
+}
+
+// ── INLINE FORM ───────────────────────────────────────────
+let drumsReady = false;
+function openSheet(afterEl) {
+  const form = document.getElementById('inline-form');
+  form.style.display = 'block';
+  if (afterEl) afterEl.insertAdjacentElement('afterend', form);
+  if (!drumsReady) {
+    drumSys = initDrum('drum-sys', 'in-sys', 60, 220, 120);
+    drumDia = initDrum('drum-dia', 'in-dia', 40, 150, 80);
+    drumHr  = initDrum('drum-hr',  'in-hr',  40, 180, 70);
+    const n = new Date();
+    const nH = n.getHours(), nAP = nH>=12?1:0, nH12 = nH%12||12;
+    drumMonth = initDrumArr('drum-month', DT_MONTHS, n.getMonth(),    syncDatetime);
+    drumDay   = initDrumArr('drum-day',   DT_DAYS,   n.getDate()-1,   syncDatetime);
+    drumYear  = initDrumArr('drum-year',  DT_YEARS,  Math.max(0,n.getFullYear()-DT_YEAR0), syncDatetime);
+    drumHour  = initDrumArr('drum-dhour', DT_HOURS,  nH12-1,          syncDatetime);
+    drumMin   = initDrumArr('drum-dmin',  DT_MINS,   n.getMinutes(),  syncDatetime);
+    drumAmpm  = initDrumArr('drum-dampm', DT_AMPM,   nAP,             syncDatetime);
+    syncDatetime();
+    drumsReady = true;
+  } else {
+    setDatetimeNow();
+  }
+}
+function closeSheet() {
+  document.getElementById('inline-form').style.display = 'none';
+}
+
+// ── DRUM PICKERS ──────────────────────────────────────────
+let drumSys = null, drumDia = null, drumHr = null;
+let drumMonth = null, drumDay = null, drumYear = null, drumHour = null, drumMin = null, drumAmpm = null;
+
+const DT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DT_DAYS   = Array.from({length:31},(_,i)=>String(i+1));
+const DT_YEAR0  = 2020;
+const DT_YEARS  = Array.from({length:12},(_,i)=>String(DT_YEAR0+i));
+const DT_HOURS  = Array.from({length:12},(_,i)=>String(i+1));
+const DT_MINS   = Array.from({length:60},(_,i)=>String(i).padStart(2,'0'));
+const DT_AMPM   = ['AM','PM'];
+
+function initDrumArr(scrollId, items, defIdx, onChange) {
+  const el = document.getElementById(scrollId);
+  if (!el) return null;
+  const CELL = 60;
+  el.innerHTML = items.map(label=>`<div class="drum-item">${label}</div>`).join('');
+  const nodes = Array.from(el.querySelectorAll('.drum-item'));
+  let prevIdx = -1;
+
+  function getIdx() { return Math.min(Math.max(Math.round(el.scrollTop/CELL),0),nodes.length-1); }
+
+  function updateSelected() {
+    const idx = getIdx();
+    if (idx === prevIdx) return;
+    prevIdx = idx;
+    nodes.forEach((item,i)=>{
+      const d = Math.abs(i-idx);
+      item.className = d===0?'drum-item drum-sel':d===1?'drum-item drum-adj':'drum-item';
+    });
+    if (onChange) onChange(idx);
+  }
+
+  el.addEventListener('scroll', updateSelected, {passive:true});
+
+  function setIdx(idx) {
+    el.scrollTop = Math.max(0,Math.min(nodes.length-1,idx))*CELL;
+    prevIdx = -1;
+    updateSelected();
+  }
+
+  setIdx(defIdx);
+  return {setIdx, getIdx};
+}
+
+function syncDatetime() {
+  if (!drumMonth || !drumDay || !drumYear || !drumHour || !drumMin || !drumAmpm) return;
+  const m   = drumMonth.getIdx()+1;
+  const d   = drumDay.getIdx()+1;
+  const y   = DT_YEAR0 + drumYear.getIdx();
+  const hIdx= drumHour.getIdx();  // 0-11 → hour 1-12
+  const h12 = hIdx+1;
+  const minI= drumMin.getIdx();
+  const ap  = drumAmpm.getIdx();  // 0=AM,1=PM
+  let h24 = h12;
+  if (ap===1 && h12<12) h24 = h12+12;
+  if (ap===0 && h12===12) h24 = 0;
+  const pad = n=>String(n).padStart(2,'0');
+  document.getElementById('in-datetime').value = `${y}-${pad(m)}-${pad(d)}T${pad(h24)}:${pad(minI)}`;
+  autoDetectSlot();
+}
+
+function setDateDrums(dt) {
+  if (!drumMonth) return;
+  const h   = dt.getHours();
+  const ap  = h>=12?1:0;
+  const h12 = h%12||12;
+  drumMonth.setIdx(dt.getMonth());
+  drumDay.setIdx(Math.min(dt.getDate()-1,30));
+  drumYear.setIdx(Math.max(0,Math.min(dt.getFullYear()-DT_YEAR0, DT_YEARS.length-1)));
+  drumHour.setIdx(h12-1);
+  drumMin.setIdx(dt.getMinutes());
+  drumAmpm.setIdx(ap);
+}
+
+function initDrum(scrollId, hiddenId, min, max, def) {
+  const el = document.getElementById(scrollId);
+  if (!el) return null;
+  const CELL = 60;
+
+  // Build item list
+  let html = '';
+  for (let v = min; v <= max; v++) html += `<div class="drum-item" data-v="${v}">${v}</div>`;
+  el.innerHTML = html;
+
+  const items = Array.from(el.querySelectorAll('.drum-item'));
+  let prevIdx = -1;
+
+  function updateSelected() {
+    const idx = Math.min(Math.max(Math.round(el.scrollTop / CELL), 0), items.length - 1);
+    if (idx === prevIdx) return;
+    prevIdx = idx;
+    document.getElementById(hiddenId).value = min + idx;
+    items.forEach((item, i) => {
+      const d = Math.abs(i - idx);
+      const cls = d === 0 ? 'drum-item drum-sel' : d === 1 ? 'drum-item drum-adj' : 'drum-item';
+      if (item.className !== cls) item.className = cls;
+    });
+    previewLive();
+  }
+
+  el.addEventListener('scroll', updateSelected, { passive: true });
+
+  function setValue(val) {
+    el.scrollTop = (Math.max(min, Math.min(max, val)) - min) * CELL;
+    prevIdx = -1;
+    updateSelected();
+  }
+
+  setValue(def);
+  return { setValue };
+}
+
+// ── FORM ──────────────────────────────────────────────────
+
+function setDatetimeNow() {
+  setDateDrums(new Date());
+  syncDatetime();
+}
+
+function previewLive() {
+  const sys = parseInt(document.getElementById('in-sys').value);
+  const dia = parseInt(document.getElementById('in-dia').value);
+  const disp = document.getElementById('bp-preview-display');
+  const badge = document.getElementById('preview-badge');
+  if (sys > 60 && dia > 40) {
+    disp.innerHTML = `${sys} <span class="sep">/</span> ${dia} <span class="unit">mmHg</span>`;
+    badge.innerHTML = badgeHTML(sys, dia);
+  } else if (sys > 60) {
+    disp.innerHTML = `${sys} <span class="sep">/</span> <span style="color:var(--muted)">—</span> <span class="unit">mmHg</span>`;
+    badge.innerHTML = '';
+  } else {
+    disp.innerHTML = badge.innerHTML = '';
+  }
+}
+
+function saveReading() {
+  const sys   = parseInt(document.getElementById('in-sys').value);
+  const dia   = parseInt(document.getElementById('in-dia').value);
+  const hr    = parseInt(document.getElementById('in-hr').value) || null;
+  const notes = document.getElementById('in-notes').value.trim();
+  const arm   = document.getElementById('in-arm').value;
+  const editId = document.getElementById('editing-id').value;
+
+  if (isNaN(sys)||isNaN(dia)||sys<60||dia<40) { alert('Enter valid systolic and diastolic values.'); return; }
+
+  // Determine timestamp
+  const dtVal = document.getElementById('in-datetime').value;
+  if (!dtVal) { alert('Select a date and time.'); return; }
+  const ts = new Date(dtVal).toISOString();
+
+  // Determine slot
+  let slotId = document.getElementById('in-slot').value;
+  if (!slotId) {
+    // Auto-detect from timestamp
+    const s = loadSettings();
+    const dt = new Date(ts);
+    const hhmm = dt.getHours()*60 + dt.getMinutes();
+    let best = null, bestDist = 90;
+    s.slots.forEach(sl => {
+      const dist = Math.abs(hhmm - toMin(sl.time));
+      if (dist < bestDist) { bestDist = dist; best = sl.id; }
+    });
+    slotId = best || s.slots[0].id;
+  }
+
+  let readings = loadReadings();
+  if (editId) {
+    const idx = readings.findIndex(r => String(r.id) === editId);
+    if (idx !== -1) readings[idx] = { ...readings[idx], sys, dia, hr, notes, slotId, arm, timestamp: ts };
+    cancelEdit();
+  } else {
+    readings.push({ id: Date.now(), timestamp: ts, sys, dia, hr, notes, slotId, arm });
+  }
+
+  saveReadings(readings);
+  clearForm();
+  closeSheet();
+  renderAll();
+  checkReminders();
+}
+
+function clearForm() {
+  document.getElementById('in-notes').value = '';
+  document.getElementById('in-arm').value   = '';
+  document.getElementById('editing-id').value = '';
+  if (drumSys) drumSys.setValue(120);
+  if (drumDia) drumDia.setValue(80);
+  if (drumHr)  drumHr.setValue(70);
+}
+
+function editReading(id, _triggerEl) {
+  const r = loadReadings().find(x => String(x.id) === String(id));
+  if (!r) return;
+  // Drive drum pickers to the reading's values
+  if (drumSys) drumSys.setValue(r.sys);
+  if (drumDia) drumDia.setValue(r.dia);
+  if (drumHr)  drumHr.setValue(r.hr || 70);
+  document.getElementById('in-notes').value = r.notes || '';
+  document.getElementById('in-arm').value   = r.arm   || '';
+  document.getElementById('editing-id').value = String(r.id);
+  setDateDrums(new Date(r.timestamp));
+  document.getElementById('in-slot').value = r.slotId || '';
+  previewLive();
+  document.getElementById('edit-mode-bar').classList.add('show');
+  document.getElementById('submit-btn').textContent = '✏️ Update Reading';
+  document.getElementById('submit-btn').classList.add('editing');
+  document.getElementById('sheet-title').textContent = '✏️ Edit Reading';
+  openSheet(_triggerEl);
+}
+
+function prefillDate(isoDateTime, _triggerEl) {
+  cancelEdit();
+  document.getElementById('in-datetime').value = isoDateTime;
+  autoDetectSlot();
+  document.getElementById('sheet-title').textContent = '🩺 New Record';
+  openSheet(_triggerEl);
+}
+
+function showCalInlineForm(panelId, dateISO, readingId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.querySelectorAll('.cal-inline-form').forEach(f=>f.remove());
+  const slots = loadSettings().slots;
+  const r = readingId ? loadReadings().find(x=>x.id===readingId) : null;
+  const fid = 'cif-' + panelId;
+  const defDt = r ? new Date(new Date(r.timestamp).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : dateISO;
+  const slotOpts = slots.map(s=>`<option value="${s.id}" ${r?r.slotId===s.id?'selected':'':s===slots[0]?'selected':''}>${s.emoji||''} ${s.name}</option>`).join('');
+  panel.insertAdjacentHTML('beforeend',`
+    <div class="cal-inline-form" id="${fid}" style="background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
+      <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Systolic</label>
+          <input type="number" id="${fid}-sys" value="${r?r.sys:''}" placeholder="120" min="60" max="250" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
+        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Diastolic</label>
+          <input type="number" id="${fid}-dia" value="${r?r.dia:''}" placeholder="80" min="40" max="150" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
+        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">HR</label>
+          <input type="number" id="${fid}-hr" value="${r&&r.hr?r.hr:''}" placeholder="70" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Date &amp; Time</label>
+          <input type="datetime-local" id="${fid}-dt" value="${defDt}" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;"></div>
+        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Slot</label>
+          <select id="${fid}-slot" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;">${slotOpts}</select></div>
+      </div>
+      <div style="margin-bottom:10px;"><label style="font-size:0.78rem;color:var(--muted);display:block;">Notes</label>
+        <input type="text" id="${fid}-notes" value="${r?r.notes||'':''}" placeholder="e.g. after coffee…" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem;"></div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn btn-primary" style="font-size:0.72rem;padding:6px 16px;" onclick="saveCalInline('${fid}',${readingId||'null'})">💾 Save</button>
+        <button type="button" style="font-size:0.72rem;padding:6px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${fid}').remove()">Cancel</button>
+      </div>
+    </div>`);
+  document.getElementById(`${fid}-sys`).focus();
+}
+
+function saveCalInline(fid, readingId) {
+  const sys  = parseInt(document.getElementById(`${fid}-sys`).value);
+  const dia  = parseInt(document.getElementById(`${fid}-dia`).value);
+  const hr   = parseInt(document.getElementById(`${fid}-hr`).value)||null;
+  const dt   = document.getElementById(`${fid}-dt`).value;
+  const slot = document.getElementById(`${fid}-slot`).value;
+  const notes= document.getElementById(`${fid}-notes`).value.trim();
+  if (!sys||!dia||sys<60||sys>250||dia<40||dia>150) { alert('Enter valid BP values.'); return; }
+  const readings = loadReadings();
+  if (readingId) {
+    const i = readings.findIndex(r=>r.id===readingId);
+    if (i>-1) readings[i]={...readings[i],sys,dia,hr,notes,slotId:slot,timestamp:new Date(dt).toISOString()};
+  } else {
+    readings.push({id:Date.now(),sys,dia,hr,notes,slotId:slot,timestamp:new Date(dt).toISOString()});
+  }
+  saveReadings(readings);
+  renderCalendarOnly();
+  renderDashboard();
+}
+
+function cancelEdit() {
+  document.getElementById('editing-id').value='';
+  document.getElementById('edit-mode-bar').classList.remove('show');
+  document.getElementById('submit-btn').textContent='✚ Log This Reading';
+  document.getElementById('submit-btn').classList.remove('editing');
+  clearForm();
+  closeSheet();
+}
+
+function deleteReading(id) {
+  if (!confirm('Delete this reading?')) return;
+  saveReadings(loadReadings().filter(r=>String(r.id)!==String(id)));
+  renderAll();
+}
+
+// ── 7-DAY SUMMARY ─────────────────────────────────────────
+function renderDashSummary() {
+  const el = document.getElementById('dash-summary-card');
+  if (!el) return;
+  const now = new Date();
+  const cut7 = new Date(now); cut7.setDate(cut7.getDate() - 7);
+  const allR = loadReadings();
+  const week7 = allR.filter(r => new Date(r.timestamp) >= cut7);
+  const week7am = week7.filter(isAM);
+  const week7pm = week7.filter(isPM);
+
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const sd = new Date(now); sd.setDate(sd.getDate() - i);
+    if (allR.some(r => new Date(r.timestamp).toDateString() === sd.toDateString())) streak++;
+    else break;
+  }
+
+  if (!week7.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:12px;">No readings in the last 7 days${streak > 0 ? ` · 🔥 ${streak}-day streak` : ''}</div>`;
+    return;
+  }
+
+  const fmtDate = d => d.toLocaleDateString('en-PH', {month:'short', day:'numeric'});
+  const fmtTime = d => d.toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
+
+  // AM stats
+  const avgSysAm = week7am.length ? Math.round(week7am.reduce((a,r) => a+r.sys, 0) / week7am.length) : 0;
+  const avgDiaAm = week7am.length ? Math.round(week7am.reduce((a,r) => a+r.dia, 0) / week7am.length) : 0;
+  const highestAm = week7am.length ? week7am.reduce((w,r) => r.sys > w.sys ? r : w, week7am[0]) : null;
+  const lowestAm = week7am.length ? week7am.reduce((b,r) => r.sys < b.sys ? r : b, week7am[0]) : null;
+  const hrAm = week7am.filter(r => r.hr);
+  const avgHrAm = hrAm.length ? Math.round(hrAm.reduce((a,r) => a+r.hr, 0) / hrAm.length) : null;
+
+  // PM stats
+  const avgSysPm = week7pm.length ? Math.round(week7pm.reduce((a,r) => a+r.sys, 0) / week7pm.length) : 0;
+  const avgDiaPm = week7pm.length ? Math.round(week7pm.reduce((a,r) => a+r.dia, 0) / week7pm.length) : 0;
+  const highestPm = week7pm.length ? week7pm.reduce((w,r) => r.sys > w.sys ? r : w, week7pm[0]) : null;
+  const lowestPm = week7pm.length ? week7pm.reduce((b,r) => r.sys < b.sys ? r : b, week7pm[0]) : null;
+  const hrPm = week7pm.filter(r => r.hr);
+  const avgHrPm = hrPm.length ? Math.round(hrPm.reduce((a,r) => a+r.hr, 0) / hrPm.length) : null;
+
+  const amHtml = week7am.length ? `
+    <div class="stat-box" style="border-left:4px solid #f97316;background:rgba(249,115,22,0.05);">
+      <div class="slabel">🌅 MORNING (${week7am.length})</div>
+      <div class="sval" style="color:#f97316;">${avgSysAm}<span style="font-size:0.8rem;color:var(--muted);">/</span>${avgDiaAm}</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin:4px 0;">avg mmHg</div>
+      ${highestAm ? `<div style="font-size:0.75rem;margin-top:6px;"><span style="color:#ef4444;">↑${highestAm.sys}</span> · <span style="color:#22c55e;">↓${lowestAm.sys}</span></div>` : ''}
+      ${avgHrAm ? `<div style="font-size:0.75rem;color:#8b5cf6;margin-top:4px;">❤️ ${avgHrAm} bpm</div>` : ''}
+    </div>
+  ` : '';
+
+  const pmHtml = week7pm.length ? `
+    <div class="stat-box" style="border-left:4px solid #3b82f6;background:rgba(59,130,246,0.05);">
+      <div class="slabel">🌙 EVENING (${week7pm.length})</div>
+      <div class="sval" style="color:#3b82f6;">${avgSysPm}<span style="font-size:0.8rem;color:var(--muted);">/</span>${avgDiaPm}</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin:4px 0;">avg mmHg</div>
+      ${highestPm ? `<div style="font-size:0.75rem;margin-top:6px;"><span style="color:#ef4444;">↑${highestPm.sys}</span> · <span style="color:#22c55e;">↓${lowestPm.sys}</span></div>` : ''}
+      ${avgHrPm ? `<div style="font-size:0.75rem;color:#0ea5e9;margin-top:4px;">❤️ ${avgHrPm} bpm</div>` : ''}
+    </div>
+  ` : '';
+
+  el.innerHTML = `
+    <div class="card-title">Last 7 Days — Morning vs Evening</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      ${amHtml}
+      ${pmHtml}
+    </div>`;
+}
+
+// ── RENDER DASHBOARD ──────────────────────────────────────
+function renderDashboard() {
+  const now = new Date();
+  calYear  = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendarOnly();
+  renderDashSummary();
+}
+
+function readingItemHTML(r, editingId='') {
+  const dt = new Date(r.timestamp);
+  const dateStr = dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  const timeStr = dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+  const sl = getSlot(r.slotId);
+  const { pp, note } = pulsePressure(r.sys, r.dia);
+  const isEditing = String(r.id) === editingId;
+  return `<div class="reading-item${isEditing?' highlight':''}">
+    <div class="ri-icon" title="${sl.name}">${sl.emoji}</div>
+    <div class="ri-body">
+      <span class="ri-bp">${r.sys}/${r.dia}</span>${r.hr?` <span style="color:var(--muted);font-size:0.82rem;">· ${r.hr} bpm</span>`:''}
+      <div class="ri-meta">${dateStr} ${timeStr}${r.notes?` · <em>${r.notes}</em>`:''}</div>
+      <span class="slot-pill">${sl.emoji} ${sl.name}</span>
+    </div>
+    <div class="ri-right">
+      ${badgeHTML(r.sys,r.dia)}
+      <div class="ri-pp">PP ${pp}${note}</div>
+      <div class="ri-actions">
+        <button class="btn-icon" onclick="editReading(${r.id})" title="Edit">✏️</button>
+        <button class="btn-icon del" onclick="deleteReading(${r.id})" title="Delete">🗑️</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SHARED: reading row used in both 7-day accordion and monthly calendar ──
+const DOT_C = {normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'};
+const SEVERITY = {normal:0,elevated:1,stage1:2,stage2:3,crisis:4};
+
+function calRowHTML(r, panelId) {
+  const ts = new Date(r.timestamp);
+  const c  = classify(r.sys, r.dia);
+  const sl = getSlot(r.slotId);
+  const timeStr = ts.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'});
+  return `<div class="cal-row" style="border-left-color:${DOT_C[c.key]};">
+    <div class="cr-top">
+      <span class="cr-time">${timeStr}</span>
+      <span class="cr-actions">
+        <button type="button" class="btn-icon" onclick="editReading(${r.id},this)">✏️</button>
+        <button type="button" class="btn-icon del" onclick="deleteReading(${r.id})">🗑️</button>
+      </span>
+    </div>
+    <div class="cr-main">
+      <span class="cr-bp">${r.sys}/${r.dia}</span>
+      ${r.hr?`<span class="cr-hr">❤️ ${r.hr} bpm</span>`:''}
+    </div>
+    <div class="cr-meta">
+      <span class="badge ${c.cls}">${c.label}</span>
+      <span style="font-size:0.75rem;color:var(--muted);font-weight:700;">${getAMPM(r)}</span>
+      <span class="cr-slot">${sl.emoji||''} ${sl.name}</span>
+      ${r.arm?`<span class="cr-slot">· ${{ 'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||r.arm}</span>`:''}
+      ${r.notes?`<span class="cr-notes">· ${r.notes}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function calAddBtn(panelId, dayISO) {
+  return `<button type="button" class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="prefillDate('${dayISO}',this)">✚ Add Reading for this Day</button>`;
+}
+
+// ── CHART ─────────────────────────────────────────────────
+let chartInstance = null;
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+
+function changeCalMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCalendarOnly();
+}
+
+function renderCalendarOnly() {
+  const el = document.getElementById('cal-grid-container');
+  if (!el) return;
+  const readings = loadReadings();
+  // Build day map for current cal month — all readings
+  const dayMap = {};
+  readings.forEach(r => {
+    const d = new Date(r.timestamp);
+    if (d.getFullYear()===calYear && d.getMonth()===calMonth) {
+      const day = d.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      dayMap[day].push(r);
+    }
+  });
+
+  const monthName  = new Date(calYear,calMonth,1).toLocaleDateString('en-PH',{month:'long',year:'numeric'});
+  const firstDow   = new Date(calYear,calMonth,1).getDay();
+  const daysInMo   = new Date(calYear,calMonth+1,0).getDate();
+  const dowLabels  = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const nowForISO  = new Date();
+
+  let cells = dowLabels.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) cells+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=daysInMo;d++){
+    const dr=dayMap[d];
+    const detId=`cd-${calYear}-${calMonth}-${d}`;
+    const dayDateISO = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(nowForISO.getHours()).padStart(2,'0')}:${String(nowForISO.getMinutes()).padStart(2,'0')}`;
+    const toggleFn = `(()=>{const det=document.getElementById('${detId}');const open=det.classList.toggle('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));if(open)this.classList.add('selected');else this.classList.remove('selected');})()`;
+    const dayLabel = new Date(calYear,calMonth,d).toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    if(dr){
+      const avgS=Math.round(dr.reduce((a,r)=>a+r.sys,0)/dr.length);
+      const avgD=Math.round(dr.reduce((a,r)=>a+r.dia,0)/dr.length);
+      const cl=classify(avgS,avgD);
+      cells+=`<div class="cal-cell has-data" style="background:${DOT_C[cl.key]};" onclick="${toggleFn}">
+        <span class="cday">${d}</span>
+        <span class="cavg">${avgS}/${avgD}</span>
+      </div>
+      <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.65rem;font-weight:700;">${dayLabel}</div>
+          <button type="button" class="btn-icon" style="font-size:0.8rem;min-height:28px;min-width:28px;padding:4px;" onclick="document.getElementById('${detId}').classList.remove('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'))">✕</button>
+        </div>
+        ${dr.map(r=>calRowHTML(r,detId)).join('')}
+        ${calAddBtn(detId, dayDateISO)}
+      </div>`;
+    } else {
+      cells+=`<div class="cal-cell no-data" onclick="${toggleFn}">
+        <span class="cday">${d}</span>
+      </div>
+      <div id="${detId}" class="cal-day-detail" style="grid-column:1/-1;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:0.65rem;font-weight:700;">${dayLabel}</div>
+          <button type="button" class="btn-icon" style="font-size:0.8rem;min-height:28px;min-width:28px;padding:4px;" onclick="document.getElementById('${detId}').classList.remove('open');document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'))">✕</button>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px;">No readings logged this day.</div>
+        ${calAddBtn(detId, dayDateISO)}
+      </div>`;
+    }
+  }
+
+  el.innerHTML = `<div class="month-card">
+    <div class="month-nav">
+      <button type="button" class="month-nav-btn" onclick="changeCalMonth(-1)">‹</button>
+      <span class="month-nav-title">${monthName}</span>
+      <button type="button" class="month-nav-btn" onclick="changeCalMonth(1)">›</button>
+    </div>
+    <div class="month-grid">${cells}</div>
+  </div>`;
+}
+let chartView = '7d';
+
+function setChartView(v, btn) {
+  chartView = v;
+  document.querySelectorAll('.chart-toggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
+
+function groupByDay(readings, nDays=7) {
+  // Returns array of {label, sys, dia, hr, count} for last nDays days
+  const now = new Date();
+  const result = [];
+  for (let d = nDays-1; d >= 0; d--) {
+    const day = new Date(now); day.setDate(day.getDate()-d);
+    const dayStr = day.toDateString();
+    const dayR = readings.filter(r => new Date(r.timestamp).toDateString() === dayStr);
+    const label = day.toLocaleDateString('en-PH', nDays <= 7
+      ? {weekday:'short',month:'short',day:'numeric'}
+      : {month:'short',day:'numeric'});
+    if (dayR.length > 0) {
+      const avgSys = Math.round(dayR.reduce((a,r)=>a+r.sys,0)/dayR.length);
+      const avgDia = Math.round(dayR.reduce((a,r)=>a+r.dia,0)/dayR.length);
+      // worst reading of the day drives the dot color
+      const worstR = dayR.reduce((w,r)=> (SEVERITY[classify(r.sys,r.dia).key]||0) > (SEVERITY[classify(w.sys,w.dia).key]||0) ? r : w, dayR[0]);
+      result.push({
+        label,
+        sys:     avgSys,
+        dia:     avgDia,
+        worstSys: worstR.sys,
+        worstDia: worstR.dia,
+        hr:    dayR.some(r=>r.hr) ? Math.round(dayR.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayR.filter(r=>r.hr).length) : null,
+        count: dayR.length,
+      });
+    } else {
+      result.push({ label, sys:null, dia:null, hr:null, count:0 });
+    }
+  }
+  return result;
+}
+
+function groupByWeek(readings) {
+  // Returns array of {label, sys, dia, hr, count} for last 13 weeks
+  const now = new Date();
+  const result = [];
+  for (let w = 12; w >= 0; w--) {
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - w*7 - weekStart.getDay());
+    weekStart.setHours(0,0,0,0);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+    const weekR = readings.filter(r => { const t=new Date(r.timestamp); return t>=weekStart && t<weekEnd; });
+    const label = weekStart.toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+    if (weekR.length > 0) {
+      result.push({
+        label,
+        sys:   Math.round(weekR.reduce((a,r)=>a+r.sys,0)/weekR.length),
+        dia:   Math.round(weekR.reduce((a,r)=>a+r.dia,0)/weekR.length),
+        hr:    weekR.some(r=>r.hr) ? Math.round(weekR.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekR.filter(r=>r.hr).length) : null,
+        count: weekR.length,
+      });
+    } else {
+      result.push({ label, sys:null, dia:null, hr:null, count:0 });
+    }
+  }
+  return result;
+}
+
+function renderChart() {
+  const readings = loadReadings();
+  const container = document.getElementById('chart-container');
+  if (!container) return;
+  if (!container.querySelector('canvas')) container.innerHTML = '<canvas id="bp-chart"></canvas>';
+
+  if (!readings.length) {
+    container.innerHTML = `<div class="empty-state"><div class="big">📈</div><p>No data yet.</p></div>`;
+    return;
+  }
+
+  const points = chartView === '7d' ? groupByDay(readings) : groupByWeek(readings);
+
+  const labels = points.map(p => p.label);
+  const showSys = document.getElementById('toggle-sys').checked;
+  const showDia = document.getElementById('toggle-dia').checked;
+  const showHr  = document.getElementById('toggle-hr').checked;
+
+  const dotColor = (sys, dia) => sys === null ? 'transparent' :
+    ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
+
+  const datasets = [];
+  if (showSys) datasets.push({
+    label:'Systolic', data:points.map(p=>p.sys),
+    borderColor:'#ef4444',
+    pointBackgroundColor: points.map(p=>dotColor(p.worstSys??p.sys,p.worstDia??p.dia)),
+    pointBorderColor:'#fff', pointBorderWidth:1.5,
+    pointRadius: points.map(p=>p.count?5:0),
+    tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
+  });
+  if (showDia) datasets.push({
+    label:'Diastolic', data:points.map(p=>p.dia),
+    borderColor:'#3b82f6',
+    pointBackgroundColor: points.map(p=>dotColor(p.worstSys??p.sys,p.worstDia??p.dia)),
+    pointBorderColor:'#fff', pointBorderWidth:1.5,
+    pointRadius: points.map(p=>p.count?4:0),
+    tension:0.35, borderWidth:2, fill:false, spanGaps:true,
+  });
+  if (showHr) datasets.push({
+    label:'Heart Rate', data:points.map(p=>p.hr),
+    borderColor:'#8b5cf6', pointBackgroundColor:'#8b5cf6',
+    pointRadius: points.map(p=>p.hr?3:0),
+    tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
+  });
+
+  const ctx = document.getElementById('bp-chart').getContext('2d');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  chartInstance = new Chart(ctx, {
+    type:'line', data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:250},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: item => {
+              if (item.parsed.y === null) return '';
+              const suf = item.dataset.label==='Heart Rate' ? ' bpm' : ' mmHg';
+              const cnt = points[item.dataIndex].count;
+              return `${item.dataset.label}: ${item.parsed.y}${suf} (${cnt} reading${cnt!==1?'s':''})`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'} },
+        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'} }
+      }
+    },
+    plugins:[{
+      id:'bpZones',
+      beforeDraw(chart) {
+        const {ctx,chartArea,scales:{y}} = chart;
+        if (!y||!chartArea) return;
+        const {left,right,top,bottom} = chartArea;
+        [{min:0,max:80,c:'rgba(34,197,94,0.06)'},{min:80,max:90,c:'rgba(249,115,22,0.07)'},
+         {min:90,max:120,c:'rgba(239,68,68,0.08)'},{min:120,max:130,c:'rgba(234,179,8,0.08)'},
+         {min:130,max:140,c:'rgba(249,115,22,0.09)'},{min:140,max:180,c:'rgba(239,68,68,0.10)'},
+         {min:180,max:250,c:'rgba(127,29,29,0.14)'}].forEach(z => {
+          const yT=y.getPixelForValue(z.max), yB=y.getPixelForValue(z.min);
+          if (yB>top&&yT<bottom){ctx.fillStyle=z.c;ctx.fillRect(left,Math.max(yT,top),right-left,Math.min(yB,bottom)-Math.max(yT,top));}
+        });
+        [{v:80,c:'#86efac'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
+          const py=y.getPixelForValue(v);
+          if(py>=top&&py<=bottom){ctx.save();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke();ctx.restore();}
+        });
+      }
+    }]
+  });
+}
+
+// ── ANALYSIS ──────────────────────────────────────────────
+function renderAnalysis() {
+  const readings = loadReadings();
+  const el = document.getElementById('analysis-content');
+  if (readings.length < 3) {
+    el.innerHTML = `<div class="card"><div class="empty-state"><div class="big">🤖</div>
+      <p>Need at least 3 readings.<br>Load demo data in Settings to preview analysis.</p></div></div>`;
+    return;
+  }
+
+  const now = new Date();
+  const sorted = readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const firstDate = new Date(sorted[0].timestamp);
+  const lastDate  = new Date(sorted[sorted.length-1].timestamp);
+  const daysCovered = Math.round((lastDate-firstDate)/(1000*60*60*24))+1;
+
+  // 7-day stats
+  const cut7 = new Date(now); cut7.setDate(cut7.getDate()-7);
+  const week7 = readings.filter(r=>new Date(r.timestamp)>=cut7);
+  const avg7Sys = week7.length ? Math.round(week7.reduce((a,r)=>a+r.sys,0)/week7.length) : null;
+  const avg7Dia = week7.length ? Math.round(week7.reduce((a,r)=>a+r.dia,0)/week7.length) : null;
+
+  // 3-month stats
+  const cut3m = new Date(now); cut3m.setDate(cut3m.getDate()-90);
+  const mo3 = readings.filter(r=>new Date(r.timestamp)>=cut3m);
+  const avg3mSys = mo3.length ? Math.round(mo3.reduce((a,r)=>a+r.sys,0)/mo3.length) : null;
+  const avg3mDia = mo3.length ? Math.round(mo3.reduce((a,r)=>a+r.dia,0)/mo3.length) : null;
+
+  // Trend (7d)
+  const s7 = week7.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const half = Math.max(1,Math.floor(s7.length/2));
+  const trendSys = s7.length >= 4 ? Math.round(
+    s7.slice(-half).reduce((a,r)=>a+r.sys,0)/half - s7.slice(0,half).reduce((a,r)=>a+r.sys,0)/half
+  ) : 0;
+
+  // 3-month trend (early vs late)
+  const third = Math.max(1,Math.floor(mo3.length/3));
+  const s3m = mo3.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const trend3mSys = mo3.length >= 6 ? Math.round(
+    s3m.slice(-third).reduce((a,r)=>a+r.sys,0)/third - s3m.slice(0,third).reduce((a,r)=>a+r.sys,0)/third
+  ) : 0;
+
+  // Slot patterns
+  const sets = loadSettings();
+  const slotStats = {};
+  sets.slots.forEach(sl => {
+    const sr = week7.filter(r=>r.slotId===sl.id);
+    if (sr.length>0) slotStats[sl.id]={name:sl.name,emoji:sl.emoji,
+      sys:Math.round(sr.reduce((a,r)=>a+r.sys,0)/sr.length),
+      dia:Math.round(sr.reduce((a,r)=>a+r.dia,0)/sr.length),count:sr.length};
+  });
+
+  const slotEntries = Object.entries(slotStats);
+  const highestSlot = slotEntries.length ? slotEntries.reduce((a,b)=>b[1].sys>a[1].sys?b:a) : null;
+  const lowestSlot  = slotEntries.length ? slotEntries.reduce((a,b)=>b[1].sys<a[1].sys?b:a) : null;
+
+  // Normal %
+  const normalPct7 = week7.length ? Math.round(week7.filter(r=>classify(r.sys,r.dia).key==='normal').length/week7.length*100) : 0;
+  const worst = readings.reduce((b,r)=>r.sys>b.sys?r:b);
+  const best  = readings.reduce((b,r)=>r.sys<b.sys?r:b);
+
+  const fmt = ts => new Date(ts).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
+  const fmtShort = ts => new Date(ts).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+  const avgClass7 = avg7Sys ? classify(avg7Sys,avg7Dia) : null;
+  const needsAlert = avgClass7 && ['stage1','stage2','crisis'].includes(avgClass7.key);
+
+  // ── AI Report text
+  const trendWord7  = trendSys>3 ? `INCREASING (+${trendSys} mmHg)` : trendSys<-3 ? `IMPROVING (${trendSys} mmHg)` : 'STABLE';
+  const trend3mWord = trend3mSys>5 ? `worsened by ${trend3mSys} mmHg` : trend3mSys<-5 ? `improved by ${Math.abs(trend3mSys)} mmHg` : 'remained relatively stable';
+  const slotPatternText = highestSlot && lowestSlot && highestSlot[0]!==lowestSlot[0]
+    ? `Time-of-day pattern detected: ${highestSlot[1].emoji} ${highestSlot[1].name} readings are highest (avg ${highestSlot[1].sys}/${highestSlot[1].dia} mmHg), while ${lowestSlot[1].emoji} ${lowestSlot[1].name} readings are lowest (avg ${lowestSlot[1].sys}/${lowestSlot[1].dia} mmHg).`
+    : 'Insufficient slot data for time-of-day pattern analysis.';
+
+  // ── Morning surge detection ─────────────────────────────
+  const byDay = {};
+  sorted.forEach(r => { const dk=new Date(r.timestamp).toDateString(); if(!byDay[dk]) byDay[dk]=[]; byDay[dk].push(r); });
+  const dayKeys = Object.keys(byDay).sort((a,b)=>new Date(a)-new Date(b));
+  const surgeEvents = [];
+  for (let i=1;i<dayKeys.length;i++) {
+    const prevR = byDay[dayKeys[i-1]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const cubbampmR = byDay[dayKeys[i]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    const prevLast = prevR[prevR.length-1], cubbampmFirst = cubbampmR[0];
+    const surge = cubbampmFirst.sys - prevLast.sys;
+    surgeEvents.push({ date: dayKeys[i], surge, morning: cubbampmFirst.sys, evening: prevLast.sys });
+  }
+  const avgSurge = surgeEvents.length ? Math.round(surgeEvents.reduce((a,e)=>a+e.surge,0)/surgeEvents.length) : null;
+  const highSurgeCount = surgeEvents.filter(e=>e.surge>=20).length;
+
+  const meds = loadSettings().medications;
+
+  const report = [
+    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
+    `<span class="ai-head">  RAYCORADAR — BP ANALYSIS REPORT</span>`,
+    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
+    `<span class="ai-label">Generated   :</span> ${new Date().toLocaleString('en-PH')}`,
+    `<span class="ai-label">Data Range  :</span> ${fmt(sorted[0].timestamp)} → ${fmt(sorted[sorted.length-1].timestamp)}`,
+    `<span class="ai-label">Coverage    :</span> ${readings.length} readings over ${daysCovered} days`,
+    meds ? `<span class="ai-label">Medications :</span> ${meds.replace(/\n/g,' | ')}` : '',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  CURRENT STATUS (Last 7 Days)</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    avg7Sys ? `<span class="ai-label">7-Day Avg   :</span> <span class="${needsAlert?'ai-warn':'ai-ok'}">${avg7Sys}/${avg7Dia} mmHg  [${avgClass7.label.toUpperCase()}]</span>` : '  No readings in last 7 days.',
+    avg7Sys ? `<span class="ai-label">In Normal   :</span> ${normalPct7}% of ${week7.length} readings` : '',
+    avg7Sys ? `<span class="ai-label">7-Day Trend :</span> ${trendSys>3?'<span class="ai-warn">':'<span class="ai-ok">'}${trendWord7}</span>` : '',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  3-MONTH OVERVIEW</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    avg3mSys ? `<span class="ai-label">3-Mo Avg    :</span> ${avg3mSys}/${avg3mDia} mmHg  [${classify(avg3mSys,avg3mDia).label.toUpperCase()}]` : '  Not enough 3-month data.',
+    avg3mSys ? `<span class="ai-label">3-Mo Trend  :</span> Systolic has ${trend3mWord} over 3 months.` : '',
+    avg7Sys && avg3mSys ? `<span class="ai-label">vs 3-Mo Avg :</span> Current week is ${avg7Sys>avg3mSys?`<span class="ai-warn">+${avg7Sys-avg3mSys} mmHg above</span>`:`<span class="ai-ok">${avg3mSys-avg7Sys} mmHg below</span>`} 3-month average.` : '',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  TIME-OF-DAY PATTERN</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `  ${slotPatternText}`,
+    slotEntries.length ? `  Recommendation: ${highestSlot ? `Schedule medications or rest before your ${highestSlot[1].name} reading window.` : ''}` : '',
+    avgSurge !== null ? `<span class="ai-label">Morning Surge :</span> ${avgSurge > 0 ? `<span class="${avgSurge >= 20 ? 'ai-warn' : 'ai-ok'}">avg +${avgSurge} mmHg overnight rise${highSurgeCount > 0 ? ` (${highSurgeCount} day${highSurgeCount > 1 ? 's' : ''} ≥20 mmHg surge)` : ''}</span>` : `<span class="ai-ok">avg ${avgSurge} mmHg overnight</span>`}` : '',
+    highSurgeCount >= 3 ? `<span class="ai-warn">  ⚠ Frequent morning surges detected — mention to your physician.</span>` : '',
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  NOTABLE READINGS</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-label">All-Time Best :</span> <span class="ai-ok">${best.sys}/${best.dia}</span> on ${fmtShort(best.timestamp)}`,
+    `<span class="ai-label">All-Time High :</span> <span class="ai-bad">${worst.sys}/${worst.dia}</span> on ${fmtShort(worst.timestamp)}`,
+    readings.filter(r=>classify(r.sys,r.dia).key==='crisis').length > 0
+      ? `<span class="ai-bad">  ⚠ ${readings.filter(r=>classify(r.sys,r.dia).key==='crisis').length} reading(s) exceeded HYPERTENSIVE CRISIS threshold — consult physician immediately.</span>`
+      : `<span class="ai-ok">  ✓ No hypertensive crisis readings detected.</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-head">  ADVISORY</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    needsAlert
+      ? `<span class="ai-warn">  Your 7-day average (${avg7Sys}/${avg7Dia}) remains in ${avgClass7.label.toUpperCase()}.\n  If sustained 2+ weeks, consult your physician.\n  Do NOT self-adjust medications.</span>`
+      : avg7Sys
+        ? `<span class="ai-ok">  Your recent BP control is good. Continue current regimen\n  and maintain regular monitoring.</span>`
+        : `<span class="ai-label">  Log at least 7 days of readings for a full advisory.</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+    `<span class="ai-label">  For personal monitoring only. Not a substitute for\n  professional medical diagnosis or treatment.</span>`,
+    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
+  ].filter(l=>l).join('\n');
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">📈 BP Trend</div>
+      <div class="chart-toggle">
+        <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
+        <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
+      </div>
+      <div class="chart-canvas-wrap" id="chart-container"></div>
+      <div class="legend-row" style="margin-top:12px;">
+        <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#ef4444;font-weight:700;">Systolic</span></label>
+        <label><input type="checkbox" id="toggle-dia" checked onchange="renderChart()"> <span style="color:#3b82f6;font-weight:700;">Diastolic</span></label>
+        <label><input type="checkbox" id="toggle-hr" onchange="renderChart()"> <span style="color:#8b5cf6;font-weight:700;">Heart Rate</span></label>
+      </div>
+      <div class="zone-legend" style="margin-top:10px;">
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal &lt;120/80</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🤖 Analysis Report</div>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Rule-based clinical pattern analysis · AHA 2017 Guidelines</p>
+      <div class="ai-report">${report}</div>
+    </div>`;
+  renderChart();
+}
+
+// ── REMINDERS ─────────────────────────────────────────────
+const _dismissed = {};
+function toMin(hhmm) { const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function fmt12(hhmm) {
+  const [h,m] = hhmm.split(':').map(Number);
+  const ap = h>=12?'PM':'AM', h12 = h%12||12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+// ── SLOT TIME PICKER ──────────────────────────────────────
+let stDrumHour = null, stDrumMin = null, stDrumAmpm = null;
+let _stSlotId = null;
+
+function openSlotTimePicker(slotId, currentTime) {
+  _stSlotId = slotId;
+  const [h24, m] = currentTime.split(':').map(Number);
+  const ap  = h24>=12 ? 1 : 0;
+  const h12 = h24%12 || 12;
+  document.getElementById('slot-time-modal').style.display = 'block';
+  if (!stDrumHour) {
+    stDrumHour  = initDrumArr('st-drum-hour',  DT_HOURS, h12-1, null);
+    stDrumMin   = initDrumArr('st-drum-min',   DT_MINS,  m,     null);
+    stDrumAmpm  = initDrumArr('st-drum-ampm',  DT_AMPM,  ap,    null);
+  } else {
+    stDrumHour.setIdx(h12-1);
+    stDrumMin.setIdx(m);
+    stDrumAmpm.setIdx(ap);
+  }
+}
+
+function confirmSlotTime() {
+  const h12 = stDrumHour.getIdx()+1;
+  const m   = stDrumMin.getIdx();
+  const ap  = stDrumAmpm.getIdx();
+  let h24 = h12;
+  if (ap===1 && h12<12) h24 = h12+12;
+  if (ap===0 && h12===12) h24 = 0;
+  const pad = n => String(n).padStart(2,'0');
+  const timeStr = `${pad(h24)}:${pad(m)}`;
+  const row = document.querySelector(`.slot-row[data-id="${_stSlotId}"]`);
+  if (row) {
+    row.querySelector('.slot-time-input').value = timeStr;
+    row.querySelector('.slot-time-btn').textContent = fmt12(timeStr);
+    saveSlots();
+  }
+  closeSlotTimePicker();
+}
+
+function closeSlotTimePicker() {
+  document.getElementById('slot-time-modal').style.display = 'none';
+}
+
+function checkReminders() {
+  const s    = loadSettings();
+  const now  = new Date();
+  const hhmm = now.getHours()*60+now.getMinutes();
+  const today= now.toDateString();
+  const readings = loadReadings();
+  const banner   = document.getElementById('reminder-banner');
+
+  for (const sl of s.slots) {
+    const key   = sl.id+today;
+    if (_dismissed[key]) continue;
+    const start = toMin(sl.time);
+    if (hhmm>=start && hhmm<=start+120) {
+      const has = readings.some(r=>new Date(r.timestamp).toDateString()===today && r.slotId===sl.id);
+      if (!has) {
+        document.getElementById('reminder-text').textContent = `⏰ Time for your ${sl.name} BP reading!`;
+        banner.dataset.key = key;
+        banner.classList.add('show');
+        if (s.notifications && Notification.permission==='granted') new Notification('BloodBeeperAMPM',{body:`Time for your ${sl.name} BP reading!`});
+        document.getElementById('in-slot').value = sl.id;
+        return;
+      }
+    }
+  }
+  banner.classList.remove('show');
+}
+function dismissReminder() { const b=document.getElementById('reminder-banner'); _dismissed[b.dataset.key]=true; b.classList.remove('show'); }
+
+// ── TAB SWITCHING ─────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  else {
+    const navBtns = document.querySelectorAll('nav button');
+    const idx = ['dash','analysis','settings'].indexOf(id);
+    if (idx>=0) navBtns[idx].classList.add('active');
+  }
+  if (id==='analysis') renderAnalysis();
+  if (id==='clients') bbampmRenderClients();
+  if (id==='settings') renderSlotList();
+}
+
+function renderAll() {
+  renderDashboard();
+  const active = document.querySelector('.tab.active');
+  if (active?.id==='tab-analysis') renderAnalysis();
+}
+
+// ── CLIENTS (DEV) ─────────────────────────────────────────
+async function bbampmRenderClients() {
+  const el=document.getElementById('bbampm-clients-list'); if(!el) return;
+  el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">Loading clients…</div>';
+  try {
+    const {data,error}=await sb.from('bbampmampm_data').select('*').eq('data_key','readings');
+    if(error||!data||!data.length){el.innerHTML='<div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:16px;">No clients yet.</div>';return;}
+    const clients=data.filter(r=>r.user_key!=='__test__').sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+    el.innerHTML=clients.map(c=>{
+      const readings=(c.value||[]).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+      const count=readings.length;
+      const latest=readings[0];
+      const lastDate=latest?new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
+      const latestBP=latest?`${latest.sys}/${latest.dia} mmHg · HR ${latest.hr}`:'—';
+      const cat=latest?classify(latest.sys,latest.dia):null;
+      const catColor=cat?DOT_C[cat.key]:'#94a3b8';
+      return `<div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${catColor};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:0.95rem;font-weight:700;font-family:monospace;">${c.user_key}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">${count} readings</div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:0.82rem;color:var(--muted);flex-wrap:wrap;">
+          <span>Latest: <strong style="color:${catColor};">${latestBP}</strong></span>
+          <span>Last active: <strong style="color:var(--text);">${lastDate}</strong></span>
+          ${cat?`<span style="font-size:0.72rem;background:${catColor}20;color:${catColor};border-radius:4px;padding:1px 6px;font-weight:700;">${cat.label}</span>`:''}
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:4px;">Updated: ${new Date(c.updated_at).toLocaleString('en-PH')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML=`<div style="color:#ef4444;font-size:0.9rem;padding:16px;">Error: ${e.message}</div>`;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────
+(function init() {
+  // License check — block app if not activated
+  if (!checkLicense()) return;
+
+  // Migrate old settings
+  const old = localStorage.getItem('bbampmampm_settings');
+  if (old && !localStorage.getItem('bbampmampm_settings2')) {
+    try {
+      const o = JSON.parse(old);
+      persistSettings({ notifications:o.notifications||false, slots:[
+        {id:'s1',emoji:'🌅',name:'After Breakfast',time:o.breakfast||'07:00'},
+        {id:'s2',emoji:'🌞',name:'After Lunch',    time:o.lunch||'12:00'},
+        {id:'s3',emoji:'🌙',name:'After Dinner',   time:o.dinner||'18:00'},
+      ]});
+    } catch(e){}
+  }
+
+  // Restore theme + large-text prefs
+  const savedTheme = localStorage.getItem('bbampmampm_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.getElementById('theme-btn').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+  const savedLarge = localStorage.getItem('bbampmampm_large') || '0';
+  document.documentElement.setAttribute('data-large', savedLarge);
+
+  const _s = loadSettings();
+  document.getElementById('s-notif').checked = _s.notifications;
+  document.getElementById('s-meds').value = _s.medications || '';
+  populateSlotDropdown();
+
+  // Auto-seed demo on first open
+  if (!loadReadings().length) { saveReadings(buildDemoReadings()); }
+
+  renderAll();
+  checkReminders();
+  setInterval(checkReminders, 60_000);
+  // Show dev-only clients tab
+  if (bbampmIsDev()) { const b=document.getElementById('bbampm-clients-tab-btn'); if(b) b.style.display=''; }
+  // Cloud sync
+  bbampmSyncFromCloud();
+  bbampmSubscribeRealtime();
+})();
+</script>
+</body>
+</html>
