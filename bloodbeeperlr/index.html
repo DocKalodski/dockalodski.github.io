@@ -880,33 +880,57 @@
     const endDate = new Date(2026, 3, 12); // April 12 (today)
 
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const baseReadings = [
-        { arm: 'L', period: 7, values: [[120, 80, 72], [121, 81, 71], [119, 79, 73]] },
-        { arm: 'R', period: 7, values: [[122, 82, 74], [123, 83, 75], [121, 81, 73]] },
-        { arm: 'L', period: 19, values: [[128, 85, 78], [129, 86, 79], [127, 84, 77]] },
-        { arm: 'R', period: 19, values: [[130, 87, 80], [131, 88, 81], [129, 86, 79]] }
+      const dayOfWeek = d.getDay();
+      const daysIn = Math.floor((d - startDate) / (1000 * 60 * 60 * 24));
+
+      // Baseline variation across the month (slight uptrend, some spikes)
+      let dayTrend = Math.sin(daysIn / 10) * 5; // Sinusoidal trend
+      let daySpike = 0;
+      if (daysIn % 11 === 7) daySpike = 15; // Random spike days
+      if (dayOfWeek === 0 || dayOfWeek === 6) daySpike = 8; // Weekend trend
+
+      // Base readings per arm & period (realistic BP patterns)
+      const bases = {
+        'AM_L': { sys: 118, dia: 78, hr: 68 },
+        'AM_R': { sys: 121, dia: 81, hr: 69 }, // Right ~3 mmHg higher
+        'PM_L': { sys: 128, dia: 85, hr: 75 }, // PM ~10 sys higher
+        'PM_R': { sys: 131, dia: 88, hr: 76 }  // PM + right
+      };
+
+      // Generate 4 sessions: AM-L, AM-R, PM-L, PM-R
+      const sessions = [
+        { arm: 'L', hour: 7, key: 'AM_L' },
+        { arm: 'R', hour: 7, key: 'AM_R' },
+        { arm: 'L', hour: 19, key: 'PM_L' },
+        { arm: 'R', hour: 19, key: 'PM_R' }
       ];
 
-      baseReadings.forEach(session => {
-        session.values.forEach((v, i) => {
+      sessions.forEach(session => {
+        const base = bases[session.key];
+        const sessionVariation = (Math.random() - 0.5) * 4; // ±2 mmHg session-to-session
+
+        // Generate 3 readings per session with natural variation
+        for (let i = 0; i < 3; i++) {
+          const readingVariation = (Math.random() - 0.5) * 3; // ±1.5 mmHg within session
           const ts = new Date(d);
-          ts.setHours(session.period + i, Math.floor(Math.random() * 60), 0);
+          ts.setHours(session.hour + i, 5 + Math.floor(Math.random() * 55), 0);
+
           readings.push({
             id: Date.now() + Math.random(),
             timestamp: ts.toISOString(),
-            sys: v[0] + Math.floor(Math.random() * 6) - 3,
-            dia: v[1] + Math.floor(Math.random() * 4) - 2,
-            hr: v[2] + Math.floor(Math.random() * 4) - 2,
+            sys: Math.round(base.sys + dayTrend + daySpike + sessionVariation + readingVariation),
+            dia: Math.round(base.dia + (dayTrend * 0.6) + (daySpike * 0.5) + (sessionVariation * 0.7) + readingVariation),
+            hr: Math.round(base.hr + (Math.random() - 0.5) * 3),
             arm: session.arm
           });
-        });
+        }
       });
     }
 
     localStorage.setItem(PREFIX + 'readings', JSON.stringify(readings));
     updateTodaySummary();
     renderBothCharts();
-    alert(`Loaded ${readings.length} sample readings (Mar 1 - Apr 12)`);
+    alert(`Loaded ${readings.length} realistic readings (Mar 1 - Apr 12)\n\n• Left vs Right arm differences\n• AM vs PM patterns\n• Within-session variation\n• Natural day-to-day trends`);
   }
 
   function eraseSampleData() {
