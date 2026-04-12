@@ -676,10 +676,10 @@
     id: 'barLabels',
     afterDatasetsDraw(chart) {
       const { ctx, scales: { x, y }, data } = chart;
-      ctx.font = 'bold 10px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.fillStyle = 'white';
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 3;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
 
@@ -700,10 +700,10 @@
 
           if (barHeight < 50) return; // Skip if bar too small
 
-          // Build lines: 3 readings (show actual values) + divider + average
+          // Build lines: 3 readings + divider + average
           const lines = [];
 
-          // Ensure we have exactly 3 reading lines with values
+          // Show all 3 readings with actual values
           for (let i = 0; i < 3; i++) {
             if (readings && readings[i]) {
               const r = readings[i];
@@ -713,13 +713,13 @@
             }
           }
 
-          lines.push('───────');
+          lines.push('');  // Blank line instead of divider for spacing
           lines.push(`(${avg.sys}/${avg.dia}/${avg.hr})`);
 
           // Draw each line with spacing
-          const lineHeight = 11;
+          const lineHeight = 12;
           const totalHeight = lines.length * lineHeight;
-          let startY = py + Math.max(2, (barHeight - totalHeight) / 2);
+          let startY = py + Math.max(1, (barHeight - totalHeight) / 2);
 
           lines.forEach((line, i) => {
             const yPos = startY + i * lineHeight;
