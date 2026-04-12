@@ -431,12 +431,12 @@
   <div id="tab-analysis" class="tab">
     <div style="padding: 16px;">
       <div class="chart-label">🫀 Left Arm</div>
-      <div class="chart-container" style="height: 380px;">
+      <div class="chart-container" style="height: 250px;">
         <canvas id="chart-left"></canvas>
       </div>
 
       <div class="chart-label">🫀 Right Arm</div>
-      <div class="chart-container" style="height: 380px;">
+      <div class="chart-container" style="height: 250px;">
         <canvas id="chart-right"></canvas>
       </div>
 
@@ -676,7 +676,7 @@
     id: 'barLabels',
     afterDatasetsDraw(chart) {
       const { ctx, scales: { x, y }, data } = chart;
-      ctx.font = 'bold 13px monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
@@ -695,7 +695,7 @@
           const barBottom = chart.chartArea.bottom;
           const barHeight = barBottom - py;
 
-          if (barHeight < 60) return;
+          if (barHeight < 50) return;
 
           // Build lines: 3 readings + divider + average
           const lines = [];
@@ -705,20 +705,20 @@
               lines.push(`${r.sys}/${r.dia}/${r.hr}`);
             }
           }
-          lines.push('═════════');
+          lines.push('─────');
           lines.push(`(${avg.sys}/${avg.dia}/${avg.hr})`);
 
           // Draw centered in bar
-          const lineHeight = 15;
+          const lineHeight = 13;
           const totalHeight = lines.length * lineHeight;
-          let startY = py + Math.max(3, (barHeight - totalHeight) / 2);
+          let startY = py + Math.max(2, (barHeight - totalHeight) / 2);
 
           lines.forEach((line, i) => {
             const yPos = startY + i * lineHeight;
-            if (yPos < barBottom - 2) {
+            if (yPos < barBottom - 1) {
               // Black text with white outline for maximum contrast
               ctx.strokeStyle = '#FFFFFF';
-              ctx.lineWidth = 4;
+              ctx.lineWidth = 3;
               ctx.strokeText(line, px, yPos);
               ctx.fillStyle = '#000000';
               ctx.fillText(line, px, yPos);
