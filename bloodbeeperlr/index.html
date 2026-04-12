@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BloodBeeperLR – Left/Right Arm BP Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --normal:   #22c55e;
+      --elevated: #eab308;
+      --stage1:   #f97316;
+      --stage2:   #ef4444;
+      --crisis:   #7f1d1d;
+      --bg:       #f8fafc;
+      --card:     #ffffff;
+      --border:   #e2e8f0;
+      --text:     #1e293b;
+      --muted:    #4b5563;
+      --accent:   #0ea5e9;
+      --radius:   12px;
+    }
+    [data-theme="dark"] {
+      --bg:     #0f172a;
+      --card:   #1e293b;
+      --border: #334155;
+      --text:   #f1f5f9;
+      --muted:  #94a3b8;
+      --accent: #38bdf8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+      padding-bottom: 100px;
+    }
+    header {
+      background: linear-gradient(135deg, #0c1445 0%, #1a2875 50%, #0e3a6e 100%);
+      color: white;
+      padding: 16px;
+      sticky-top: 0;
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; font-weight: 700; }
+    header small { display: block; font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
+    .sync-badge {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .toggle-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .toggle-btn:hover { background: rgba(255,255,255,0.3); }
+
+    nav {
+      display: flex;
+      gap: 4px;
+      padding: 8px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    nav button {
+      flex: 1;
+      min-width: 80px;
+      padding: 10px 12px;
+      background: transparent;
+      border: 2px solid transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    nav button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    nav button:hover { background: var(--border); }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+    .tab {
+      display: none;
+      padding: 16px;
+      animation: fadeIn 0.2s;
+    }
+    .tab.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin: 12px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .session-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .arm-column h3 {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+      text-align: center;
+    }
+    .reading-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .reading-row label {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 600;
+      text-align: center;
+    }
+    .reading-row input {
+      width: 100%;
+      padding: 8px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      text-align: center;
+    }
+    .reading-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--card);
+    }
+
+    .session-header {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+    .session-toggle {
+      display: flex;
+      gap: 6px;
+    }
+    .session-toggle button {
+      flex: 1;
+      padding: 8px 16px;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .session-toggle button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.2s;
+    }
+    .btn-save:hover:not(:disabled) { background: #0284c7; }
+    .btn-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 240px;
+      margin: 24px 0;
+    }
+    .chart-label {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .nav-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+      flex-wrap: wrap;
+    }
+    .nav-controls button {
+      padding: 8px 12px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    .nav-controls button:hover:not(:disabled) { background: #0284c7; }
+    .nav-controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .date-range {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .summary-tile {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 4px solid;
+      font-size: 12px;
+    }
+    .summary-tile h4 {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .summary-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .summary-readings {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .lock-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .lock-modal {
+      background: var(--card);
+      padding: 24px;
+      border-radius: var(--radius);
+      text-align: center;
+      max-width: 300px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .lock-modal h2 { margin-bottom: 12px; }
+    .lock-modal input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      margin: 12px 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .lock-modal button {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="lock-overlay" class="lock-overlay">
+  <div class="lock-modal">
+    <h2>BloodBeeperLR</h2>
+    <p style="font-size: 12px; color: var(--muted); margin: 8px 0;">License Key</p>
+    <input type="text" id="license-key" placeholder="Enter license key" autocomplete="off">
+    <button onclick="activateLicense()">Activate</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>BloodBeeperLR</h1>
+    <small id="licensee-name">by Doc Kalodski</small>
+  </div>
+  <div class="header-right">
+    <div class="sync-badge"></div>
+    <button class="toggle-btn" onclick="toggleTheme()">Dark</button>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('dash', this)">Dashboard</button>
+  <button onclick="switchTab('analysis', this)">Analysis</button>
+  <button onclick="switchTab('settings', this)">Settings</button>
+</nav>
+
+<div class="tabs">
+
+  <!-- Dashboard Tab -->
+  <div id="tab-dash" class="tab active">
+    <div class="card">
+      <h2>📊 Log Session</h2>
+      <div class="session-header">
+        <div class="session-toggle">
+          <button class="active" id="toggle-am" onclick="setSessionPeriod('AM')">🌅 AM</button>
+          <button id="toggle-pm" onclick="setSessionPeriod('PM')">🌙 PM</button>
+        </div>
+      </div>
+
+      <div class="session-grid">
+        <div class="arm-column">
+          <h3>🫀 Left Arm</h3>
+          <div class="reading-row">
+            <label>Sys</label><label>Dia</label><label>HR</label>
+          </div>
+          <div class="reading-row">
+            <input type="number" id="l-r1-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="l-r1-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="l-r1-hr" min="40" max="200" placeholder="72">
+          </div>
+          <div class="reading-row">
+            <input type="number" id="l-r2-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="l-r2-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="l-r2-hr" min="40" max="200" placeholder="72">
+          </div>
+          <div class="reading-row">
+            <input type="number" id="l-r3-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="l-r3-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="l-r3-hr" min="40" max="200" placeholder="72">
+          </div>
+        </div>
+
+        <div class="arm-column">
+          <h3>🫀 Right Arm</h3>
+          <div class="reading-row">
+            <label>Sys</label><label>Dia</label><label>HR</label>
+          </div>
+          <div class="reading-row">
+            <input type="number" id="r-r1-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="r-r1-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="r-r1-hr" min="40" max="200" placeholder="72">
+          </div>
+          <div class="reading-row">
+            <input type="number" id="r-r2-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="r-r2-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="r-r2-hr" min="40" max="200" placeholder="72">
+          </div>
+          <div class="reading-row">
+            <input type="number" id="r-r3-sys" min="60" max="200" placeholder="120">
+            <input type="number" id="r-r3-dia" min="40" max="140" placeholder="80">
+            <input type="number" id="r-r3-hr" min="40" max="200" placeholder="72">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-save" onclick="saveSession()">Save Session</button>
+    </div>
+
+    <div class="card">
+      <h2>📈 Today's Summary</h2>
+      <div class="summary-grid" id="today-summary"></div>
+    </div>
+  </div>
+
+  <!-- Analysis Tab -->
+  <div id="tab-analysis" class="tab">
+    <div style="padding: 16px;">
+      <div class="chart-label">🫀 Left Arm</div>
+      <div class="chart-container">
+        <canvas id="chart-left"></canvas>
+      </div>
+
+      <div class="chart-label">🫀 Right Arm</div>
+      <div class="chart-container">
+        <canvas id="chart-right"></canvas>
+      </div>
+
+      <div class="nav-controls">
+        <button id="nav-prev" onclick="navChart(-7)">◀ −7d</button>
+        <div class="date-range" id="date-range">Apr 6 – Apr 12</div>
+        <button id="nav-next" onclick="navChart(7)">+7d ▶</button>
+        <button onclick="navToday()">Today</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Tab -->
+  <div id="tab-settings" class="tab">
+    <div class="card">
+      <h2>⚙️ Settings</h2>
+      <label style="display: block; margin-bottom: 12px;">
+        <span style="font-weight: 600; font-size: 13px;">License Key</span>
+        <input type="text" id="settings-key" placeholder="License key" readonly style="width: 100%; padding: 8px; margin-top: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
+      </label>
+      <label style="display: block; margin-bottom: 12px;">
+        <span style="font-weight: 600; font-size: 13px;">Display Name</span>
+        <input type="text" id="settings-name" placeholder="Name" style="width: 100%; padding: 8px; margin-top: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);" onchange="saveSetting('name', this.value)">
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;">
+        <input type="checkbox" id="dark-mode-check" onchange="toggleTheme()">
+        <span style="font-weight: 600; font-size: 13px;">Dark Mode</span>
+      </label>
+      <button onclick="exportData()" style="width: 100%; padding: 10px; background: var(--muted); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;">Export Data</button>
+      <button onclick="importData()" style="width: 100%; padding: 10px; background: var(--muted); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 6px;">Import Data</button>
+      <button onclick="loadSampleData()" style="width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 6px;">Load Sample Data</button>
+      <button onclick="eraseSampleData()" style="width: 100%; padding: 10px; background: var(--elevated); color: black; border: none; border-radius: 6px; cursor: pointer; margin-top: 6px;">Erase Sample Data</button>
+      <button onclick="clearData()" style="width: 100%; padding: 10px; background: var(--stage2); color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 6px;">Clear All Data</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // License keys
+  const KEYS = {
+    '007': 'Doc Kalodski',
+    'ACCI': 'User',
+    'SHEILA': 'User'
+  };
+
+  const PREFIX = 'bblr_';
+  let currentSessionPeriod = 'AM';
+  let chartWindowEnd = new Date();
+  let chartLeft, chartRight;
+
+  // Initialize
+  function init() {
+    const key = localStorage.getItem(PREFIX + 'license_key');
+    const name = localStorage.getItem(PREFIX + 'license_name');
+    if (!key) {
+      document.getElementById('lock-overlay').style.display = 'flex';
+    } else {
+      document.getElementById('lock-overlay').style.display = 'none';
+      document.getElementById('licensee-name').textContent = name;
+    }
+    loadTheme();
+    updateTodaySummary();
+    renderBothCharts();
+  }
+
+  function activateLicense() {
+    const keyInput = document.getElementById('license-key');
+    const key = keyInput.value.toUpperCase().trim();
+    if (!KEYS[key]) {
+      alert('Invalid license key');
+      return;
+    }
+    localStorage.setItem(PREFIX + 'license_key', key);
+    localStorage.setItem(PREFIX + 'license_name', KEYS[key]);
+    document.getElementById('lock-overlay').style.display = 'none';
+    document.getElementById('licensee-name').textContent = KEYS[key];
+    document.getElementById('settings-key').value = key;
+  }
+
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    btn.classList.add('active');
+    if (tabId === 'analysis') renderBothCharts();
+  }
+
+  function setSessionPeriod(period) {
+    currentSessionPeriod = period;
+    document.getElementById('toggle-am').classList.toggle('active', period === 'AM');
+    document.getElementById('toggle-pm').classList.toggle('active', period === 'PM');
+  }
+
+  function getSessionInputs() {
+    return [
+      { arm: 'L', sys: +document.getElementById('l-r1-sys').value, dia: +document.getElementById('l-r1-dia').value, hr: +document.getElementById('l-r1-hr').value },
+      { arm: 'L', sys: +document.getElementById('l-r2-sys').value, dia: +document.getElementById('l-r2-dia').value, hr: +document.getElementById('l-r2-hr').value },
+      { arm: 'L', sys: +document.getElementById('l-r3-sys').value, dia: +document.getElementById('l-r3-dia').value, hr: +document.getElementById('l-r3-hr').value },
+      { arm: 'R', sys: +document.getElementById('r-r1-sys').value, dia: +document.getElementById('r-r1-dia').value, hr: +document.getElementById('r-r1-hr').value },
+      { arm: 'R', sys: +document.getElementById('r-r2-sys').value, dia: +document.getElementById('r-r2-dia').value, hr: +document.getElementById('r-r2-hr').value },
+      { arm: 'R', sys: +document.getElementById('r-r3-sys').value, dia: +document.getElementById('r-r3-dia').value, hr: +document.getElementById('r-r3-hr').value }
+    ];
+  }
+
+  function allInputsFilled() {
+    return getSessionInputs().every(r => r.sys > 0 && r.dia > 0 && r.hr > 0);
+  }
+
+  function saveSession() {
+    if (!allInputsFilled()) {
+      alert('Please fill all fields');
+      return;
+    }
+    const readings = getSessionInputs();
+    let data = JSON.parse(localStorage.getItem(PREFIX + 'readings') || '[]');
+    const now = new Date().toISOString();
+    readings.forEach(r => {
+      data.push({
+        id: Date.now() + Math.random(),
+        timestamp: now,
+        sys: r.sys,
+        dia: r.dia,
+        hr: r.hr,
+        arm: r.arm
+      });
+    });
+    localStorage.setItem(PREFIX + 'readings', JSON.stringify(data));
+    clearSessionForm();
+    updateTodaySummary();
+    renderBothCharts();
+    alert('Session saved!');
+  }
+
+  function clearSessionForm() {
+    ['l-r1-sys','l-r1-dia','l-r1-hr','l-r2-sys','l-r2-dia','l-r2-hr','l-r3-sys','l-r3-dia','l-r3-hr',
+     'r-r1-sys','r-r1-dia','r-r1-hr','r-r2-sys','r-r2-dia','r-r2-hr','r-r3-sys','r-r3-dia','r-r3-hr'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  function getReadingsForDayArmPeriod(date, arm, period) {
+    const data = JSON.parse(localStorage.getItem(PREFIX + 'readings') || '[]');
+    const dayStr = date.toISOString().split('T')[0];
+    return data.filter(r => {
+      const rDate = r.timestamp.split('T')[0];
+      const rHour = parseInt(r.timestamp.split('T')[1].split(':')[0]);
+      const isPM = rHour >= 18 && rHour < 24;
+      const isAM = rHour >= 5 && rHour < 12;
+      const matchesPeriod = (period === 'AM' && isAM) || (period === 'PM' && isPM);
+      return rDate === dayStr && r.arm === arm && matchesPeriod;
+    }).slice(-3);
+  }
+
+  function avgReading(readings) {
+    if (readings.length === 0) return { sys: 0, dia: 0, hr: 0 };
+    const sumSys = readings.reduce((a, r) => a + r.sys, 0);
+    const sumDia = readings.reduce((a, r) => a + r.dia, 0);
+    const sumHr = readings.reduce((a, r) => a + r.hr, 0);
+    return {
+      sys: Math.round(sumSys / readings.length),
+      dia: Math.round(sumDia / readings.length),
+      hr: Math.round(sumHr / readings.length)
+    };
+  }
+
+  function updateTodaySummary() {
+    const today = new Date();
+    const summaryHtml = [
+      { title: '🌅 AM Left', period: 'AM', arm: 'L' },
+      { title: '🌅 AM Right', period: 'AM', arm: 'R' },
+      { title: '🌙 PM Left', period: 'PM', arm: 'L' },
+      { title: '🌙 PM Right', period: 'PM', arm: 'R' }
+    ].map(({ title, period, arm }) => {
+      const readings = getReadingsForDayArmPeriod(today, arm, period);
+      const avg = avgReading(readings);
+      const readingStrs = readings.map(r => `${r.sys}/${r.dia}/${r.hr}`).join('<br>');
+      const color = arm === 'L' ? (period === 'AM' ? '#eab308' : '#7dd3fc') : (period === 'AM' ? '#f97316' : '#3b82f6');
+      return `<div class="summary-tile" style="border-left-color: ${color};">
+        <h4>${title}</h4>
+        <div class="summary-value">${avg.sys}/${avg.dia}/${avg.hr}</div>
+        <div class="summary-readings">${readingStrs || '—'}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('today-summary').innerHTML = summaryHtml;
+  }
+
+  function getChartData(arm, windowStart, windowEnd) {
+    const labels = [];
+    let d = new Date(windowStart);
+    let maxSys = 150;
+    const amFullData = [], pmFullData = [];
+
+    // First pass: collect all data to find max
+    while (d <= windowEnd) {
+      const amReadings = getReadingsForDayArmPeriod(d, arm, 'AM');
+      const pmReadings = getReadingsForDayArmPeriod(d, arm, 'PM');
+      const amAvg = avgReading(amReadings);
+      const pmAvg = avgReading(pmReadings);
+      amFullData.push({ readings: amReadings, avg: amAvg });
+      pmFullData.push({ readings: pmReadings, avg: pmAvg });
+      maxSys = Math.max(maxSys, amAvg.sys, pmAvg.sys);
+      labels.push(d.toISOString().split('T')[0].substr(5));
+      d.setDate(d.getDate() + 1);
+    }
+    maxSys = Math.ceil(maxSys / 20) * 20;
+
+    // Extract just sys for chart height
+    const amData = amFullData.map(a => a.avg.sys);
+    const pmData = pmFullData.map(p => p.avg.sys);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: arm === 'L' ? 'AM' : 'AM',
+          data: amData,
+          fullData: amFullData,
+          backgroundColor: arm === 'L' ? '#eab308' : '#f97316',
+          borderColor: arm === 'L' ? '#ca8a04' : '#ea580c',
+          borderWidth: 2
+        },
+        {
+          label: arm === 'L' ? 'PM' : 'PM',
+          data: pmData,
+          fullData: pmFullData,
+          backgroundColor: arm === 'L' ? '#7dd3fc' : '#3b82f6',
+          borderColor: arm === 'L' ? '#0ea5e9' : '#2563eb',
+          borderWidth: 2
+        }
+      ],
+      maxSys
+    };
+  }
+
+  const barLabelsPlugin = {
+    id: 'barLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, scales: { x, y }, data } = chart;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = 'white';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2.5;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      [0, 1].forEach(datasetIdx => {
+        const dataset = data.datasets[datasetIdx];
+        const meta = chart.getDatasetMeta(datasetIdx);
+
+        meta.data.forEach((datapoint, index) => {
+          if (!datapoint || dataset.data[index] === 0) return;
+
+          const { x: px, y: py } = datapoint.getProps(['x', 'y']);
+          const fullData = dataset.fullData[index];
+          if (!fullData) return;
+
+          const { readings, avg } = fullData;
+          const barBottom = chart.chartArea.bottom;
+          const barHeight = barBottom - py;
+
+          if (barHeight < 50) return; // Skip if bar too small
+
+          // Build lines: 3 readings (show actual values) + divider + average
+          const lines = [];
+
+          // Ensure we have exactly 3 reading lines with values
+          for (let i = 0; i < 3; i++) {
+            if (readings && readings[i]) {
+              const r = readings[i];
+              lines.push(`${r.sys}/${r.dia}/${r.hr}`);
+            } else {
+              lines.push('—/—/—');
+            }
+          }
+
+          lines.push('───────');
+          lines.push(`(${avg.sys}/${avg.dia}/${avg.hr})`);
+
+          // Draw each line with spacing
+          const lineHeight = 11;
+          const totalHeight = lines.length * lineHeight;
+          let startY = py + Math.max(2, (barHeight - totalHeight) / 2);
+
+          lines.forEach((line, i) => {
+            const yPos = startY + i * lineHeight;
+            if (yPos < barBottom - 1) {
+              ctx.strokeText(line, px, yPos);
+              ctx.fillText(line, px, yPos);
+            }
+          });
+        });
+      });
+    }
+  };
+
+  function renderBothCharts() {
+    const windowStart = new Date(chartWindowEnd);
+    windowStart.setDate(windowStart.getDate() - 6);
+
+    const leftData = getChartData('L', windowStart, chartWindowEnd);
+    const rightData = getChartData('R', windowStart, chartWindowEnd);
+    const maxSys = Math.max(leftData.maxSys, rightData.maxSys);
+
+    updateDateRange();
+    updateNavButtons();
+
+    const chartLeftCtx = document.getElementById('chart-left').getContext('2d');
+    const chartRightCtx = document.getElementById('chart-right').getContext('2d');
+
+    if (chartLeft) chartLeft.destroy();
+    if (chartRight) chartRight.destroy();
+
+    chartLeft = new Chart(chartLeftCtx, {
+      type: 'bar',
+      data: leftData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+          tooltip: { enabled: true }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: maxSys,
+            ticks: { font: { size: 10 } }
+          },
+          x: { ticks: { font: { size: 10 } } }
+        }
+      },
+      plugins: [barLabelsPlugin]
+    });
+
+    chartRight = new Chart(chartRightCtx, {
+      type: 'bar',
+      data: rightData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { font: { size: 11 } } },
+          tooltip: { enabled: true }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: maxSys,
+            ticks: { font: { size: 10 } }
+          },
+          x: { ticks: { font: { size: 10 } } }
+        }
+      },
+      plugins: [barLabelsPlugin]
+    });
+  }
+
+  function navChart(days) {
+    chartWindowEnd.setDate(chartWindowEnd.getDate() + days);
+    renderBothCharts();
+  }
+
+  function navToday() {
+    chartWindowEnd = new Date();
+    renderBothCharts();
+  }
+
+  function updateDateRange() {
+    const start = new Date(chartWindowEnd);
+    start.setDate(start.getDate() - 6);
+    const fmt = (d) => (d.getMonth() + 1) + '/' + d.getDate();
+    document.getElementById('date-range').textContent = fmt(start) + ' – ' + fmt(chartWindowEnd);
+  }
+
+  function updateNavButtons() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const windowEnd = new Date(chartWindowEnd);
+    windowEnd.setHours(0, 0, 0, 0);
+    document.getElementById('nav-next').disabled = windowEnd.getTime() === today.getTime();
+  }
+
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const newTheme = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem(PREFIX + 'theme', newTheme);
+    document.querySelector('.toggle-btn').textContent = isDark ? 'Dark' : 'Light';
+    document.getElementById('dark-mode-check').checked = newTheme === 'dark';
+  }
+
+  function loadTheme() {
+    const theme = localStorage.getItem(PREFIX + 'theme') || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('dark-mode-check').checked = theme === 'dark';
+  }
+
+  function saveSetting(key, value) {
+    localStorage.setItem(PREFIX + 'setting_' + key, value);
+  }
+
+  function exportData() {
+    const readings = localStorage.getItem(PREFIX + 'readings');
+    const data = { readings: JSON.parse(readings || '[]') };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bloodbeeperlr_data.json';
+    a.click();
+  }
+
+  function importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (data.readings) {
+            localStorage.setItem(PREFIX + 'readings', JSON.stringify(data.readings));
+            updateTodaySummary();
+            renderBothCharts();
+            alert('Data imported!');
+          }
+        } catch (err) {
+          alert('Invalid file');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  function loadSampleData() {
+    const readings = [];
+    const startDate = new Date(2026, 2, 1); // March 1
+    const endDate = new Date(2026, 3, 12); // April 12 (today)
+
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const baseReadings = [
+        { arm: 'L', period: 7, values: [[120, 80, 72], [121, 81, 71], [119, 79, 73]] },
+        { arm: 'R', period: 7, values: [[122, 82, 74], [123, 83, 75], [121, 81, 73]] },
+        { arm: 'L', period: 19, values: [[128, 85, 78], [129, 86, 79], [127, 84, 77]] },
+        { arm: 'R', period: 19, values: [[130, 87, 80], [131, 88, 81], [129, 86, 79]] }
+      ];
+
+      baseReadings.forEach(session => {
+        session.values.forEach((v, i) => {
+          const ts = new Date(d);
+          ts.setHours(session.period + i, Math.floor(Math.random() * 60), 0);
+          readings.push({
+            id: Date.now() + Math.random(),
+            timestamp: ts.toISOString(),
+            sys: v[0] + Math.floor(Math.random() * 6) - 3,
+            dia: v[1] + Math.floor(Math.random() * 4) - 2,
+            hr: v[2] + Math.floor(Math.random() * 4) - 2,
+            arm: session.arm
+          });
+        });
+      });
+    }
+
+    localStorage.setItem(PREFIX + 'readings', JSON.stringify(readings));
+    updateTodaySummary();
+    renderBothCharts();
+    alert(`Loaded ${readings.length} sample readings (Mar 1 - Apr 12)`);
+  }
+
+  function eraseSampleData() {
+    if (confirm('Erase all sample data? Real data will remain.')) {
+      localStorage.removeItem(PREFIX + 'readings');
+      updateTodaySummary();
+      renderBothCharts();
+      alert('Sample data erased');
+    }
+  }
+
+  function clearData() {
+    if (confirm('Clear all data? This cannot be undone.')) {
+      localStorage.removeItem(PREFIX + 'readings');
+      updateTodaySummary();
+      renderBothCharts();
+      alert('Data cleared');
+    }
+  }
+
+  // Init on load
+  window.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
