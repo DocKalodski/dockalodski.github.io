@@ -676,55 +676,51 @@
     id: 'barLabels',
     afterDatasetsDraw(chart) {
       const { ctx, scales: { x, y }, data } = chart;
-      ctx.font = 'bold 11px monospace';
-      ctx.fillStyle = 'white';
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 3;
+      ctx.font = 'bold 12px monospace';
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
+      ctx.textBaseline = 'middle';
 
       [0, 1].forEach(datasetIdx => {
         const dataset = data.datasets[datasetIdx];
         const meta = chart.getDatasetMeta(datasetIdx);
+        const isLight = datasetIdx === 0; // Left arm: yellow & light blue
 
         meta.data.forEach((datapoint, index) => {
           if (!datapoint || dataset.data[index] === 0) return;
 
-          const { x: px, y: py } = datapoint.getProps(['x', 'y']);
+          const { x: px, y: py, width } = datapoint.getProps(['x', 'y', 'width']);
           const fullData = dataset.fullData[index];
-          if (!fullData) return;
+          if (!fullData || !fullData.readings) return;
 
           const { readings, avg } = fullData;
           const barBottom = chart.chartArea.bottom;
           const barHeight = barBottom - py;
 
-          if (barHeight < 50) return; // Skip if bar too small
+          if (barHeight < 40) return;
 
-          // Build lines: 3 readings + divider + average
+          // Build display lines: 3 readings only (no divider/average for simplicity)
           const lines = [];
-
-          // Show all 3 readings with actual values
           for (let i = 0; i < 3; i++) {
-            if (readings && readings[i]) {
+            if (readings[i]) {
               const r = readings[i];
               lines.push(`${r.sys}/${r.dia}/${r.hr}`);
-            } else {
-              lines.push('—/—/—');
             }
           }
 
-          lines.push('');  // Blank line instead of divider for spacing
-          lines.push(`(${avg.sys}/${avg.dia}/${avg.hr})`);
-
-          // Draw each line with spacing
-          const lineHeight = 12;
+          // Draw centered in bar with HIGH contrast
+          const lineHeight = 13;
           const totalHeight = lines.length * lineHeight;
-          let startY = py + Math.max(1, (barHeight - totalHeight) / 2);
+          let startY = py + Math.max(2, (barHeight - totalHeight) / 2);
 
           lines.forEach((line, i) => {
             const yPos = startY + i * lineHeight;
-            if (yPos < barBottom - 1) {
+            if (yPos < barBottom) {
+              // Dark text with white outline for contrast on all bar colors
+              ctx.fillStyle = '#000000';
+              ctx.strokeStyle = '#FFFFFF';
+              ctx.lineWidth = 4;
               ctx.strokeText(line, px, yPos);
+              ctx.fillStyle = '#000000';
               ctx.fillText(line, px, yPos);
             }
           });
