@@ -1946,24 +1946,30 @@ function renderChart() {
         data: scatterReadings.filter(isPM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
         backgroundColor:'#60a5fa', pointRadius:3 });
     }
-    // Trend lines superimposed on scatter dots (daily averages)
+    // Trend lines superimposed — same {x,y} format as scatter dots
     if (showSys) {
-      datasets.push({ label:'🌅 AM avg', data:points.map(p=>p.am.sys),
-        borderColor:'#f97316', pointRadius:0, showLine:true, tension:0.35, borderWidth:2, spanGaps:true, fill:false });
-      datasets.push({ label:'🌙 PM avg', data:points.map(p=>p.pm.sys),
-        borderColor:'#3b82f6', pointRadius:0, showLine:true, tension:0.35, borderWidth:2, spanGaps:true, fill:false });
+      datasets.push({ label:'🌅 AM avg', showLine:true,
+        data:points.filter(p=>p.am.sys!==null).map(p=>({x:p.label,y:p.am.sys})),
+        borderColor:'#f97316', pointRadius:0, tension:0.35, borderWidth:2, fill:false });
+      datasets.push({ label:'🌙 PM avg', showLine:true,
+        data:points.filter(p=>p.pm.sys!==null).map(p=>({x:p.label,y:p.pm.sys})),
+        borderColor:'#3b82f6', pointRadius:0, tension:0.35, borderWidth:2, fill:false });
     }
     if (showDia) {
-      datasets.push({ label:'🌅 AM dia avg', data:points.map(p=>p.am.dia),
-        borderColor:'#fdba74', pointRadius:0, showLine:true, tension:0.35, borderWidth:1.5, spanGaps:true, fill:false });
-      datasets.push({ label:'🌙 PM dia avg', data:points.map(p=>p.pm.dia),
-        borderColor:'#93c5fd', pointRadius:0, showLine:true, tension:0.35, borderWidth:1.5, spanGaps:true, fill:false });
+      datasets.push({ label:'🌅 AM dia avg', showLine:true,
+        data:points.filter(p=>p.am.dia!==null).map(p=>({x:p.label,y:p.am.dia})),
+        borderColor:'#fdba74', pointRadius:0, tension:0.35, borderWidth:1.5, fill:false });
+      datasets.push({ label:'🌙 PM dia avg', showLine:true,
+        data:points.filter(p=>p.pm.dia!==null).map(p=>({x:p.label,y:p.pm.dia})),
+        borderColor:'#93c5fd', pointRadius:0, tension:0.35, borderWidth:1.5, fill:false });
     }
     if (showHr) {
-      datasets.push({ label:'🌅 AM hr avg', data:points.map(p=>p.am.hr),
-        borderColor:'#fb923c', pointRadius:0, showLine:true, tension:0.35, borderWidth:1, spanGaps:true, fill:false });
-      datasets.push({ label:'🌙 PM hr avg', data:points.map(p=>p.pm.hr),
-        borderColor:'#60a5fa', pointRadius:0, showLine:true, tension:0.35, borderWidth:1, spanGaps:true, fill:false });
+      datasets.push({ label:'🌅 AM hr avg', showLine:true,
+        data:points.filter(p=>p.am.hr!==null).map(p=>({x:p.label,y:p.am.hr})),
+        borderColor:'#fb923c', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
+      datasets.push({ label:'🌙 PM hr avg', showLine:true,
+        data:points.filter(p=>p.pm.hr!==null).map(p=>({x:p.label,y:p.pm.hr})),
+        borderColor:'#60a5fa', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
     }
   } else {
     // Line chart: orange=AM, blue=PM, no dashes
@@ -2065,16 +2071,12 @@ function renderChartTable() {
   if (!pts || !pts.length) { el.innerHTML = ''; return; }
 
   const rows = pts.filter(p => p.count > 0).map(p => {
-    const am = p.am.sys !== null ? `AM: ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR '+p.am.hr : ''}` : '';
-    const pm = p.pm.sys !== null ? `PM: ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR '+p.pm.hr : ''}` : '';
-    return `<div style="margin-bottom:10px;font-size:0.88rem;">
-      <div style="font-weight:700;">${p.label}</div>
-      ${am ? `<div>${am}</div>` : ''}
-      ${pm ? `<div>${pm}</div>` : ''}
-    </div>`;
+    const am = p.am.sys !== null ? `AM  ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR '+p.am.hr : ''}` : '';
+    const pm = p.pm.sys !== null ? `PM  ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR '+p.pm.hr : ''}` : '';
+    return `<div style="margin-bottom:12px;">${p.label}<br>${am ? am+'<br>' : ''}${pm || ''}</div>`;
   }).join('');
 
-  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:16px 32px;padding:4px 0;">${rows}</div>`;
+  el.innerHTML = `<div style="font-size:0.85rem;line-height:1.7;">${rows}</div>`;
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
