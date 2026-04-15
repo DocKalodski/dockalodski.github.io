@@ -559,17 +559,6 @@
     <p style="font-size:0.76rem;color:var(--muted);margin-bottom:12px;">
       Set the times you normally take your BP each day. BloodBeeperAMPM will show a reminder banner when it's time — keep the app open on your phone or browser.
     </p>
-    <div class="setting-row" style="padding-bottom:14px;">
-      <div>
-        <div class="setting-label">How many times a day?</div>
-        <div class="setting-sub">Up to 6 reading slots</div>
-      </div>
-      <div class="count-stepper">
-        <button type="button" onclick="changeSlotCount(-1)">−</button>
-        <span id="slot-count-display">3</span>
-        <button type="button" onclick="changeSlotCount(+1)">+</button>
-      </div>
-    </div>
     <div style="display:grid;grid-template-columns:34px 1fr 96px 30px;gap:8px;padding-bottom:5px;">
       <span style="font-size:0.62rem;text-transform:uppercase;color:var(--muted);">Icon</span>
       <span style="font-size:0.62rem;text-transform:uppercase;color:var(--muted);">Name</span>
@@ -987,8 +976,7 @@ function renderSlotList() {
       <input type="hidden" class="slot-time-input" value="${sl.time}">
       <button class="btn-remove-slot" onclick="removeSlot('${sl.id}')" title="Remove">✕</button>
     </div>`).join('');
-  document.getElementById('slot-count-display').textContent = s.slots.length;
-  document.getElementById('add-slot-btn').style.display = s.slots.length >= 6 ? 'none' : '';
+  document.getElementById('add-slot-btn').style.display = '';
 }
 
 function addSlot() {
