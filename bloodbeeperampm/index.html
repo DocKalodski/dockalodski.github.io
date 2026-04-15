@@ -2097,23 +2097,7 @@ function renderChart() {
 
 // ── CHART DATA TABLE ──────────────────────────────────────
 function renderChartTable() {
-  const el = document.getElementById('chart-data-table');
-  if (!el) return;
-  const pts = window._chartPoints;
-  if (!pts || !pts.length) { el.innerHTML = ''; return; }
-
-  const rows = pts.filter(p => p.count > 0).map(p => {
-    let text = p.label + '\n';
-    if (p.am.sys !== null) {
-      text += `AM: ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR ' + p.am.hr : ''}\n`;
-    }
-    if (p.pm.sys !== null) {
-      text += `PM: ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR ' + p.pm.hr : ''}`;
-    }
-    return text;
-  }).join('\n\n');
-
-  el.innerHTML = `<div style="font-family:monospace;white-space:pre-wrap;margin-top:16px;">${rows}</div>`;
+  // Data shown directly under chart dates via xAnnotations — no separate table
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
