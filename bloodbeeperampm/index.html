@@ -1771,7 +1771,6 @@ function setChartType(type, btn) {
   chartType = type;
   document.querySelectorAll('.chart-type-toggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if (type === 'bar') { chartView = '7d'; chartOffset = 0; }
   renderChart();
 }
 
@@ -2252,7 +2251,6 @@ function renderAnalysis() {
           <button type="button" data-type="scatter" onclick="setChartType('scatter',this)">⚡ Scatter</button>
         </div>
         <div class="chart-toggle">
-          <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
           <button type="button" class="${chartView==='15d'?'active':''}" onclick="setChartView('15d',this)">15 Days</button>
           <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
         </div>
