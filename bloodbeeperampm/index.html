@@ -2250,10 +2250,6 @@ function renderAnalysis() {
           <button type="button" data-type="bar" onclick="setChartType('bar',this)">📊 Bar</button>
           <button type="button" data-type="scatter" onclick="setChartType('scatter',this)">⚡ Scatter</button>
         </div>
-        <div class="chart-toggle">
-          <button type="button" class="${chartView==='15d'?'active':''}" onclick="setChartView('15d',this)">15 Days</button>
-          <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
-        </div>
         <div style="display:flex;gap:4px;">
           <button type="button" onclick="shiftChart(-1)" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Older">◀</button>
           <button type="button" onclick="shiftChart(1)" id="btn-chart-fwd" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Newer">▶</button>
