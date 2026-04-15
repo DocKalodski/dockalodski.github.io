@@ -2054,23 +2054,7 @@ function renderChart() {
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        pts.forEach((p, i) => {
-          if (p.count === 0) return;
-          const xPos = x.getPixelForValue(i);
-          const yStart = x.bottom + 2;
-          // overall day avg (AM+PM combined)
-          const sysList = [p.am.sys, p.pm.sys].filter(v=>v!==null);
-          const diaList = [p.am.dia, p.pm.dia].filter(v=>v!==null);
-          const hrList  = [p.am.hr,  p.pm.hr ].filter(v=>v!==null);
-          const avg = arr => arr.length ? Math.round(arr.reduce((a,v)=>a+v,0)/arr.length) : null;
-          const s = avg(sysList), d = avg(diaList), h = avg(hrList);
-          ctx.fillStyle = '#64748b';
-          ctx.font = '8.5px system-ui,sans-serif';
-          let y = yStart;
-          if (showSysA && s!==null) { ctx.fillText(`S:${s}`, xPos, y); y+=11; }
-          if (showDiaA && d!==null) { ctx.fillText(`D:${d}`, xPos, y); y+=11; }
-          if (showHrA  && h!==null) { ctx.fillText(`HR:${h}`, xPos, y); }
-        });
+        // Redundant labels removed — data shown in table below
         ctx.restore();
       }
     },{
