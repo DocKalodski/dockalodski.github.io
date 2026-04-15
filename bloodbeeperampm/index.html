@@ -1755,13 +1755,12 @@ function renderCalendarOnly() {
 }
 let chartView = '7d';
 let chartType = 'line';
+let chartOffset = 0;  // days shifted back from today
 
 function setChartView(v, btn) {
   chartView = v;
-  chartType = 'line';
-  document.querySelectorAll('.chart-toggle button, .chart-type-toggle button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.chart-toggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelector('.chart-type-toggle [data-type="line"]')?.classList.add('active');
   renderChart();
 }
 
@@ -1769,13 +1768,19 @@ function setChartType(type, btn) {
   chartType = type;
   document.querySelectorAll('.chart-type-toggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  if (type === 'bar') chartView = '7d';
+  if (type === 'bar') { chartView = '7d'; chartOffset = 0; }
   renderChart();
 }
 
-function groupByDay(readings, nDays=7) {
+function shiftChart(dir) {
+  // dir: -1 = back (older), +1 = forward (newer)
+  chartOffset = Math.max(0, chartOffset + (dir === -1 ? 7 : -7));
+  renderChart();
+}
+
+function groupByDay(readings, nDays=7, offset=0) {
   // Returns array of {label, am:{sys,dia,hr}, pm:{sys,dia,hr}, count} for last nDays days
-  const now = new Date();
+  const now = new Date(); now.setDate(now.getDate() - offset);
   const result = [];
   for (let d = nDays-1; d >= 0; d--) {
     const day = new Date(now); day.setDate(day.getDate()-d);
@@ -1847,8 +1852,9 @@ function renderChart() {
     return;
   }
 
-  // Bar chart only supports 7-day view
-  const points = groupByDay(readings);
+  // Bar chart only supports 7-day view (no offset)
+  const nDays = chartView === '7d' ? 7 : 91;
+  const points = groupByDay(readings, chartType === 'bar' ? 7 : nDays, chartType === 'bar' ? 0 : chartOffset);
   window._chartPoints = points;  // Store for barLabels plugin
 
   const labels = points.map(p => p.label);
@@ -1871,61 +1877,81 @@ function renderChart() {
       label:'🌙 PM', data:points.map(p=>p.pm.sys),
       backgroundColor:'#7dd3fc', borderColor:'#0ea5e9', borderWidth:1,
     });
-  } else {
-    // Line chart: all 6 lines
+  } else if (chartType === 'scatter') {
+    // Scatter: individual readings as dots, no averaging
+    const now = new Date(); now.setDate(now.getDate() - chartOffset);
+    const cut = new Date(now); cut.setDate(cut.getDate() - (chartView === '7d' ? 7 : 91));
+    const window7 = readings.filter(r => new Date(r.timestamp) >= cut && new Date(r.timestamp) <= now);
+    const fmt = d => new Date(d).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+
     if (showSys) {
-      datasets.push({
-        label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
-        borderColor:'#ef4444', pointBackgroundColor:'#ef4444',
-        pointBorderColor:'#fff', pointBorderWidth:1.5,
-        pointRadius: points.map(p=>p.am.count?5:0),
-        tension:0.35, borderWidth:2.5, fill:false, spanGaps:true,
-      });
-      datasets.push({
-        label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
-        borderColor:'#f97316', pointBackgroundColor:'#f97316',
-        pointBorderColor:'#fff', pointBorderWidth:1.5,
-        pointRadius: points.map(p=>p.pm.count?5:0),
-        tension:0.35, borderWidth:2.5, borderDash:[6,3], fill:false, spanGaps:true,
-      });
+      datasets.push({ label:'🌅 AM Sys', showLine:false,
+        data: window7.filter(isAM).map(r=>({x:fmt(r.timestamp), y:r.sys})),
+        backgroundColor:'#f97316', pointRadius:5, pointHoverRadius:6 });
+      datasets.push({ label:'🌙 PM Sys', showLine:false,
+        data: window7.filter(isPM).map(r=>({x:fmt(r.timestamp), y:r.sys})),
+        backgroundColor:'#3b82f6', pointRadius:5, pointHoverRadius:6 });
     }
     if (showDia) {
-      datasets.push({
-        label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
-        borderColor:'#3b82f6', pointBackgroundColor:'#3b82f6',
-        pointBorderColor:'#fff', pointBorderWidth:1.5,
-        pointRadius: points.map(p=>p.am.count?4:0),
-        tension:0.35, borderWidth:2, fill:false, spanGaps:true,
-      });
-      datasets.push({
-        label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
-        borderColor:'#0ea5e9', pointBackgroundColor:'#0ea5e9',
-        pointBorderColor:'#fff', pointBorderWidth:1.5,
-        pointRadius: points.map(p=>p.pm.count?4:0),
-        tension:0.35, borderWidth:2, borderDash:[6,3], fill:false, spanGaps:true,
-      });
+      datasets.push({ label:'🌅 AM Dia', showLine:false,
+        data: window7.filter(isAM).map(r=>({x:fmt(r.timestamp), y:r.dia})),
+        backgroundColor:'#fdba74', pointRadius:4, pointHoverRadius:5 });
+      datasets.push({ label:'🌙 PM Dia', showLine:false,
+        data: window7.filter(isPM).map(r=>({x:fmt(r.timestamp), y:r.dia})),
+        backgroundColor:'#93c5fd', pointRadius:4, pointHoverRadius:5 });
     }
     if (showHr) {
-      datasets.push({
-        label:'🌅 AM Heart Rate', data:points.map(p=>p.am.hr),
-        borderColor:'#22c55e', pointBackgroundColor:'#22c55e',
-        pointRadius: points.map(p=>p.am.hr?3:0),
-        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true,
-      });
-      datasets.push({
-        label:'🌙 PM Heart Rate', data:points.map(p=>p.pm.hr),
-        borderColor:'#06b6d4', pointBackgroundColor:'#06b6d4',
-        pointRadius: points.map(p=>p.pm.hr?3:0),
-        tension:0.35, borderWidth:1.5, borderDash:[5,4], fill:false, spanGaps:true,
-      });
+      datasets.push({ label:'🌅 AM HR', showLine:false,
+        data: window7.filter(isAM).filter(r=>r.hr).map(r=>({x:fmt(r.timestamp), y:r.hr})),
+        backgroundColor:'#fb923c', pointRadius:3 });
+      datasets.push({ label:'🌙 PM HR', showLine:false,
+        data: window7.filter(isPM).filter(r=>r.hr).map(r=>({x:fmt(r.timestamp), y:r.hr})),
+        backgroundColor:'#60a5fa', pointRadius:3 });
+    }
+  } else {
+    // Line chart: orange=AM, blue=PM, no dashes
+    if (showSys) {
+      datasets.push({ label:'🌅 AM Systolic', data:points.map(p=>p.am.sys),
+        borderColor:'#f97316', pointBackgroundColor:'#f97316',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius:points.map(p=>p.am.count?5:0),
+        tension:0.35, borderWidth:2.5, fill:false, spanGaps:true });
+      datasets.push({ label:'🌙 PM Systolic', data:points.map(p=>p.pm.sys),
+        borderColor:'#3b82f6', pointBackgroundColor:'#3b82f6',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius:points.map(p=>p.pm.count?5:0),
+        tension:0.35, borderWidth:2.5, fill:false, spanGaps:true });
+    }
+    if (showDia) {
+      datasets.push({ label:'🌅 AM Diastolic', data:points.map(p=>p.am.dia),
+        borderColor:'#fdba74', pointBackgroundColor:'#fdba74',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius:points.map(p=>p.am.count?4:0),
+        tension:0.35, borderWidth:1.8, fill:false, spanGaps:true });
+      datasets.push({ label:'🌙 PM Diastolic', data:points.map(p=>p.pm.dia),
+        borderColor:'#93c5fd', pointBackgroundColor:'#93c5fd',
+        pointBorderColor:'#fff', pointBorderWidth:1.5,
+        pointRadius:points.map(p=>p.pm.count?4:0),
+        tension:0.35, borderWidth:1.8, fill:false, spanGaps:true });
+    }
+    if (showHr) {
+      datasets.push({ label:'🌅 AM HR', data:points.map(p=>p.am.hr),
+        borderColor:'#fb923c', pointBackgroundColor:'#fb923c',
+        pointRadius:points.map(p=>p.am.hr?3:0),
+        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
+      datasets.push({ label:'🌙 PM HR', data:points.map(p=>p.pm.hr),
+        borderColor:'#60a5fa', pointBackgroundColor:'#60a5fa',
+        pointRadius:points.map(p=>p.pm.hr?3:0),
+        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
     }
   }
 
   const ctx = document.getElementById('bp-chart').getContext('2d');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
+  const chartJsType = chartType === 'scatter' ? 'line' : chartType;
   chartInstance = new Chart(ctx, {
-    type: chartType, data:{labels, datasets},
+    type: chartJsType, data:{labels, datasets},
     chartData: points,
     options:{
       responsive:true, maintainAspectRatio:false, animation:{duration:250},
@@ -2157,14 +2183,19 @@ function renderAnalysis() {
   el.innerHTML = `
     <div class="card">
       <div class="card-title">📈 BP Trend</div>
-      <div style="display:flex;gap:12px;margin-bottom:14px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <div class="chart-type-toggle">
           <button type="button" class="active" data-type="line" onclick="setChartType('line',this)">📈 Line</button>
           <button type="button" data-type="bar" onclick="setChartType('bar',this)">📊 Bar</button>
+          <button type="button" data-type="scatter" onclick="setChartType('scatter',this)">⚡ Scatter</button>
         </div>
         <div class="chart-toggle">
           <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
           <button type="button" class="${chartView==='13w'?'active':''}" onclick="setChartView('13w',this)">13 Weeks</button>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button type="button" onclick="shiftChart(-1)" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Older">◀</button>
+          <button type="button" onclick="shiftChart(1)" id="btn-chart-fwd" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Newer">▶</button>
         </div>
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
