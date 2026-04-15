@@ -2054,7 +2054,21 @@ function renderChart() {
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        // Redundant labels removed — data shown in table below
+        pts.forEach((p, i) => {
+          if (p.count === 0) return;
+          const xPos = x.getPixelForValue(i);
+          const yStart = x.bottom + 2;
+          ctx.fillStyle = '#64748b';
+          ctx.font = '9px system-ui,sans-serif';
+          let y = yStart;
+          if (p.am.sys !== null) {
+            ctx.fillText(`AM ${p.am.sys}/${p.am.dia}${p.am.hr ? ' HR '+p.am.hr : ''}`, xPos, y);
+            y += 12;
+          }
+          if (p.pm.sys !== null) {
+            ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? ' HR '+p.pm.hr : ''}`, xPos, y);
+          }
+        });
         ctx.restore();
       }
     },{
@@ -2260,7 +2274,7 @@ function renderAnalysis() {
         </div>
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
-      <div id="chart-data-table" style="margin-top:16px;"></div>
+      <div id="chart-data-table" style="margin-top:16px;display:none;"></div>
       <div class="legend-row" style="margin-top:12px;">
         <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#ef4444;font-weight:700;">Systolic</span></label>
         <label><input type="checkbox" id="toggle-dia" checked onchange="renderChart()"> <span style="color:#3b82f6;font-weight:700;">Diastolic</span></label>
