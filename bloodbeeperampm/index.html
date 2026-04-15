@@ -1875,11 +1875,15 @@ function renderChart() {
     // 2 simple bars: AM and PM (showing systolic height, with S/D/HR label on top)
     datasets.push({
       label:'🌅 AM', data:points.map(p=>p.am.sys),
-      backgroundColor:'#f97316', borderColor:'#f97316', borderWidth:1,
+      backgroundColor: points.map(p => p.am.sys !== null ? DOT_C[classify(p.am.sys, p.am.dia).key] : 'transparent'),
+      borderColor:     points.map(p => p.am.sys !== null ? DOT_C[classify(p.am.sys, p.am.dia).key] : 'transparent'),
+      borderWidth:1,
     });
     datasets.push({
       label:'🌙 PM', data:points.map(p=>p.pm.sys),
-      backgroundColor:'#3b82f6', borderColor:'#3b82f6', borderWidth:1,
+      backgroundColor: points.map(p => p.pm.sys !== null ? DOT_C[classify(p.pm.sys, p.pm.dia).key] : 'transparent'),
+      borderColor:     points.map(p => p.pm.sys !== null ? DOT_C[classify(p.pm.sys, p.pm.dia).key] : 'transparent'),
+      borderWidth:1,
     });
   } else if (chartType === 'scatter') {
     // Scatter: individual readings mapped to same day-labels as line chart
@@ -2079,17 +2083,34 @@ function renderChart() {
           if (p.count === 0) return;
           const xPos = x.getPixelForValue(i);
           const yStart = chartArea.bottom + 28;
-          ctx.fillStyle = '#64748b';
           ctx.font = '7.5px system-ui,sans-serif';
           let y = yStart;
           if (p.am.sys !== null) {
+            ctx.fillStyle = DOT_C[classify(p.am.sys, p.am.dia).key];
             ctx.fillText(`AM ${p.am.sys}/${p.am.dia}${p.am.hr ? ' HR '+p.am.hr : ''}`, xPos, y);
             y += 9;
           }
           if (p.pm.sys !== null) {
+            ctx.fillStyle = DOT_C[classify(p.pm.sys, p.pm.dia).key];
             ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? ' HR '+p.pm.hr : ''}`, xPos, y);
           }
         });
+        // Draw AM / PM labels inside bars (bar chart only)
+        if (window._chartPoints && chartType === 'bar') {
+          ctx.font = 'bold 9px system-ui,sans-serif';
+          ctx.textBaseline = 'middle';
+          [[0,'AM'],[1,'PM']].forEach(([di, lbl]) => {
+            const meta = chart.getDatasetMeta(di);
+            meta.data.forEach((bar, i) => {
+              const p = window._chartPoints[i];
+              const reading = di === 0 ? p.am : p.pm;
+              if (reading.sys === null) return;
+              const midY = (bar.y + bar.base) / 2;
+              ctx.fillStyle = '#fff';
+              ctx.fillText(lbl, bar.x, midY);
+            });
+          });
+        }
         ctx.restore();
       }
     }]
