@@ -231,14 +231,14 @@
     .drum-col { flex: 1; text-align: center; min-width: 0; }
     .drum-label { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
     .drum-wrap {
-      position: relative; height: 300px; overflow: hidden;
+      position: relative; height: 180px; overflow: hidden;
       border-radius: 16px; border: 1.5px solid var(--border);
     }
     .drum-scroll {
       height: 100%; overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scrollbar-width: none; -ms-overflow-style: none;
-      padding: 120px 0;
+      padding: 60px 0;
     }
     .drum-scroll::-webkit-scrollbar { display: none; }
     .drum-item {
@@ -265,7 +265,7 @@
         transparent 62%, rgba(255,255,255,0.75) 78%, #ffffff 100%);
       pointer-events: none; z-index: 1;
     }
-    .drum-sep { display: flex; align-items: center; padding-top: 168px; font-size: 2rem; font-weight: 300; color: var(--muted); flex-shrink: 0; }
+    .drum-sep { display: flex; align-items: center; padding-top: 68px; font-size: 2rem; font-weight: 300; color: var(--muted); flex-shrink: 0; }
 
     /* ── Buttons ──────────────────────────────── */
     .btn { padding: 16px 22px; border-radius: 10px; border: none; cursor: pointer; font-size: 1.05rem; font-weight: 700; transition: all 0.15s; }
@@ -655,7 +655,7 @@
     <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;" id="slot-time-label">Set Time</div>
     <div class="drum-row" style="margin-bottom:16px;">
       <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-hour"></div></div></div>
-      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-sep" style="padding-top:68px;font-size:2rem;font-weight:300;">:</div>
       <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-min"></div></div></div>
       <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="st-drum-ampm"></div></div></div>
     </div>
@@ -686,7 +686,7 @@
       <div class="drum-label">Diastolic</div>
       <div class="drum-wrap"><div class="drum-scroll" id="drum-dia"></div></div>
     </div>
-    <div class="drum-sep" style="font-size:1.4rem;padding-top:174px;">♥</div>
+    <div class="drum-sep" style="font-size:1.4rem;padding-top:68px;">♥</div>
     <div class="drum-col">
       <div class="drum-label">Pulse</div>
       <div class="drum-wrap"><div class="drum-scroll" id="drum-hr"></div></div>
@@ -728,7 +728,7 @@
     <div style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">Time</div>
     <div class="drum-row" style="margin-bottom:0;">
       <div class="drum-col"><div class="drum-label">Hour</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dhour"></div></div></div>
-      <div class="drum-sep" style="padding-top:170px;font-size:2rem;font-weight:300;">:</div>
+      <div class="drum-sep" style="padding-top:68px;font-size:2rem;font-weight:300;">:</div>
       <div class="drum-col"><div class="drum-label">Min</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dmin"></div></div></div>
       <div class="drum-col"><div class="drum-label">AM/PM</div><div class="drum-wrap"><div class="drum-scroll" id="drum-dampm"></div></div></div>
     </div>
