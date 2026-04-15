@@ -312,6 +312,9 @@
     .zone-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.72rem; margin-top: 6px; }
     .zone-legend-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .zone-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    #toggle-sys { accent-color: #ef4444; }
+    #toggle-dia { accent-color: #3b82f6; }
+    #toggle-hr { accent-color: #a855f7; }
 
     /* ── Analysis / AI ────────────────────────── */
     .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
@@ -1941,10 +1944,10 @@ function renderChart() {
     if (showHr) {
       datasets.push({ label:'🌅 AM HR', showLine:false,
         data: scatterReadings.filter(isAM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#fb923c', pointRadius:3 });
+        backgroundColor:'#16a34a', pointRadius:3 });
       datasets.push({ label:'🌙 PM HR', showLine:false,
         data: scatterReadings.filter(isPM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#60a5fa', pointRadius:3 });
+        backgroundColor:'#86efac', pointRadius:3 });
     }
     // Trend lines superimposed — same {x,y} format as scatter dots
     if (showSys) {
@@ -1966,10 +1969,10 @@ function renderChart() {
     if (showHr) {
       datasets.push({ label:'🌅 AM hr avg', showLine:true,
         data:points.filter(p=>p.am.hr!==null).map(p=>({x:p.label,y:p.am.hr})),
-        borderColor:'#fb923c', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
+        borderColor:'#16a34a', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
       datasets.push({ label:'🌙 PM hr avg', showLine:true,
         data:points.filter(p=>p.pm.hr!==null).map(p=>({x:p.label,y:p.pm.hr})),
-        borderColor:'#60a5fa', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
+        borderColor:'#86efac', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
     }
   } else {
     // Line chart: orange=AM, blue=PM, no dashes
@@ -1999,11 +2002,11 @@ function renderChart() {
     }
     if (showHr) {
       datasets.push({ label:'🌅 AM HR', data:points.map(p=>p.am.hr),
-        borderColor:'#fb923c', pointBackgroundColor:'#fb923c',
+        borderColor:'#16a34a', pointBackgroundColor:'#16a34a',
         pointRadius:points.map(p=>p.am.hr?3:0),
         tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
       datasets.push({ label:'🌙 PM HR', data:points.map(p=>p.pm.hr),
-        borderColor:'#60a5fa', pointBackgroundColor:'#60a5fa',
+        borderColor:'#86efac', pointBackgroundColor:'#86efac',
         pointRadius:points.map(p=>p.pm.hr?3:0),
         tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
     }
