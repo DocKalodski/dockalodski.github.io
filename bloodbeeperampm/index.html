@@ -2105,12 +2105,17 @@ function renderChartTable() {
   if (!pts || !pts.length) { el.innerHTML = ''; return; }
 
   const rows = pts.filter(p => p.count > 0).map(p => {
-    const am = p.am.sys !== null ? `AM  ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR '+p.am.hr : ''}` : '';
-    const pm = p.pm.sys !== null ? `PM  ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR '+p.pm.hr : ''}` : '';
-    return `<div style="margin-bottom:12px;">${p.label}<br>${am ? am+'<br>' : ''}${pm || ''}</div>`;
-  }).join('');
+    let text = p.label + '\n';
+    if (p.am.sys !== null) {
+      text += `AM: ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR ' + p.am.hr : ''}\n`;
+    }
+    if (p.pm.sys !== null) {
+      text += `PM: ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR ' + p.pm.hr : ''}`;
+    }
+    return text;
+  }).join('\n\n');
 
-  el.innerHTML = `<div style="font-size:0.85rem;line-height:1.7;">${rows}</div>`;
+  el.innerHTML = `<div style="font-family:monospace;white-space:pre-wrap;margin-top:16px;">${rows}</div>`;
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
