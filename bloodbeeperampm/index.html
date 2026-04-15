@@ -312,7 +312,7 @@
     .zone-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.72rem; margin-top: 6px; }
     .zone-legend-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .zone-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-    #toggle-sys { accent-color: #ef4444; }
+    #toggle-sys { accent-color: #f97316; }
     #toggle-dia { accent-color: #3b82f6; }
     #toggle-hr { accent-color: #a855f7; }
 
@@ -2260,7 +2260,7 @@ function renderAnalysis() {
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div id="chart-data-table" style="margin-top:16px;display:none;"></div>
       <div class="legend-row" style="margin-top:12px;">
-        <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#ef4444;font-weight:700;">Systolic</span></label>
+        <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#f97316;font-weight:700;">Systolic</span></label>
         <label><input type="checkbox" id="toggle-dia" checked onchange="renderChart()"> <span style="color:#3b82f6;font-weight:700;">Diastolic</span></label>
         <label><input type="checkbox" id="toggle-hr" onchange="renderChart()"> <span style="color:#22c55e;font-weight:700;">Heart Rate</span></label>
       </div>
