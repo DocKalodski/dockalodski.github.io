@@ -968,15 +968,46 @@ function renderSlotList() {
   if (dkCb) dkCb.checked = document.documentElement.getAttribute('data-theme') === 'dark';
   const lgCb = document.getElementById('s-large');
   if (lgCb) lgCb.checked = document.documentElement.getAttribute('data-large') === '1';
-  document.getElementById('slot-list').innerHTML = s.slots.map(sl => `
+  document.getElementById('slot-list').innerHTML = s.slots.map(sl => {
+    const isDefault = DEFAULT_SLOTS.some(d => d.name === sl.name);
+    const nameField = isDefault
+      ? `<select class="slot-name-input" onchange="changeSlotName(this)" style="font-size:1rem;">
+          ${DEFAULT_SLOTS.map(d => `<option value="${d.name}" ${d.name === sl.name ? 'selected' : ''}>${d.emoji} ${d.name}</option>`).join('')}
+          <option value="custom">+ Add own custom option</option>
+        </select>`
+      : `<input class="slot-name-input" type="text" value="${sl.name}" placeholder="Name" onblur="saveSlots()" onkeydown="if(event.key==='Enter') saveSlots()" style="font-size:1rem;">`;
+    return `
     <div class="slot-row" data-id="${sl.id}">
       <input class="slot-emoji-input" type="text" value="${sl.emoji}" maxlength="2" oninput="saveSlots()">
-      <input class="slot-name-input" type="text" value="${sl.name}" placeholder="Name" oninput="saveSlots()">
+      ${nameField}
       <button type="button" class="slot-time-btn" onclick="openSlotTimePicker('${sl.id}','${sl.time}')">${fmt12(sl.time)}</button>
       <input type="hidden" class="slot-time-input" value="${sl.time}">
       <button class="btn-remove-slot" onclick="removeSlot('${sl.id}')" title="Remove">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   document.getElementById('add-slot-btn').style.display = '';
+}
+
+function changeSlotName(select) {
+  if (select.value === 'custom') {
+    const row = select.closest('.slot-row');
+    const currentName = row.querySelector('.slot-name-input').previousValue || '';
+    const newName = prompt('Enter custom slot name:', currentName);
+    if (newName !== null) {
+      const input = document.createElement('input');
+      input.className = 'slot-name-input';
+      input.type = 'text';
+      input.value = newName.trim() || 'Custom Slot';
+      input.placeholder = 'Name';
+      input.onblur = () => saveSlots();
+      input.onkeydown = (e) => { if (e.key === 'Enter') saveSlots(); };
+      input.style.fontSize = '1rem';
+      select.replaceWith(input);
+      saveSlots();
+    }
+  } else {
+    saveSlots();
+  }
 }
 
 function addSlot() {
