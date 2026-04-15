@@ -2041,16 +2041,32 @@ function renderChart() {
       layout:{ padding:{ bottom: chartType !== 'bar' ? 44 : 0 } }
     },
     plugins:[{
+      id:'bpZones',
+      beforeDraw(chart) {
+        const {ctx,chartArea,scales:{y}} = chart;
+        if (!y||!chartArea) return;
+        const {left,right,top,bottom} = chartArea;
+        [{min:0,max:80,c:'rgba(34,197,94,0.06)'},{min:80,max:90,c:'rgba(249,115,22,0.07)'},
+         {min:90,max:120,c:'rgba(239,68,68,0.08)'},{min:120,max:130,c:'rgba(234,179,8,0.08)'},
+         {min:130,max:140,c:'rgba(249,115,22,0.09)'},{min:140,max:180,c:'rgba(239,68,68,0.10)'},
+         {min:180,max:250,c:'rgba(127,29,29,0.14)'}].forEach(z => {
+          const yT=y.getPixelForValue(z.max), yB=y.getPixelForValue(z.min);
+          if (yB>top&&yT<bottom){ctx.fillStyle=z.c;ctx.fillRect(left,Math.max(yT,top),right-left,Math.min(yB,bottom)-Math.max(yT,top));}
+        });
+        if (chartType === 'line') {
+          [{v:80,c:'#86efac'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
+            const py=y.getPixelForValue(v);
+            if(py>=top&&py<=bottom){ctx.save();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke();ctx.restore();}
+          });
+        }
+      }
+    },{
       id:'xAnnotations',
       afterDraw(chart) {
-        if (chartType === 'bar') return;
         const {ctx, scales:{x}, chartArea} = chart;
         if (!x || !chartArea) return;
         const pts = window._chartPoints;
         if (!pts) return;
-        const showSysA = document.getElementById('toggle-sys')?.checked;
-        const showDiaA = document.getElementById('toggle-dia')?.checked;
-        const showHrA  = document.getElementById('toggle-hr')?.checked;
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -2070,25 +2086,6 @@ function renderChart() {
           }
         });
         ctx.restore();
-      }
-    },{
-      id:'bpZones',
-      beforeDraw(chart) {
-        if (chartType !== 'line') return;
-        const {ctx,chartArea,scales:{y}} = chart;
-        if (!y||!chartArea) return;
-        const {left,right,top,bottom} = chartArea;
-        [{min:0,max:80,c:'rgba(34,197,94,0.06)'},{min:80,max:90,c:'rgba(249,115,22,0.07)'},
-         {min:90,max:120,c:'rgba(239,68,68,0.08)'},{min:120,max:130,c:'rgba(234,179,8,0.08)'},
-         {min:130,max:140,c:'rgba(249,115,22,0.09)'},{min:140,max:180,c:'rgba(239,68,68,0.10)'},
-         {min:180,max:250,c:'rgba(127,29,29,0.14)'}].forEach(z => {
-          const yT=y.getPixelForValue(z.max), yB=y.getPixelForValue(z.min);
-          if (yB>top&&yT<bottom){ctx.fillStyle=z.c;ctx.fillRect(left,Math.max(yT,top),right-left,Math.min(yB,bottom)-Math.max(yT,top));}
-        });
-        [{v:80,c:'#86efac'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
-          const py=y.getPixelForValue(v);
-          if(py>=top&&py<=bottom){ctx.save();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke();ctx.restore();}
-        });
       }
     }]
   });
