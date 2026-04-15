@@ -1946,10 +1946,10 @@ function renderChart() {
     if (showHr) {
       datasets.push({ label:'🌅 AM HR', showLine:false,
         data: scatterReadings.filter(isAM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#16a34a', pointRadius:3 });
+        backgroundColor:'#7c3aed', pointRadius:3 });
       datasets.push({ label:'🌙 PM HR', showLine:false,
         data: scatterReadings.filter(isPM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#86efac', pointRadius:3 });
+        backgroundColor:'#d8b4fe', pointRadius:3 });
     }
     // Trend lines superimposed — same {x,y} format as scatter dots
     if (showSys) {
@@ -1971,10 +1971,10 @@ function renderChart() {
     if (showHr) {
       datasets.push({ label:'🌅 AM hr avg', showLine:true,
         data:points.filter(p=>p.am.hr!==null).map(p=>({x:p.label,y:p.am.hr})),
-        borderColor:'#16a34a', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
+        borderColor:'#7c3aed', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
       datasets.push({ label:'🌙 PM hr avg', showLine:true,
         data:points.filter(p=>p.pm.hr!==null).map(p=>({x:p.label,y:p.pm.hr})),
-        borderColor:'#86efac', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
+        borderColor:'#d8b4fe', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
     }
   } else {
     // Line chart: orange=AM, blue=PM, no dashes
@@ -2004,11 +2004,11 @@ function renderChart() {
     }
     if (showHr) {
       datasets.push({ label:'🌅 AM HR', data:points.map(p=>p.am.hr),
-        borderColor:'#16a34a', pointBackgroundColor:'#16a34a',
+        borderColor:'#7c3aed', pointBackgroundColor:'#7c3aed',
         pointRadius:points.map(p=>p.am.hr?3:0),
         tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
       datasets.push({ label:'🌙 PM HR', data:points.map(p=>p.pm.hr),
-        borderColor:'#86efac', pointBackgroundColor:'#86efac',
+        borderColor:'#d8b4fe', pointBackgroundColor:'#d8b4fe',
         pointRadius:points.map(p=>p.pm.hr?3:0),
         tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
     }
@@ -2059,7 +2059,7 @@ function renderChart() {
           if (yB>top&&yT<bottom){ctx.fillStyle=z.c;ctx.fillRect(left,Math.max(yT,top),right-left,Math.min(yB,bottom)-Math.max(yT,top));}
         });
         if (chartType === 'line') {
-          [{v:80,c:'#86efac'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
+          [{v:80,c:'#d8b4fe'},{v:120,c:'#fde047'},{v:130,c:'#fdba74'},{v:140,c:'#fca5a5'}].forEach(({v,c})=>{
             const py=y.getPixelForValue(v);
             if(py>=top&&py<=bottom){ctx.save();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(left,py);ctx.lineTo(right,py);ctx.stroke();ctx.restore();}
           });
