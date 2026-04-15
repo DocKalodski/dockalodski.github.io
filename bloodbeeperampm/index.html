@@ -471,7 +471,7 @@
   <div class="header-inner">
     <div class="radar-icon">📡</div>
     <div class="header-text">
-      <h1>Blood<span>BeeperAMPM</span></h1>
+      <h1>BloodBeeper<span>-AM/PM</span></h1>
       <p>by Doc Kalodski &nbsp;·&nbsp; <span id="licensee-name">__LICENSEE__</span> &nbsp;<span id="rr-sync-badge" style="display:none;font-size:0.6rem;background:rgba(14,165,233,0.2);border-radius:4px;padding:1px 5px;">☁️ synced</span></p>
     </div>
     <button id="theme-btn" onclick="toggleTheme()" title="Dark / Light mode">🌙</button>
@@ -816,14 +816,12 @@ function bbampmSubscribeRealtime(){
 // ║  Key can be any string (no spaces). 007 = developer.   ║
 // ╚══════════════════════════════════════════════════════════╝
 const LICENSES = {
-  '007':                    'Doc Kalodski Unlimited',  // no expiry — unlimited access
-  'ACCI':                   'ACCI Unlimited',          // no expiry — unlimited access
-  'BBAMPM-2026-0404-DOC-0101':  'Doc Kalodski',
-  'SHEILA':                 'Sheila',
+  '007':    'Doc Kalodski',  // no expiry — unlimited access
+  'ACCI':   'ACCI',          // no expiry — unlimited access
+  'SHEILA': 'Sheila',        // no expiry — unlimited access
   // Format: BBAMPM-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
   // Beta testers — expires Apr 30, 2026
-  'BBAMPM-BETA-APR2026':        'Beta Tester',
-  // 'BBAMPM-2026-MMDD-NAME-0102': 'Next Client',
+  'BBAMPM-BETA-APR2026': 'Beta Tester',
 };
 
 // Beta keys expire Apr 30 2026. Add more expiry rules here as needed.
