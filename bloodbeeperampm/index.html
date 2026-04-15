@@ -1027,8 +1027,14 @@ function populateSlotDropdown() {
   const sel = document.getElementById('in-slot');
   if (!sel) return;
   const cur = sel.value;
+
+  // Build list: defaults (if not already in slots), then custom slots
+  const slotIds = new Set(s.slots.map(sl => sl.id));
+  const defaultsNotAdded = DEFAULT_SLOTS.filter(d => !s.slots.some(sl => sl.name === d.name));
+  const allSlots = [...s.slots, ...defaultsNotAdded];
+
   sel.innerHTML = '<option value="">— select slot —</option>' +
-    s.slots.map(sl => `<option value="${sl.id}">${sl.emoji} ${sl.name}</option>`).join('');
+    allSlots.map(sl => `<option value="${sl.id}" data-slot-name="${sl.name}">${sl.emoji} ${sl.name}</option>`).join('');
   if (cur) sel.value = cur;
 }
 
@@ -1507,11 +1513,16 @@ function showCalInlineForm(panelId, dateISO, readingId) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
   panel.querySelectorAll('.cal-inline-form').forEach(f=>f.remove());
-  const slots = loadSettings().slots;
+  const s = loadSettings();
+  const slots = s.slots;
   const r = readingId ? loadReadings().find(x=>x.id===readingId) : null;
   const fid = 'cif-' + panelId;
   const defDt = r ? new Date(new Date(r.timestamp).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16) : dateISO;
-  const slotOpts = slots.map(s=>`<option value="${s.id}" ${r?r.slotId===s.id?'selected':'':s===slots[0]?'selected':''}>${s.emoji||''} ${s.name}</option>`).join('');
+
+  // Show all defaults + custom slots
+  const defaultsNotAdded = DEFAULT_SLOTS.filter(d => !slots.some(sl => sl.name === d.name));
+  const allSlots = [...slots, ...defaultsNotAdded];
+  const slotOpts = allSlots.map(sl=>`<option value="${sl.id}" ${r?r.slotId===sl.id?'selected':'':sl===allSlots[0]?'selected':''}>${sl.emoji||''} ${sl.name}</option>`).join('');
   panel.insertAdjacentHTML('beforeend',`
     <div class="cal-inline-form" id="${fid}" style="background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
       <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
