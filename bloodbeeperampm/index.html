@@ -2099,7 +2099,42 @@ function renderChart() {
 
 // ── CHART DATA TABLE ──────────────────────────────────────
 function renderChartTable() {
-  // Data shown directly under chart dates via xAnnotations — no separate table
+  const el = document.getElementById('chart-data-table');
+  if (!el) return;
+
+  const readings = loadReadings();
+  const nDays = 7;
+  const now = new Date(); now.setDate(now.getDate() - chartOffset);
+  const points = window._chartPoints || groupByDay(readings, nDays, chartOffset);
+
+  if (!points || points.length === 0) {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+
+  let html = '<div style="font-family:monospace;font-size:0.75rem;line-height:1.5;color:var(--text);">';
+  points.forEach(p => {
+    if (p.count === 0) return; // Skip days with no readings
+
+    html += `<div style="margin-bottom:12px;">`;
+    html += `<div style="font-weight:600;margin-bottom:4px;">${p.label}</div>`;
+
+    if (p.am.sys !== null) {
+      const hr = p.am.hr ? `  HR ${p.am.hr}` : '';
+      html += `<div>AM: ${p.am.sys}/${p.am.dia}${hr}</div>`;
+    }
+    if (p.pm.sys !== null) {
+      const hr = p.pm.hr ? `  HR ${p.pm.hr}` : '';
+      html += `<div>PM: ${p.pm.sys}/${p.pm.dia}${hr}</div>`;
+    }
+
+    html += `</div>`;
+  });
+  html += '</div>';
+
+  el.innerHTML = html;
+  el.style.display = 'block';
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
