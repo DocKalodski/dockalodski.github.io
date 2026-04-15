@@ -357,7 +357,7 @@
     .setting-row:last-child { border-bottom: none; }
     .setting-label { font-size: 1rem; font-weight: 600; }
     .setting-sub { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
-    .slot-row { display: grid; grid-template-columns: 36px 1fr 140px 40px; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .slot-row { display: grid; grid-template-columns: 1fr 140px 40px; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); }
     .slot-row:last-child { border-bottom: none; }
     .slot-emoji-input { width: 40px; height: 44px; text-align: center; font-size: 1.1rem; border: 1.5px solid var(--border); border-radius: 7px; background: var(--bg); }
     .slot-name-input { padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-size: 1rem; background: var(--bg); color: var(--text); width: 100%; }
@@ -951,12 +951,15 @@ function saveMedications() { const s=loadSettings(); s.medications=document.getE
 
 function saveSlots() {
   const s = loadSettings();
-  s.slots = Array.from(document.querySelectorAll('.slot-row')).map(row => ({
-    id:    row.dataset.id,
-    emoji: row.querySelector('.slot-emoji-input').value.trim() || '💊',
-    name:  row.querySelector('.slot-name-input').value.trim() || 'Reading',
-    time:  row.querySelector('.slot-time-input').value,
-  }));
+  s.slots = Array.from(document.querySelectorAll('.slot-row')).map(row => {
+    const slot = s.slots.find(sl => sl.id === row.dataset.id) || {};
+    return {
+      id:    row.dataset.id,
+      emoji: slot.emoji || '💊',
+      name:  row.querySelector('.slot-name-input').value.trim() || 'Reading',
+      time:  row.querySelector('.slot-time-input').value,
+    };
+  });
   persistSettings(s);
   populateSlotDropdown();
   checkReminders();
@@ -970,7 +973,6 @@ function renderSlotList() {
   if (lgCb) lgCb.checked = document.documentElement.getAttribute('data-large') === '1';
   document.getElementById('slot-list').innerHTML = s.slots.map(sl => `
     <div class="slot-row" data-id="${sl.id}">
-      <input class="slot-emoji-input" type="text" value="${sl.emoji}" maxlength="2" oninput="saveSlots()">
       <select class="slot-name-input" onchange="changeSlotName(this)" style="font-size:1rem;">
         ${DEFAULT_SLOTS.map(d => `<option value="${d.name}" ${d.name === sl.name ? 'selected' : ''}>${d.emoji} ${d.name}</option>`).join('')}
         <option value="custom" ${!DEFAULT_SLOTS.some(d => d.name === sl.name) ? 'selected' : ''}>+ Add own custom option</option>
