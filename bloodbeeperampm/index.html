@@ -1029,12 +1029,12 @@ function populateSlotDropdown() {
   const cur = sel.value;
 
   // Build list: defaults (if not already in slots), then custom slots
-  const slotIds = new Set(s.slots.map(sl => sl.id));
   const defaultsNotAdded = DEFAULT_SLOTS.filter(d => !s.slots.some(sl => sl.name === d.name));
   const allSlots = [...s.slots, ...defaultsNotAdded];
 
   sel.innerHTML = '<option value="">— select slot —</option>' +
-    allSlots.map(sl => `<option value="${sl.id}" data-slot-name="${sl.name}">${sl.emoji} ${sl.name}</option>`).join('');
+    allSlots.map(sl => `<option value="${sl.id}" data-slot-name="${sl.name}">${sl.emoji} ${sl.name}</option>`).join('') +
+    '<option value="custom-new">+ Add own custom slot</option>';
   if (cur) sel.value = cur;
 }
 
@@ -1443,7 +1443,16 @@ function saveReading() {
 
   // Determine slot
   let slotId = document.getElementById('in-slot').value;
-  if (!slotId) {
+  if (slotId === 'custom-new') {
+    const name = prompt('Enter custom slot name:');
+    if (!name) return;
+    const s = loadSettings();
+    const newSlot = { id: 'sx'+Date.now(), emoji: '✚', name: name.trim(), time: '09:00' };
+    s.slots.push(newSlot);
+    persistSettings(s);
+    populateSlotDropdown();
+    slotId = newSlot.id;
+  } else if (!slotId) {
     // Auto-detect from timestamp
     const s = loadSettings();
     const dt = new Date(ts);
@@ -1522,7 +1531,8 @@ function showCalInlineForm(panelId, dateISO, readingId) {
   // Show all defaults + custom slots
   const defaultsNotAdded = DEFAULT_SLOTS.filter(d => !slots.some(sl => sl.name === d.name));
   const allSlots = [...slots, ...defaultsNotAdded];
-  const slotOpts = allSlots.map(sl=>`<option value="${sl.id}" ${r?r.slotId===sl.id?'selected':'':sl===allSlots[0]?'selected':''}>${sl.emoji||''} ${sl.name}</option>`).join('');
+  const slotOpts = allSlots.map(sl=>`<option value="${sl.id}" ${r?r.slotId===sl.id?'selected':'':sl===allSlots[0]?'selected':''}>${sl.emoji||''} ${sl.name}</option>`).join('') +
+    '<option value="custom-new">+ Add own custom slot</option>';
   panel.insertAdjacentHTML('beforeend',`
     <div class="cal-inline-form" id="${fid}" style="background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
       <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
@@ -1555,9 +1565,21 @@ function saveCalInline(fid, readingId) {
   const dia  = parseInt(document.getElementById(`${fid}-dia`).value);
   const hr   = parseInt(document.getElementById(`${fid}-hr`).value)||null;
   const dt   = document.getElementById(`${fid}-dt`).value;
-  const slot = document.getElementById(`${fid}-slot`).value;
+  let slot = document.getElementById(`${fid}-slot`).value;
   const notes= document.getElementById(`${fid}-notes`).value;
   if (!sys||!dia||sys<60||sys>250||dia<40||dia>150) { alert('Enter valid BP values.'); return; }
+
+  // Handle custom slot creation
+  if (slot === 'custom-new') {
+    const name = prompt('Enter custom slot name:');
+    if (!name) return;
+    const s = loadSettings();
+    const newSlot = { id: 'sx'+Date.now(), emoji: '✚', name: name.trim(), time: '09:00' };
+    s.slots.push(newSlot);
+    persistSettings(s);
+    slot = newSlot.id;
+  }
+
   const readings = loadReadings();
   if (readingId) {
     const i = readings.findIndex(r=>r.id===readingId);
