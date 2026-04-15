@@ -2077,15 +2077,7 @@ function renderChart() {
         pts.forEach((p, i) => {
           if (p.count === 0) return;
           const xPos = x.getPixelForValue(i);
-          let yStart = chartArea.bottom + 6;
-          // Thin separator line
-          ctx.strokeStyle = '#e2e8f0';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(xPos - 30, yStart);
-          ctx.lineTo(xPos + 30, yStart);
-          ctx.stroke();
-          yStart += 6;
+          const yStart = chartArea.bottom + 8;
           ctx.fillStyle = '#64748b';
           ctx.font = '8px system-ui,sans-serif';
           let y = yStart;
