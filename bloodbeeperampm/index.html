@@ -941,6 +941,16 @@ function loadSettings() {
   if (!_settingsCache) {
     const raw = localStorage.getItem('bbampmampm_settings2');
     _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
+
+    // Migration: detect old default slots (3 slots) and upgrade to new 8-slot defaults
+    if (_settingsCache.slots && _settingsCache.slots.length === 3) {
+      const slotNames = _settingsCache.slots.map(s => s.name);
+      if (slotNames.includes('After Breakfast') || slotNames.includes('After Lunch') || slotNames.includes('After Dinner')) {
+        // Old default slots detected, replace with new 8-slot defaults
+        _settingsCache.slots = DEFAULT_SLOTS.map(s=>({...s}));
+        localStorage.setItem('bbampmampm_settings2', JSON.stringify(_settingsCache));
+      }
+    }
   }
   return _settingsCache;
 }
