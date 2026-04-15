@@ -926,9 +926,14 @@ function pulsePressure(sys, dia) {
 
 // ── SETTINGS ──────────────────────────────────────────────
 const DEFAULT_SLOTS = [
-  { id:'s1', emoji:'🌅', name:'After Breakfast', time:'07:00' },
-  { id:'s2', emoji:'🌞', name:'After Lunch',     time:'12:00' },
-  { id:'s3', emoji:'🌙', name:'After Dinner',    time:'18:00' },
+  { id:'s1', emoji:'🌅', name:'After waking up',    time:'06:00' },
+  { id:'s2', emoji:'🥤', name:'After AM snacks',    time:'09:00' },
+  { id:'s3', emoji:'🍳', name:'After breakfast',    time:'07:00' },
+  { id:'s4', emoji:'🍴', name:'After lunch',        time:'12:00' },
+  { id:'s5', emoji:'🥪', name:'After PM snacks',    time:'15:00' },
+  { id:'s6', emoji:'🍽️', name:'After dinner',       time:'18:00' },
+  { id:'s7', emoji:'🌙', name:'After midnight snacks', time:'21:00' },
+  { id:'s8', emoji:'😴', name:'Before sleeping',    time:'23:00' },
 ];
 
 let _settingsCache = null;
@@ -975,8 +980,7 @@ function renderSlotList() {
 
 function addSlot() {
   const s = loadSettings();
-  if (s.slots.length >= 6) return;
-  s.slots.push({ id:'sx'+Date.now(), emoji:'💊', name:'Reading '+(s.slots.length+1), time:'09:00' });
+  s.slots.push({ id:'sx'+Date.now(), emoji:'✚', name:'Custom Slot '+(s.slots.length-7), time:'09:00' });
   persistSettings(s); renderSlotList(); populateSlotDropdown();
 }
 
@@ -989,7 +993,7 @@ function removeSlot(id) {
 
 function changeSlotCount(delta) {
   const s = loadSettings();
-  const n = Math.min(6, Math.max(1, s.slots.length + delta));
+  const n = Math.max(1, s.slots.length + delta);
   if (n > s.slots.length) addSlot();
   else if (n < s.slots.length) removeSlot(s.slots[s.slots.length-1].id);
 }
