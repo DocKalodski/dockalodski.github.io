@@ -1858,7 +1858,7 @@ function renderChart() {
   let nDays = 7;
   if (chartView === '15d') nDays = 15;
   else if (chartView === '13w') nDays = 91;
-  const points = groupByDay(readings, chartType === 'bar' ? 7 : nDays, chartType === 'bar' ? 0 : chartOffset);
+  const points = groupByDay(readings, nDays, chartOffset);
   window._chartPoints = points;  // Store for barLabels plugin
 
   const labels = points.map(p => p.label);
