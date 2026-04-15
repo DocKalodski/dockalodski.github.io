@@ -1756,7 +1756,7 @@ function renderCalendarOnly() {
     <div class="month-grid">${cells}</div>
   </div>`;
 }
-let chartView = '7d';
+let chartView = '15d';
 let chartType = 'line';
 let chartOffset = 0;  // days shifted back from today
 
@@ -1895,7 +1895,7 @@ function renderChart() {
       const d = new Date(r.timestamp).toDateString();
       const match = points.find(p => {
         const now2 = new Date(); now2.setDate(now2.getDate() - chartOffset);
-        for (let i = 0; i < (chartView==='7d'?7:91); i++) {
+        for (let i = 0; i < (chartView==='15d'?7:91); i++) {
           const day = new Date(now2); day.setDate(day.getDate() - i);
           if (day.toDateString() === d) return p.label === points[points.length-1-i]?.label;
         }
@@ -1905,7 +1905,7 @@ function renderChart() {
     };
 
     // Simpler: build label by formatting the reading date the same way groupByDay does
-    const nDaysS = chartView==='7d'?7:91;
+    const nDaysS = chartView==='15d'?7:91;
     const nowS = new Date(); nowS.setDate(nowS.getDate() - chartOffset);
     const cutS = new Date(nowS); cutS.setDate(cutS.getDate() - nDaysS);
     const scatterReadings = readings.filter(r => {
