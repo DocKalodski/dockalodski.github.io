@@ -1875,11 +1875,11 @@ function renderChart() {
     // 2 simple bars: AM and PM (showing systolic height, with S/D/HR label on top)
     datasets.push({
       label:'🌅 AM', data:points.map(p=>p.am.sys),
-      backgroundColor:'#eab308', borderColor:'#ca8a04', borderWidth:1,
+      backgroundColor:'#f97316', borderColor:'#f97316', borderWidth:1,
     });
     datasets.push({
       label:'🌙 PM', data:points.map(p=>p.pm.sys),
-      backgroundColor:'#7dd3fc', borderColor:'#0ea5e9', borderWidth:1,
+      backgroundColor:'#3b82f6', borderColor:'#3b82f6', borderWidth:1,
     });
   } else if (chartType === 'scatter') {
     // Scatter: individual readings mapped to same day-labels as line chart
