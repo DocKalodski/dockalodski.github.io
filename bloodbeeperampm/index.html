@@ -1862,9 +1862,9 @@ function renderChart() {
   window._chartPoints = points;  // Store for barLabels plugin
 
   const labels = points.map(p => p.label);
-  const showSys = document.getElementById('toggle-sys').checked;
-  const showDia = document.getElementById('toggle-dia').checked;
-  const showHr  = document.getElementById('toggle-hr').checked;
+  const showSys = true;
+  const showDia = true;
+  const showHr  = true;
 
   const dotColor = (sys, dia) => sys === null ? 'transparent' :
     ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
