@@ -2084,13 +2084,15 @@ function renderChart() {
           let y = yStart;
           if (p.am.sys !== null) {
             const amClass = classify(p.am.sys, p.am.dia);
-            ctx.fillStyle = colorMap[amClass.key];
+            const amColor = colorMap[amClass.key] || '#22c55e';
+            ctx.fillStyle = amColor;
             ctx.fillText(`AM ${p.am.sys}/${p.am.dia}${p.am.hr ? ' HR '+p.am.hr : ''}`, xPos, y);
             y += 9;
           }
           if (p.pm.sys !== null) {
             const pmClass = classify(p.pm.sys, p.pm.dia);
-            ctx.fillStyle = colorMap[pmClass.key];
+            const pmColor = colorMap[pmClass.key] || '#22c55e';
+            ctx.fillStyle = pmColor;
             ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? ' HR '+p.pm.hr : ''}`, xPos, y);
           }
         });
