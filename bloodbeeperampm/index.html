@@ -1043,44 +1043,43 @@ function loadReadings() {
 function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('bbampmampm_readings', JSON.stringify(arr)); bbampmPushToCloud('readings', arr); }
 
 // ── DEMO DATA ─────────────────────────────────────────────
-// Demo arc: Jan 1 2026 → today — Stage 2 → Normal trend
+// April 1–15, 2026 — 3 AM + 3 PM readings per day
 function buildDemoReadings() {
-  const s = loadSettings();
-  // End at activation day (the day they first entered their key), not today
-  const activatedStr = localStorage.getItem('bbampmampm_activated');
-  const now = activatedStr ? new Date(activatedStr) : new Date();
-  const start = new Date(2026, 0, 1); // Jan 1 2026
-  const totalDays = Math.max(0, Math.floor((now - start) / 86400000));
   const out = [];
+  const notes = ['','','after walk','rested','after meds','stressed',''];
+  // AM times: 6:15, 7:30, 9:45 | PM times: 18:15, 19:30, 21:45
+  const amTimes = [[6,15],[7,30],[9,45]];
+  const pmTimes = [[18,15],[19,30],[21,45]];
 
-  for (let d = totalDays; d >= 0; d--) {
-    const base = new Date(now);
-    base.setDate(base.getDate() - d);
-    base.setHours(0, 0, 0, 0);
+  for (let day = 1; day <= 15; day++) {
+    const progress = (day - 1) / 14; // 0 → 1
+    // Trend: Stage 2 (Apr 1) → Stage 1 (Apr 15)
+    const baseSysAm = Math.round(142 - progress * 16);
+    const baseDiaAm = Math.round(92  - progress * 10);
+    const baseHrAm  = Math.round(78  - progress * 6);
+    // PM slightly lower than AM
+    const baseSysPm = Math.round(138 - progress * 14);
+    const baseDiaPm = Math.round(89  - progress * 9);
+    const baseHrPm  = Math.round(74  - progress * 5);
 
-    // Systolic trend: 148 → 120 over full date range + noise
-    const progress = totalDays > 0 ? (totalDays - d) / totalDays : 1; // 0 to 1
-    const baseSys = Math.round(148 - progress * 28 + (Math.random() * 8 - 4));
-    const baseDia = Math.round(94 - progress * 16 + (Math.random() * 6 - 3));
-    const baseHr  = Math.round(76 - progress * 8  + (Math.random() * 6 - 3));
+    const rnd = (n, range) => Math.round(n + (Math.random() * range * 2 - range));
 
-    s.slots.forEach((sl, si) => {
-      // Morning slightly higher, evening slightly lower
-      const offset = [3, 0, -2][si] || 0;
-      const [h, m] = sl.time.split(':').map(Number);
-      const t = new Date(base);
-      t.setHours(h, m + Math.floor(Math.random() * 8 - 4), 0, 0);
-      if (t > now) return;
+    amTimes.forEach(([h, m], i) => {
+      const t = new Date(2026, 3, day, h, m + Math.floor(Math.random()*5), 0);
+      out.push({ id: 4000000 + day*100 + i, timestamp: t.toISOString(),
+        sys: Math.max(105, rnd(baseSysAm, 4)),
+        dia: Math.max(65,  rnd(baseDiaAm, 3)),
+        hr:  Math.max(58,  rnd(baseHrAm, 3)),
+        notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s1' });
+    });
 
-      out.push({
-        id: 3000000 + d * 100 + si,
-        timestamp: t.toISOString(),
-        sys:   Math.max(100, baseSys + offset + Math.floor(Math.random()*6 - 3)),
-        dia:   Math.max(60,  baseDia + Math.floor(offset/2) + Math.floor(Math.random()*4 - 2)),
-        hr:    Math.max(55,  baseHr  + Math.floor(Math.random()*4 - 2)),
-        notes: ['','','stressful day','after walk','rested','after meds',''][Math.floor(Math.random()*7)],
-        slotId: sl.id,
-      });
+    pmTimes.forEach(([h, m], i) => {
+      const t = new Date(2026, 3, day, h, m + Math.floor(Math.random()*5), 0);
+      out.push({ id: 4000000 + day*100 + 10 + i, timestamp: t.toISOString(),
+        sys: Math.max(100, rnd(baseSysPm, 4)),
+        dia: Math.max(62,  rnd(baseDiaPm, 3)),
+        hr:  Math.max(55,  rnd(baseHrPm, 3)),
+        notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s2' });
     });
   }
   return out;
@@ -1878,35 +1877,93 @@ function renderChart() {
       backgroundColor:'#7dd3fc', borderColor:'#0ea5e9', borderWidth:1,
     });
   } else if (chartType === 'scatter') {
-    // Scatter: individual readings as dots, no averaging
-    const now = new Date(); now.setDate(now.getDate() - chartOffset);
-    const cut = new Date(now); cut.setDate(cut.getDate() - (chartView === '7d' ? 7 : 91));
-    const window7 = readings.filter(r => new Date(r.timestamp) >= cut && new Date(r.timestamp) <= now);
-    const fmt = d => new Date(d).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
+    // Scatter: individual readings mapped to same day-labels as line chart
+    // Build a dateStr → label lookup from points
+    const dayLabelMap = {};
+    points.forEach(p => {
+      // p.label is e.g. "Mon, Apr 7" — extract the date key from the label index
+      dayLabelMap[p.label] = p.label;
+    });
+
+    // Map each reading to its point's label using date matching
+    const getLabel = r => {
+      const d = new Date(r.timestamp).toDateString();
+      const match = points.find(p => {
+        const now2 = new Date(); now2.setDate(now2.getDate() - chartOffset);
+        for (let i = 0; i < (chartView==='7d'?7:91); i++) {
+          const day = new Date(now2); day.setDate(day.getDate() - i);
+          if (day.toDateString() === d) return p.label === points[points.length-1-i]?.label;
+        }
+        return false;
+      });
+      return match?.label;
+    };
+
+    // Simpler: build label by formatting the reading date the same way groupByDay does
+    const nDaysS = chartView==='7d'?7:91;
+    const nowS = new Date(); nowS.setDate(nowS.getDate() - chartOffset);
+    const cutS = new Date(nowS); cutS.setDate(cutS.getDate() - nDaysS);
+    const scatterReadings = readings.filter(r => {
+      const t = new Date(r.timestamp); return t >= cutS && t <= nowS;
+    });
+
+    // Build dateString → label map from points
+    const dateToLabel = {};
+    points.forEach(p => { if (p._date) dateToLabel[p._date] = p.label; });
+
+    // Match reading to label by comparing toDateString
+    const rLabel = r => {
+      const rd = new Date(r.timestamp).toDateString();
+      const p = points.find(pt => {
+        const ptDate = new Date(nowS);
+        ptDate.setDate(ptDate.getDate() - (points.length-1 - points.indexOf(pt)));
+        return ptDate.toDateString() === rd;
+      });
+      return p?.label;
+    };
 
     if (showSys) {
       datasets.push({ label:'🌅 AM Sys', showLine:false,
-        data: window7.filter(isAM).map(r=>({x:fmt(r.timestamp), y:r.sys})),
-        backgroundColor:'#f97316', pointRadius:5, pointHoverRadius:6 });
+        data: scatterReadings.filter(isAM).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.sys}:null; }).filter(Boolean),
+        backgroundColor:'#f97316', pointRadius:6, pointHoverRadius:7 });
       datasets.push({ label:'🌙 PM Sys', showLine:false,
-        data: window7.filter(isPM).map(r=>({x:fmt(r.timestamp), y:r.sys})),
-        backgroundColor:'#3b82f6', pointRadius:5, pointHoverRadius:6 });
+        data: scatterReadings.filter(isPM).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.sys}:null; }).filter(Boolean),
+        backgroundColor:'#3b82f6', pointRadius:6, pointHoverRadius:7 });
     }
     if (showDia) {
       datasets.push({ label:'🌅 AM Dia', showLine:false,
-        data: window7.filter(isAM).map(r=>({x:fmt(r.timestamp), y:r.dia})),
+        data: scatterReadings.filter(isAM).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.dia}:null; }).filter(Boolean),
         backgroundColor:'#fdba74', pointRadius:4, pointHoverRadius:5 });
       datasets.push({ label:'🌙 PM Dia', showLine:false,
-        data: window7.filter(isPM).map(r=>({x:fmt(r.timestamp), y:r.dia})),
+        data: scatterReadings.filter(isPM).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.dia}:null; }).filter(Boolean),
         backgroundColor:'#93c5fd', pointRadius:4, pointHoverRadius:5 });
     }
     if (showHr) {
       datasets.push({ label:'🌅 AM HR', showLine:false,
-        data: window7.filter(isAM).filter(r=>r.hr).map(r=>({x:fmt(r.timestamp), y:r.hr})),
+        data: scatterReadings.filter(isAM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
         backgroundColor:'#fb923c', pointRadius:3 });
       datasets.push({ label:'🌙 PM HR', showLine:false,
-        data: window7.filter(isPM).filter(r=>r.hr).map(r=>({x:fmt(r.timestamp), y:r.hr})),
+        data: scatterReadings.filter(isPM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
         backgroundColor:'#60a5fa', pointRadius:3 });
+    }
+    // Trend lines superimposed on scatter dots (daily averages)
+    if (showSys) {
+      datasets.push({ label:'🌅 AM avg', data:points.map(p=>p.am.sys),
+        borderColor:'#f97316', pointRadius:0, showLine:true, tension:0.35, borderWidth:2, spanGaps:true, fill:false });
+      datasets.push({ label:'🌙 PM avg', data:points.map(p=>p.pm.sys),
+        borderColor:'#3b82f6', pointRadius:0, showLine:true, tension:0.35, borderWidth:2, spanGaps:true, fill:false });
+    }
+    if (showDia) {
+      datasets.push({ label:'🌅 AM dia avg', data:points.map(p=>p.am.dia),
+        borderColor:'#fdba74', pointRadius:0, showLine:true, tension:0.35, borderWidth:1.5, spanGaps:true, fill:false });
+      datasets.push({ label:'🌙 PM dia avg', data:points.map(p=>p.pm.dia),
+        borderColor:'#93c5fd', pointRadius:0, showLine:true, tension:0.35, borderWidth:1.5, spanGaps:true, fill:false });
+    }
+    if (showHr) {
+      datasets.push({ label:'🌅 AM hr avg', data:points.map(p=>p.am.hr),
+        borderColor:'#fb923c', pointRadius:0, showLine:true, tension:0.35, borderWidth:1, spanGaps:true, fill:false });
+      datasets.push({ label:'🌙 PM hr avg', data:points.map(p=>p.pm.hr),
+        borderColor:'#60a5fa', pointRadius:0, showLine:true, tension:0.35, borderWidth:1, spanGaps:true, fill:false });
     }
   } else {
     // Line chart: orange=AM, blue=PM, no dashes
@@ -2007,22 +2064,17 @@ function renderChartTable() {
   const pts = window._chartPoints;
   if (!pts || !pts.length) { el.innerHTML = ''; return; }
 
-  const fmtVal = (sys, dia, hr) => {
-    if (sys === null) return '<span style="color:var(--muted)">—</span>';
-    const badgeCls = classify(sys, dia).cls;
-    return `<span class="badge ${badgeCls}" style="font-size:0.7rem;padding:2px 6px;">${sys}/${dia}</span>${hr ? ` <span style="color:#8b5cf6;font-size:0.75rem;">♥${hr}</span>` : ''}`;
-  };
+  const rows = pts.filter(p => p.count > 0).map(p => {
+    const am = p.am.sys !== null ? `AM: ${p.am.sys}/${p.am.dia}${p.am.hr ? '  HR '+p.am.hr : ''}` : '';
+    const pm = p.pm.sys !== null ? `PM: ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? '  HR '+p.pm.hr : ''}` : '';
+    return `<div style="margin-bottom:10px;font-size:0.88rem;">
+      <div style="font-weight:700;">${p.label}</div>
+      ${am ? `<div>${am}</div>` : ''}
+      ${pm ? `<div>${pm}</div>` : ''}
+    </div>`;
+  }).join('');
 
-  const rows = pts.filter(p => p.count > 0).map(p => `
-    <div style="border:1px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--card);">
-      <div style="font-weight:700;font-size:0.82rem;color:var(--muted);margin-bottom:6px;">${p.label}</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;">
-        ${p.am.sys !== null ? `<div><span style="font-size:0.7rem;font-weight:700;color:#f97316;">🌅 AM</span><br>${fmtVal(p.am.sys, p.am.dia, p.am.hr)}</div>` : ''}
-        ${p.pm.sys !== null ? `<div><span style="font-size:0.7rem;font-weight:700;color:#3b82f6;">🌙 PM</span><br>${fmtVal(p.pm.sys, p.pm.dia, p.pm.hr)}</div>` : ''}
-      </div>
-    </div>`).join('');
-
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">${rows}</div>`;
+  el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:16px 32px;padding:4px 0;">${rows}</div>`;
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
