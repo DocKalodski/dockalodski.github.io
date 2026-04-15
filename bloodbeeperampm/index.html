@@ -2248,9 +2248,9 @@ function renderAnalysis() {
       <div class="card-title">📈 BP Trend</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
         <div class="chart-type-toggle">
-          <button type="button" class="active" data-type="line" onclick="setChartType('line',this)">📈 Line</button>
+          <button type="button" class="active" data-type="line" onclick="setChartType('line',this)" style="display:none;">📈 Line</button>
           <button type="button" data-type="bar" onclick="setChartType('bar',this)">📊 Bar</button>
-          <button type="button" data-type="scatter" onclick="setChartType('scatter',this)">⚡ Scatter</button>
+          <button type="button" data-type="scatter" onclick="setChartType('scatter',this)" style="display:none;">⚡ Scatter</button>
         </div>
         <div class="chart-toggle">
           <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
