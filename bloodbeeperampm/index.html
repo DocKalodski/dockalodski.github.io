@@ -307,9 +307,9 @@
     .chart-toggle button, .chart-type-toggle button { padding: 7px 18px; font-size: 0.8rem; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--muted); transition: all 0.15s; }
     .chart-toggle button.active, .chart-type-toggle button.active { background: var(--accent); color: white; }
     .chart-canvas-wrap { position: relative; height: 320px; }
-    .legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.88rem; margin-top: 8px; }
+    .legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.88rem; margin-top: 2px; }
     .legend-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; -webkit-user-select: none; user-select: none; }
-    .zone-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.72rem; margin-top: 6px; }
+    .zone-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.72rem; margin-top: 2px; }
     .zone-legend-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .zone-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
     input[type="checkbox"] { accent-color: currentColor; }
@@ -2077,13 +2077,21 @@ function renderChart() {
         pts.forEach((p, i) => {
           if (p.count === 0) return;
           const xPos = x.getPixelForValue(i);
-          const yStart = chartArea.bottom + 20;
+          let yStart = chartArea.bottom + 6;
+          // Thin separator line
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(xPos - 30, yStart);
+          ctx.lineTo(xPos + 30, yStart);
+          ctx.stroke();
+          yStart += 6;
           ctx.fillStyle = '#64748b';
-          ctx.font = '9px system-ui,sans-serif';
+          ctx.font = '8px system-ui,sans-serif';
           let y = yStart;
           if (p.am.sys !== null) {
             ctx.fillText(`AM ${p.am.sys}/${p.am.dia}${p.am.hr ? ' HR '+p.am.hr : ''}`, xPos, y);
-            y += 12;
+            y += 10;
           }
           if (p.pm.sys !== null) {
             ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? ' HR '+p.pm.hr : ''}`, xPos, y);
@@ -2260,12 +2268,12 @@ function renderAnalysis() {
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div id="chart-data-table" style="margin-top:16px;display:none;"></div>
-      <div class="legend-row" style="margin-top:12px;">
+      <div class="legend-row">
         <label><input type="checkbox" id="toggle-sys" checked onchange="renderChart()"> <span style="color:#f97316;font-weight:700;">Systolic</span></label>
         <label><input type="checkbox" id="toggle-dia" checked onchange="renderChart()"> <span style="color:#3b82f6;font-weight:700;">Diastolic</span></label>
         <label><input type="checkbox" id="toggle-hr" onchange="renderChart()"> <span style="color:#22c55e;font-weight:700;">Heart Rate</span></label>
       </div>
-      <div class="zone-legend" style="margin-top:10px;">
+      <div class="zone-legend">
         <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal &lt;120/80</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89</div>
