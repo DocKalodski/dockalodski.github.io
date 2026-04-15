@@ -989,22 +989,18 @@ function renderSlotList() {
 }
 
 function changeSlotName(select) {
-  if (select.value === 'custom') {
-    const row = select.closest('.slot-row');
-    const currentName = row.querySelector('.slot-name-input').previousValue || '';
-    const newName = prompt('Enter custom slot name:', currentName);
-    if (newName !== null) {
-      const input = document.createElement('input');
-      input.className = 'slot-name-input';
-      input.type = 'text';
-      input.value = newName.trim() || 'Custom Slot';
-      input.placeholder = 'Name';
-      input.onblur = () => saveSlots();
-      input.onkeydown = (e) => { if (e.key === 'Enter') saveSlots(); };
-      input.style.fontSize = '1rem';
-      select.replaceWith(input);
-      saveSlots();
-    }
+  const selectedText = select.options[select.selectedIndex].text;
+  if (selectedText.includes('Add own custom')) {
+    const input = document.createElement('input');
+    input.className = 'slot-name-input';
+    input.type = 'text';
+    input.value = '';
+    input.placeholder = 'Enter custom name...';
+    input.onblur = () => saveSlots();
+    input.onkeydown = (e) => { if (e.key === 'Enter') saveSlots(); };
+    input.style.fontSize = '1rem';
+    input.autofocus = true;
+    select.replaceWith(input);
   } else {
     saveSlots();
   }
