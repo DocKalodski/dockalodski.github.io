@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0ea5e9">
+  <meta name="description" content="Blood pressure monitor with AM/PM tracking and cloud sync">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%230ea5e9' width='180' height='180' rx='40'/><text x='90' y='105' font-size='70' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>♥</text></svg>">
   <title>BloodBeeperAMPM by Doc Kalodski</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -2466,6 +2470,11 @@ async function bbampmRenderClients() {
   // Cloud sync
   bbampmSyncFromCloud();
   bbampmSubscribeRealtime();
+
+  // PWA: Register service worker
+  if('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('SW registration failed:', e));
+  }
 })();
 </script>
 </body>
