@@ -2535,30 +2535,27 @@ function updateAnalysisChart() {
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
       type: 'bar',
-      data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]}, // dummy dataset
+      data: {labels: chartLabels, datasets: datasets},
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        scales: {y: {min: 60, max: 160, title: {display: true, text: 'BP Range (mmHg)'}}},
-        plugins: {legend: {display: false}, tooltip: {enabled: false}}
+        indexAxis: 'x',
+        scales: {
+          y: {min: 60, max: 160, title: {display: true, text: 'BP Range (mmHg)'}},
+          x: {stacked: false}
+        },
+        plugins: {
+          legend: {display: false},
+          tooltip: {enabled: false},
+          filler: {propagate: true}
+        }
       },
       plugins: [{
-        id: 'rangeBarChart',
+        id: 'bgZones',
         afterDatasetsDraw(chart) {
-          if (!_analysisChartData) return;
-          if (!chart.scales?.x || !chart.scales?.y) return;
-
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
           const xaxis = chart.scales.x;
-          const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
-
-          const filterAM = document.getElementById('filter-am')?.checked ?? true;
-          const filterPM = document.getElementById('filter-pm')?.checked ?? true;
-          const filterLeft = document.getElementById('filter-left')?.checked ?? true;
-          const filterRight = document.getElementById('filter-right')?.checked ?? true;
-
-          // Draw zone backgrounds
           const zones = [
             {min: 60, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
             {min: 80, max: 120, color: 'rgba(34, 197, 94, 0.1)'},
@@ -2572,28 +2569,6 @@ function updateAnalysisChart() {
             ctx.fillStyle = z.color;
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
-
-          const barWidth = Math.max(xaxis.width / (chartLabels.length || 1) * 0.6, 4);
-
-          function drawRangeBars(data, colors, offset) {
-            data.forEach((range, idx) => {
-              if (!range) return;
-              const [dia, sys] = range;
-              const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
-              const yDia = yaxis.getPixelForValue(dia);
-              const ySys = yaxis.getPixelForValue(sys);
-              ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
-              ctx.strokeStyle = colors[idx];
-              ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
-            });
-          }
-
-          if (filterAM && filterLeft) drawRangeBars(amlData, amlColors, 0);
-          if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1);
-          if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2);
-          if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3);
         }
       }]
     });
