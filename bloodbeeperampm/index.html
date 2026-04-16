@@ -1613,23 +1613,27 @@ function clearForm() {
 }
 
 function editReading(id, _triggerEl) {
-  const r = loadReadings().find(x => String(x.id) === String(id));
-  if (!r) return;
-  // Drive drum pickers to the reading's values
-  if (drumSys) drumSys.setValue(r.sys);
-  if (drumDia) drumDia.setValue(r.dia);
-  if (drumHr)  drumHr.setValue(r.hr || 70);
-  document.getElementById('in-notes').value = r.notes || '';
-  document.getElementById('in-arm').value   = r.arm   || '';
-  document.getElementById('editing-id').value = String(r.id);
-  setDateDrums(new Date(r.timestamp));
-  document.getElementById('in-slot').value = r.slotId || '';
-  previewLive();
-  document.getElementById('edit-mode-bar').classList.add('show');
-  document.getElementById('submit-btn').textContent = '✏️ Update Reading';
-  document.getElementById('submit-btn').classList.add('editing');
-  document.getElementById('sheet-title').textContent = '✏️ Edit Reading';
-  openSheet(_triggerEl);
+  try {
+    const r = loadReadings().find(x => String(x.id) === String(id));
+    if (!r) { console.error('Reading not found:', id); return; }
+    // Drive drum pickers to the reading's values
+    if (drumSys) drumSys.setValue(r.sys);
+    if (drumDia) drumDia.setValue(r.dia);
+    if (drumHr)  drumHr.setValue(r.hr || 70);
+    document.getElementById('in-notes').value = r.notes || '';
+    document.getElementById('in-arm').value   = r.arm   || '';
+    document.getElementById('editing-id').value = String(r.id);
+    setDateDrums(new Date(r.timestamp));
+    document.getElementById('in-slot').value = r.slotId || '';
+    previewLive();
+    document.getElementById('edit-mode-bar').classList.add('show');
+    document.getElementById('submit-btn').textContent = '✏️ Update Reading';
+    document.getElementById('submit-btn').classList.add('editing');
+    document.getElementById('sheet-title').textContent = '✏️ Edit Reading';
+    openSheet(_triggerEl);
+  } catch(e) {
+    console.error('editReading error:', e);
+  }
 }
 
 function prefillDate(isoDateTime, _triggerEl) {
