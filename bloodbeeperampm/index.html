@@ -745,8 +745,6 @@
 
 // ── VERSION ───────────────────────────────────────────────
 const APP_VERSION = '1.0.0';
-console.log('BloodBeeperAMPM v1.0 script loaded - activateLicense function is available');
-console.log('If you see this, JavaScript is running correctly');
 const APP_NAME = 'BloodBeeper-AM/PM';
 const APP_AUTHOR = 'Doc Kalodski';
 // Version 1.0 — LOCKED. Reference this commit for official v1.
@@ -850,28 +848,16 @@ function _matchKey(input) {
 }
 
 function activateLicense() {
-  console.log('activateLicense function called!');
   const raw  = document.getElementById('lock-input').value;
   const inEl = document.getElementById('lock-input');
   const errEl = document.getElementById('lock-err');
-
-  alert('DEBUG: Received input: "' + raw + '"');
-
   const licenseData = _matchKey(raw);
 
-  console.log('activateLicense called with raw:', raw);
-  console.log('_matchKey returned:', licenseData);
-  console.log('LICENSES object:', LICENSES);
-
   if (!licenseData) {
-    alert('DEBUG: _matchKey failed. Key not found. LICENSES has: ' + Object.keys(LICENSES).join(', '));
     inEl.classList.add('error');
     errEl.innerHTML = '⛔ Invalid License Key<br><span style="font-size:0.7rem">Use: 007, acci, sheila, or beta(yourname)</span>';
-    console.error('License validation failed for:', raw);
     return;
   }
-
-  alert('DEBUG: _matchKey succeeded! Got name: ' + licenseData.name);
 
   const licenseKey = raw.trim().toUpperCase();
   const isBeta = licenseData.role === 'beta';
@@ -901,24 +887,16 @@ function activateLicense() {
     localStorage.setItem('bbampmampm_activated', new Date().toISOString());
   }
 
-  console.log('localStorage set successfully');
-  console.log('bbampmampm_license_key:', localStorage.getItem('bbampmampm_license_key'));
-  console.log('bbampmampm_license_name:', localStorage.getItem('bbampmampm_license_name'));
-
   inEl.classList.remove('error');
   errEl.innerHTML = '';
-  console.log('About to reload page...');
   location.reload();
 }
 
 function checkLicense() {
   const key = localStorage.getItem('bbampmampm_license_key');
-  console.log('checkLicense: retrieved key from storage:', key);
   const licenseData = key ? _matchKey(key) : null;
-  console.log('checkLicense: _matchKey returned:', licenseData);
 
   if (!licenseData) {
-    console.error('checkLicense: license validation failed, showing lock overlay');
     localStorage.removeItem('bbampmampm_license_key');
     localStorage.removeItem('bbampmampm_license_name');
     localStorage.removeItem('bbampmampm_license_role');
@@ -951,7 +929,6 @@ function checkLicense() {
   }
 
   document.getElementById('lock-overlay').classList.add('hidden');
-  console.log('checkLicense: license valid, hiding lock overlay and applying name:', licenseData.name);
   _applyLicensedTo(licenseData.name);
   return true;
 }
