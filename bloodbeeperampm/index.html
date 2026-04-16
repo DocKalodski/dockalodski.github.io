@@ -2415,10 +2415,10 @@ function renderAnalysis() {
     pmlData.push(pml ? [pml.dia, pml.sys] : null);
     pmrData.push(pmr ? [pmr.dia, pmr.sys] : null);
 
-    amlColors.push(aml ? DOT_C[classify(aml.sys, aml.dia).key][0] : '#ccc');
-    amrColors.push(amr ? DOT_C[classify(amr.sys, amr.dia).key][0] : '#ccc');
-    pmlColors.push(pml ? DOT_C[classify(pml.sys, pml.dia).key][0] : '#ccc');
-    pmrColors.push(pmr ? DOT_C[classify(pmr.sys, pmr.dia).key][0] : '#ccc');
+    amlColors.push(aml ? '#87CEEB' : '#ccc');  // Left AM: light blue
+    amrColors.push(amr ? '#90EE90' : '#ccc');  // Right AM: light green
+    pmlColors.push(pml ? '#0066CC' : '#ccc');  // Left PM: blue
+    pmrColors.push(pmr ? '#228B22' : '#ccc');  // Right PM: green
   });
 
   // Store for filtering and range bars
