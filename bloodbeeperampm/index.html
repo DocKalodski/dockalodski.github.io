@@ -2448,44 +2448,12 @@ function renderAnalysis() {
   el.innerHTML = `
     <div class="card">
       <div class="card-title">🔄 Left vs Right Arm Comparison</div>
-      <!-- Color Legend -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;align-items:center;">
-        <div style="text-align:center;">
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:700;">AM</div>
-          <div style="display:flex;gap:6px;justify-content:center;">
-            <div style="width:24px;height:24px;background:#87CEEB;border:1px solid #333;"></div>
-            <div style="width:24px;height:24px;background:#90EE90;border:1px solid #333;"></div>
-          </div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:700;">PM</div>
-          <div style="display:flex;gap:6px;justify-content:center;">
-            <div style="width:24px;height:24px;background:#0066CC;border:1px solid #333;"></div>
-            <div style="width:24px;height:24px;background:#228B22;border:1px solid #333;"></div>
-          </div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:700;">Left</div>
-          <div style="display:flex;gap:6px;justify-content:center;">
-            <div style="width:24px;height:24px;background:#87CEEB;border:1px solid #333;"></div>
-            <div style="width:24px;height:24px;background:#0066CC;border:1px solid #333;"></div>
-          </div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;font-weight:700;">Right</div>
-          <div style="display:flex;gap:6px;justify-content:center;">
-            <div style="width:24px;height:24px;background:#90EE90;border:1px solid #333;"></div>
-            <div style="width:24px;height:24px;background:#228B22;border:1px solid #333;"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- Filters -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"> AM</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"> PM</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"> Left</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"> Right</label>
+      <div style="display:flex;gap:16px;margin-bottom:16px;padding:8px 0;font-size:0.9rem;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"> <span style="font-weight:600;">AM</span> <span style="display:inline-block;width:10px;height:10px;background:#87CEEB;border:1px solid #333;margin-right:2px;"></span><span style="display:inline-block;width:10px;height:10px;background:#90EE90;border:1px solid #333;"></span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"> <span style="font-weight:600;">PM</span> <span style="display:inline-block;width:10px;height:10px;background:#0066CC;border:1px solid #333;margin-right:2px;"></span><span style="display:inline-block;width:10px;height:10px;background:#228B22;border:1px solid #333;"></span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"> <span style="font-weight:600;">Left</span> <span style="display:inline-block;width:10px;height:10px;background:#87CEEB;border:1px solid #333;margin-right:2px;"></span><span style="display:inline-block;width:10px;height:10px;background:#0066CC;border:1px solid #333;"></span></label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"> <span style="font-weight:600;">Right</span> <span style="display:inline-block;width:10px;height:10px;background:#90EE90;border:1px solid #333;margin-right:2px;"></span><span style="display:inline-block;width:10px;height:10px;background:#228B22;border:1px solid #333;"></span></label>
       </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div class="legend-row">
