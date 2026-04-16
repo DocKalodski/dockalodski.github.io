@@ -2293,7 +2293,7 @@ function renderChart() {
       },
       scales:{
         x:{ ticks:{maxTicksLimit:8, maxRotation:40, font:{size:10}}, grid:{color:'#f1f5f9'} },
-        y:{ min:50, max:200, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'} }
+        y:{ min:60, max:160, ticks:{font:{size:10}, stepSize:20}, grid:{color:'#f1f5f9'} }
       },
       layout:{ padding:{ bottom: 50 } }
     },
@@ -2303,10 +2303,9 @@ function renderChart() {
         const {ctx,chartArea,scales:{y}} = chart;
         if (!y||!chartArea) return;
         const {left,right,top,bottom} = chartArea;
-        [{min:0,max:80,c:'rgba(34,197,94,0.06)'},{min:80,max:90,c:'rgba(249,115,22,0.07)'},
+        [{min:60,max:80,c:'rgba(34,197,94,0.06)'},{min:80,max:90,c:'rgba(249,115,22,0.07)'},
          {min:90,max:120,c:'rgba(239,68,68,0.08)'},{min:120,max:130,c:'rgba(234,179,8,0.08)'},
-         {min:130,max:140,c:'rgba(249,115,22,0.09)'},{min:140,max:180,c:'rgba(239,68,68,0.10)'},
-         {min:180,max:250,c:'rgba(127,29,29,0.14)'}].forEach(z => {
+         {min:130,max:140,c:'rgba(249,115,22,0.09)'},{min:140,max:160,c:'rgba(239,68,68,0.10)'}].forEach(z => {
           const yT=y.getPixelForValue(z.max), yB=y.getPixelForValue(z.min);
           if (yB>top&&yT<bottom){ctx.fillStyle=z.c;ctx.fillRect(left,Math.max(yT,top),right-left,Math.min(yB,bottom)-Math.max(yT,top));}
         });
@@ -2506,7 +2505,7 @@ function updateAnalysisChart() {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        scales: {y: {min: 0, max: 200, title: {display: true, text: 'BP Range (mmHg)'}}},
+        scales: {y: {min: 60, max: 160, title: {display: true, text: 'BP Range (mmHg)'}}},
         plugins: {legend: {display: false}, tooltip: {enabled: false}}
       },
       plugins: [{
@@ -2526,11 +2525,11 @@ function updateAnalysisChart() {
 
           // Draw zone backgrounds
           const zones = [
-            {min: 0, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
+            {min: 60, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
             {min: 80, max: 120, color: 'rgba(34, 197, 94, 0.1)'},
             {min: 120, max: 130, color: 'rgba(234, 179, 8, 0.1)'},
             {min: 130, max: 140, color: 'rgba(249, 115, 22, 0.1)'},
-            {min: 140, max: 200, color: 'rgba(239, 68, 68, 0.1)'}
+            {min: 140, max: 160, color: 'rgba(239, 68, 68, 0.1)'}
           ];
           zones.forEach(z => {
             const yTop = yaxis.getPixelForValue(z.max);
