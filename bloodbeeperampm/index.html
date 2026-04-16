@@ -2527,6 +2527,8 @@ function updateAnalysisChart() {
   if (ctx && datasets.length > 0) {
     const canvas = document.createElement('canvas');
     canvas.style.display = 'block';
+    canvas.width = ctx.offsetWidth;
+    canvas.height = ctx.offsetHeight || 500;
     ctx.innerHTML = '';
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
