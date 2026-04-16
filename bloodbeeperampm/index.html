@@ -2542,6 +2542,7 @@ function updateAnalysisChart() {
         id: 'rangeBarChart',
         afterDatasetsDraw(chart) {
           if (!_analysisChartData) return;
+          if (!chart.scales?.x || !chart.scales?.y) return;
 
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
@@ -2577,13 +2578,11 @@ function updateAnalysisChart() {
               const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
-              const barHeight = yDia - ySys;
-              if (barHeight < 1) return; // Skip if bar too small
               ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, barWidth / 4, barHeight);
+              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
               ctx.strokeStyle = colors[idx];
               ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, barWidth / 4, barHeight);
+              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
             });
           }
 
