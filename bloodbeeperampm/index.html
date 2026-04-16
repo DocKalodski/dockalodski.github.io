@@ -2394,7 +2394,7 @@ function renderAnalysis() {
     byDate[date][key] = r;
   });
 
-  // Prepare chart data — range bars (dia to sys)
+  // Prepare chart data
   const dates = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
   const chartLabels = [];
   const amlData = [], amrData = [], pmlData = [], pmrData = [];
@@ -2410,11 +2410,10 @@ function renderAnalysis() {
     const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
 
     chartLabels.push(date);
-    // Store as [dia, sys] range instead of just sys
-    amlData.push(aml ? [aml.dia, aml.sys] : null);
-    amrData.push(amr ? [amr.dia, amr.sys] : null);
-    pmlData.push(pml ? [pml.dia, pml.sys] : null);
-    pmrData.push(pmr ? [pmr.dia, pmr.sys] : null);
+    amlData.push(aml ? aml.sys : null);
+    amrData.push(amr ? amr.sys : null);
+    pmlData.push(pml ? pml.sys : null);
+    pmrData.push(pmr ? pmr.sys : null);
 
     amlColors.push(aml ? DOT_C[classify(aml.sys, aml.dia).key][0] : '#ccc');
     amrColors.push(amr ? DOT_C[classify(amr.sys, amr.dia).key][0] : '#ccc');
@@ -2424,7 +2423,6 @@ function renderAnalysis() {
 
   // Store for filtering
   _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
-  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData};
 
   // Create table rows
   const rows = dates.map(date => {
@@ -2501,36 +2499,22 @@ function updateAnalysisChart() {
     ctx.innerHTML = '';
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
-      type: 'bubble',
-      data: {labels: chartLabels, datasets: []}, // dummy to prevent errors
+      type: 'bar',
+      data: {labels: chartLabels, datasets},
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        scales: {
-          y: {min: 1, max: 200, title: {display: true, text: 'BP Range (mmHg)'}}
-        },
-        plugins: {
-          legend: {display: false},
-          tooltip: {enabled: false}
-        }
+        scales: {y: {min: 1, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
       },
       plugins: [{
-        id: 'rangeBarChart',
+        id: 'bpZoneBackground',
         afterDatasetsDraw(chart) {
-          if (!_rangeBarData) return;
-
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
           const xaxis = chart.scales.x;
-          const {chartLabels, amlData, amrData, pmlData, pmrData} = _rangeBarData;
-          const barWidth = xaxis.width / chartLabels.length * 0.6;
 
-          const filterAM = document.getElementById('filter-am')?.checked ?? true;
-          const filterPM = document.getElementById('filter-pm')?.checked ?? true;
-          const filterLeft = document.getElementById('filter-left')?.checked ?? true;
-          const filterRight = document.getElementById('filter-right')?.checked ?? true;
-
-          // Draw zone backgrounds
+          // Zones
           const zones = [
             {min: 1, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
             {min: 80, max: 120, color: 'rgba(34, 197, 94, 0.1)'},
@@ -2538,32 +2522,13 @@ function updateAnalysisChart() {
             {min: 130, max: 140, color: 'rgba(249, 115, 22, 0.1)'},
             {min: 140, max: 200, color: 'rgba(239, 68, 68, 0.1)'}
           ];
-          zones.forEach(z => {
-            const yTop = yaxis.getPixelForValue(z.max);
-            const yBot = yaxis.getPixelForValue(z.min);
-            ctx.fillStyle = z.color;
+
+          zones.forEach(zone => {
+            const yTop = yaxis.getPixelForValue(zone.max);
+            const yBot = yaxis.getPixelForValue(zone.min);
+            ctx.fillStyle = zone.color;
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
-
-          function drawBars(data, color, offset) {
-            data.forEach((range, idx) => {
-              if (!range) return;
-              const [dia, sys] = range;
-              const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
-              const yDia = yaxis.getPixelForValue(dia);
-              const ySys = yaxis.getPixelForValue(sys);
-              ctx.fillStyle = color;
-              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
-              ctx.strokeStyle = color;
-              ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
-            });
-          }
-
-          if (filterAM && filterLeft) drawBars(amlData, '#22c55e', 0);
-          if (filterAM && filterRight) drawBars(amrData, '#3b82f6', 1);
-          if (filterPM && filterLeft) drawBars(pmlData, '#f97316', 2);
-          if (filterPM && filterRight) drawBars(pmrData, '#a855f7', 3);
         }
       }]
     });
