@@ -2538,6 +2538,19 @@ function updateAnalysisChart() {
     svg.appendChild(rect);
   });
 
+  // Gridlines (horizontal)
+  for(let v = 60; v <= 160; v += 10) {
+    const y = topMargin + ((maxY - v) / rangeY) * chartH;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', leftMargin);
+    line.setAttribute('x2', leftMargin + chartW);
+    line.setAttribute('y1', y);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#ddd');
+    line.setAttribute('stroke-width', '0.5');
+    svg.appendChild(line);
+  }
+
   // Y-axis labels
   for(let v = 60; v <= 160; v += 10) {
     const y = topMargin + ((maxY - v) / rangeY) * chartH;
@@ -2614,6 +2627,36 @@ function updateAnalysisChart() {
       text.textContent = label;
       svg.appendChild(text);
     }
+  });
+
+  // Legend
+  const legendItems = [
+    {color:'#22c55e', label:'Normal <120/80 (Good)'},
+    {color:'#eab308', label:'Elevated 120-129 (Monitor)'},
+    {color:'#f97316', label:'High 130-139/80-89 (Bad)'},
+    {color:'#ef4444', label:'Very High ≥140/≥90 (Bad)'},
+    {color:'#8b5a3c', label:'Crisis ≥180/≥120'}
+  ];
+  let legendX = leftMargin;
+  const legendY = svgH - 8;
+  legendItems.forEach(item => {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', legendX);
+    rect.setAttribute('y', legendY - 8);
+    rect.setAttribute('width', 8);
+    rect.setAttribute('height', 8);
+    rect.setAttribute('fill', item.color);
+    svg.appendChild(rect);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', legendX + 12);
+    text.setAttribute('y', legendY);
+    text.setAttribute('font-size', '9');
+    text.setAttribute('fill', '#666');
+    text.textContent = item.label;
+    svg.appendChild(text);
+
+    legendX += 200;
   });
 }
 
