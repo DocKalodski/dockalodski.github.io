@@ -7,7 +7,7 @@
   <meta name="description" content="Blood pressure monitor with AM/PM tracking and cloud sync">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%230ea5e9' width='180' height='180' rx='40'/><text x='90' y='105' font-size='70' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>♥</text></svg>">
-  <title id="page-title">BloodBeeper-AM/PM v1.0 by Doc Kalodski</title>
+  <title id="page-title">BloodBeeper-AM/PM v1.25 by Doc Kalodski</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
@@ -524,7 +524,7 @@
     <div id="cal-grid-container"></div>
   </div>
 
-  <div class="brand-footer">BloodBeeper-AM/PM v1.0 · by Doc Kalodski · AHA 2017 Guidelines</div>
+  <div class="brand-footer">BloodBeeper-AM/PM v1.25 · by Doc Kalodski · AHA 2017 Guidelines</div>
 </div>
 
 <!-- ════════════════════════════════════════════════
@@ -532,7 +532,7 @@
 ════════════════════════════════════════════════ -->
 <div id="tab-analysis" class="tab">
   <div id="analysis-content"></div>
-  <div class="brand-footer">BloodBeeper-AM/PM v1.0 · by Doc Kalodski · AHA 2017 Guidelines</div>
+  <div class="brand-footer">BloodBeeper-AM/PM v1.25 · by Doc Kalodski · AHA 2017 Guidelines</div>
 </div>
 
 <!-- ════════════════════════════════════════════════
@@ -621,7 +621,7 @@
       <button type="button" class="btn-sm" style="background:#fef2f2;color:#dc2626;border-color:#fecaca;" onclick="deactivateLicense()">Deactivate</button>
     </div>
     <div class="setting-row">
-      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">BloodBeeper-AM/PM v1.0 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
+      <div><div class="setting-label">ℹ️ About</div><div class="setting-sub">BloodBeeper-AM/PM v1.25 · by Doc Kalodski · AHA 2017 Guidelines · Cloud sync via Supabase</div></div>
     </div>
   </div>
 
@@ -744,11 +744,11 @@
 'use strict';
 
 // ── VERSION ───────────────────────────────────────────────
-const APP_VERSION = '1.0.0';
-const APP_VERSION_DISPLAY = '1.0';  // For UI display
+const APP_VERSION = '1.25.0';
+const APP_VERSION_DISPLAY = '1.25';  // For UI display
 const APP_NAME = 'BloodBeeper-AM/PM';
 const APP_AUTHOR = 'by Doc Kalodski';
-const APP_BRAND = `BloodBeeper-AM/PM v1.0 · by Doc Kalodski`;
+const APP_BRAND = `BloodBeeper-AM/PM v1.25 · by Doc Kalodski`;
 // Version 1.0 — LOCKED. Reference this commit for official v1.
 
 // ── SUPABASE SYNC ─────────────────────────────────────────
@@ -2319,172 +2319,53 @@ function renderChart() {
 function renderAnalysis() {
   const readings = loadReadings();
   const el = document.getElementById('analysis-content');
-  if (readings.length < 3) {
-    el.innerHTML = `<div class="card"><div class="empty-state"><div class="big">🤖</div>
-      <p>Need at least 3 readings.<br>Load demo data in Settings to preview analysis.</p></div></div>`;
+  if (readings.length < 1) {
+    el.innerHTML = `<div class="card"><div class="empty-state"><div class="big">🔄</div>
+      <p>No readings yet.<br>Log your BP readings to see Left vs Right arm comparison.</p></div></div>`;
     return;
   }
 
-  const now = new Date();
-  const sorted = readings.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-  const firstDate = new Date(sorted[0].timestamp);
-  const lastDate  = new Date(sorted[sorted.length-1].timestamp);
-  const daysCovered = Math.round((lastDate-firstDate)/(1000*60*60*24))+1;
+  // Helper functions to check AM/PM based on hour
+  const isAMHour = (hour) => hour >= 6 && hour < 18;
 
-  // 7-day stats
-  const cut7 = new Date(now); cut7.setDate(cut7.getDate()-7);
-  const week7 = readings.filter(r=>new Date(r.timestamp)>=cut7);
-  const avg7Sys = week7.length ? Math.round(week7.reduce((a,r)=>a+r.sys,0)/week7.length) : null;
-  const avg7Dia = week7.length ? Math.round(week7.reduce((a,r)=>a+r.dia,0)/week7.length) : null;
-
-  // 3-month stats
-  const cut3m = new Date(now); cut3m.setDate(cut3m.getDate()-90);
-  const mo3 = readings.filter(r=>new Date(r.timestamp)>=cut3m);
-  const avg3mSys = mo3.length ? Math.round(mo3.reduce((a,r)=>a+r.sys,0)/mo3.length) : null;
-  const avg3mDia = mo3.length ? Math.round(mo3.reduce((a,r)=>a+r.dia,0)/mo3.length) : null;
-
-  // Trend (7d)
-  const s7 = week7.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-  const half = Math.max(1,Math.floor(s7.length/2));
-  const trendSys = s7.length >= 4 ? Math.round(
-    s7.slice(-half).reduce((a,r)=>a+r.sys,0)/half - s7.slice(0,half).reduce((a,r)=>a+r.sys,0)/half
-  ) : 0;
-
-  // 3-month trend (early vs late)
-  const third = Math.max(1,Math.floor(mo3.length/3));
-  const s3m = mo3.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-  const trend3mSys = mo3.length >= 6 ? Math.round(
-    s3m.slice(-third).reduce((a,r)=>a+r.sys,0)/third - s3m.slice(0,third).reduce((a,r)=>a+r.sys,0)/third
-  ) : 0;
-
-  // Slot patterns
-  const sets = loadSettings();
-  const slotStats = {};
-  sets.slots.forEach(sl => {
-    const sr = week7.filter(r=>r.slotId===sl.id);
-    if (sr.length>0) slotStats[sl.id]={name:sl.name,emoji:sl.emoji,
-      sys:Math.round(sr.reduce((a,r)=>a+r.sys,0)/sr.length),
-      dia:Math.round(sr.reduce((a,r)=>a+r.dia,0)/sr.length),count:sr.length};
+  // Group readings by date and arm
+  const byDate = {};
+  readings.forEach(r => {
+    const date = new Date(r.timestamp).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+    const hour = new Date(r.timestamp).getHours();
+    const isAMTime = isAMHour(hour);
+    const armKey = (r.arm || 'LEFT').toUpperCase();
+    const key = `${date}_${isAMTime?'AM':'PM'}_${armKey}`;
+    if (!byDate[date]) byDate[date] = {};
+    byDate[date][key] = r;
   });
 
-  const slotEntries = Object.entries(slotStats);
-  const highestSlot = slotEntries.length ? slotEntries.reduce((a,b)=>b[1].sys>a[1].sys?b:a) : null;
-  const lowestSlot  = slotEntries.length ? slotEntries.reduce((a,b)=>b[1].sys<a[1].sys?b:a) : null;
+  // Create table rows
+  const fmtVal = (sys, dia, hr) => `${sys}/${dia} ${hr||'-'} bpm`;
+  const rows = Object.keys(byDate).sort((a,b)=>new Date(b)-new Date(a)).map(date => {
+    const dayReadings = byDate[date];
+    const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
+    const pml = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
 
-  // Normal %
-  const normalPct7 = week7.length ? Math.round(week7.filter(r=>classify(r.sys,r.dia).key==='normal').length/week7.length*100) : 0;
-  const worst = readings.reduce((b,r)=>r.sys>b.sys?r:b);
-  const best  = readings.reduce((b,r)=>r.sys<b.sys?r:b);
+    return `<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="font-weight:700;color:var(--text);">${date}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:0.9rem;">
+        <div><div style="color:var(--muted);font-size:0.75rem;">AML:</div><div>${aml?fmtVal(aml.sys,aml.dia,aml.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">AMR:</div><div>${amr?fmtVal(amr.sys,amr.dia,amr.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">PML:</div><div>${pml?fmtVal(pml.sys,pml.dia,pml.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">PMR:</div><div>${pmr?fmtVal(pmr.sys,pmr.dia,pmr.hr):'-'}</div></div>
+      </div>
+    </div>`;
+  }).join('');
 
-  const fmt = ts => new Date(ts).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});
-  const fmtShort = ts => new Date(ts).toLocaleDateString('en-PH',{month:'short',day:'numeric'});
-  const avgClass7 = avg7Sys ? classify(avg7Sys,avg7Dia) : null;
-  const needsAlert = avgClass7 && ['stage1','stage2','crisis'].includes(avgClass7.key);
-
-  // ── AI Report text
-  const trendWord7  = trendSys>3 ? `INCREASING (+${trendSys} mmHg)` : trendSys<-3 ? `IMPROVING (${trendSys} mmHg)` : 'STABLE';
-  const trend3mWord = trend3mSys>5 ? `worsened by ${trend3mSys} mmHg` : trend3mSys<-5 ? `improved by ${Math.abs(trend3mSys)} mmHg` : 'remained relatively stable';
-  const slotPatternText = highestSlot && lowestSlot && highestSlot[0]!==lowestSlot[0]
-    ? `Time-of-day pattern detected: ${highestSlot[1].emoji} ${highestSlot[1].name} readings are highest (avg ${highestSlot[1].sys}/${highestSlot[1].dia} mmHg), while ${lowestSlot[1].emoji} ${lowestSlot[1].name} readings are lowest (avg ${lowestSlot[1].sys}/${lowestSlot[1].dia} mmHg).`
-    : 'Insufficient slot data for time-of-day pattern analysis.';
-
-  // ── Morning surge detection ─────────────────────────────
-  const byDay = {};
-  sorted.forEach(r => { const dk=new Date(r.timestamp).toDateString(); if(!byDay[dk]) byDay[dk]=[]; byDay[dk].push(r); });
-  const dayKeys = Object.keys(byDay).sort((a,b)=>new Date(a)-new Date(b));
-  const surgeEvents = [];
-  for (let i=1;i<dayKeys.length;i++) {
-    const prevR = byDay[dayKeys[i-1]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    const cubbampmR = byDay[dayKeys[i]].slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
-    const prevLast = prevR[prevR.length-1], cubbampmFirst = cubbampmR[0];
-    const surge = cubbampmFirst.sys - prevLast.sys;
-    surgeEvents.push({ date: dayKeys[i], surge, morning: cubbampmFirst.sys, evening: prevLast.sys });
-  }
-  const avgSurge = surgeEvents.length ? Math.round(surgeEvents.reduce((a,e)=>a+e.surge,0)/surgeEvents.length) : null;
-  const highSurgeCount = surgeEvents.filter(e=>e.surge>=20).length;
-
-  const meds = loadSettings().medications;
-
-  const report = [
-    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
-    `<span class="ai-head">  ${APP_NAME} — BP ANALYSIS REPORT</span>`,
-    `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
-    `<span class="ai-label">Generated   :</span> ${new Date().toLocaleString('en-PH')}`,
-    `<span class="ai-label">Data Range  :</span> ${fmt(sorted[0].timestamp)} → ${fmt(sorted[sorted.length-1].timestamp)}`,
-    `<span class="ai-label">Coverage    :</span> ${readings.length} readings over ${daysCovered} days`,
-    meds ? `<span class="ai-label">Medications :</span> ${meds.replace(/\n/g,' | ')}` : '',
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-head">  CURRENT STATUS (Last 7 Days)</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    avg7Sys ? `<span class="ai-label">7-Day Avg   :</span> <span class="${needsAlert?'ai-warn':'ai-ok'}">${avg7Sys}/${avg7Dia} mmHg  [${avgClass7.label.toUpperCase()}]</span>` : '  No readings in last 7 days.',
-    avg7Sys ? `<span class="ai-label">In Normal   :</span> ${normalPct7}% of ${week7.length} readings` : '',
-    avg7Sys ? `<span class="ai-label">7-Day Trend :</span> ${trendSys>3?'<span class="ai-warn">':'<span class="ai-ok">'}${trendWord7}</span>` : '',
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-head">  3-MONTH OVERVIEW</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    avg3mSys ? `<span class="ai-label">3-Mo Avg    :</span> ${avg3mSys}/${avg3mDia} mmHg  [${classify(avg3mSys,avg3mDia).label.toUpperCase()}]` : '  Not enough 3-month data.',
-    avg3mSys ? `<span class="ai-label">3-Mo Trend  :</span> Systolic has ${trend3mWord} over 3 months.` : '',
-    avg7Sys && avg3mSys ? `<span class="ai-label">vs 3-Mo Avg :</span> Current week is ${avg7Sys>avg3mSys?`<span class="ai-warn">+${avg7Sys-avg3mSys} mmHg above</span>`:`<span class="ai-ok">${avg3mSys-avg7Sys} mmHg below</span>`} 3-month average.` : '',
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-head">  TIME-OF-DAY PATTERN</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `  ${slotPatternText}`,
-    slotEntries.length ? `  Recommendation: ${highestSlot ? `Schedule medications or rest before your ${highestSlot[1].name} reading window.` : ''}` : '',
-    avgSurge !== null ? `<span class="ai-label">Morning Surge :</span> ${avgSurge > 0 ? `<span class="${avgSurge >= 20 ? 'ai-warn' : 'ai-ok'}">avg +${avgSurge} mmHg overnight rise${highSurgeCount > 0 ? ` (${highSurgeCount} day${highSurgeCount > 1 ? 's' : ''} ≥20 mmHg surge)` : ''}</span>` : `<span class="ai-ok">avg ${avgSurge} mmHg overnight</span>`}` : '',
-    highSurgeCount >= 3 ? `<span class="ai-warn">  ⚠ Frequent morning surges detected — mention to your physician.</span>` : '',
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-head">  NOTABLE READINGS</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-label">All-Time Best :</span> <span class="ai-ok">${best.sys}/${best.dia}</span> on ${fmtShort(best.timestamp)}`,
-    `<span class="ai-label">All-Time High :</span> <span class="ai-bad">${worst.sys}/${worst.dia}</span> on ${fmtShort(worst.timestamp)}`,
-    readings.filter(r=>classify(r.sys,r.dia).key==='crisis').length > 0
-      ? `<span class="ai-bad">  ⚠ ${readings.filter(r=>classify(r.sys,r.dia).key==='crisis').length} reading(s) exceeded HYPERTENSIVE CRISIS threshold — consult physician immediately.</span>`
-      : `<span class="ai-ok">  ✓ No hypertensive crisis readings detected.</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-head">  ADVISORY</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    needsAlert
-      ? `<span class="ai-warn">  Your 7-day average (${avg7Sys}/${avg7Dia}) remains in ${avgClass7.label.toUpperCase()}.\n  If sustained 2+ weeks, consult your physician.\n  Do NOT self-adjust medications.</span>`
-      : avg7Sys
-        ? `<span class="ai-ok">  Your recent BP control is good. Continue current regimen\n  and maintain regular monitoring.</span>`
-        : `<span class="ai-label">  Log at least 7 days of readings for a full advisory.</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-    `<span class="ai-label">  For personal monitoring only. Not a substitute for\n  professional medical diagnosis or treatment.</span>`,
-    `<span class="ai-line">──────────────────────────────────────────────────</span>`,
-  ].filter(l=>l).join('\n');
-
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   el.innerHTML = `
     <div class="card">
-      <div class="card-title">📈 BP Trend</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-        <div class="chart-type-toggle">
-          <button type="button" data-type="line" onclick="setChartType('line',this)" style="display:none;">📈 Line</button>
-          <button type="button" class="active" data-type="bar" onclick="setChartType('bar',this)">📊 Bar</button>
-          <button type="button" data-type="scatter" onclick="setChartType('scatter',this)" style="display:none;">⚡ Scatter</button>
-        </div>
-        <div class="chart-toggle">
-          <button type="button" class="${chartView==='7d'?'active':''}" onclick="setChartView('7d',this)">7 Days</button>
-        </div>
-        <div style="display:flex;gap:4px;">
-          <button type="button" onclick="shiftChart(-1)" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Older">◀</button>
-          <button type="button" onclick="shiftChart(1)" id="btn-chart-fwd" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:none;cursor:pointer;font-size:0.9rem;" title="Newer">▶</button>
-        </div>
-      </div>
-      <div class="chart-canvas-wrap" id="chart-container"></div>
-      <div class="legend-row">
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal &lt;120/80</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">🤖 Analysis Report</div>
-      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Rule-based clinical pattern analysis · AHA 2017 Guidelines</p>
-      <div class="ai-report">${report}</div>
+      <div class="card-title">🔄 Left vs Right Arm Comparison</div>
+      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:14px;">All readings grouped by date • AML=AM Left, AMR=AM Right, PML=PM Left, PMR=PM Right</p>
+      <div>${rows}</div>
     </div>`;
-  renderChart();
 }
 
 // ── REMINDERS ─────────────────────────────────────────────
