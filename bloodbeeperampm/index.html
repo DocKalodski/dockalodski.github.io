@@ -2378,73 +2378,43 @@ function renderAnalysis() {
     return;
   }
 
-  // Helper functions to check AM/PM based on hour
   const isAMHour = (hour) => hour >= 6 && hour < 18;
 
-  // Group readings by date and arm
+  // Group by date, then by time-of-day and arm
   const byDate = {};
   readings.forEach(r => {
-    const date = new Date(r.timestamp).toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
-    const hour = new Date(r.timestamp).getHours();
-    const isAMTime = isAMHour(hour);
-    const armKey = (r.arm || 'LEFT').toUpperCase();
-    const key = `${date}_${isAMTime?'AM':'PM'}_${armKey}`;
+    const dt = new Date(r.timestamp);
+    const date = dt.toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'});
+    const hour = dt.getHours();
+    const isAM = isAMHour(hour);
+    const timeKey = isAM ? 'AM' : 'PM';
+    const arm = (r.arm || 'LEFT').toUpperCase();
+
     if (!byDate[date]) byDate[date] = {};
-    byDate[date][key] = r;
+    if (!byDate[date][timeKey]) byDate[date][timeKey] = {};
+
+    byDate[date][timeKey][arm] = r;
   });
 
-  // Prepare chart data — store sys/dia ranges
-  const dates = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
-  const chartLabels = [];
-  const amlData = [], amrData = [], pmlData = [], pmrData = [];
-  const amlColors = [], amrColors = [], pmlColors = [], pmrColors = [];
-
-  const fmtVal = (sys, dia, hr) => `${sys}/${dia} ${hr||'-'} bpm`;
+  // Build chart data in correct sequence: AM_L, AM_R, PM_L, PM_R
+  const dates = Object.keys(byDate).sort((a, b) => new Date(a) - new Date(b));
+  const chartData = {
+    labels: dates,
+    am_left: [],
+    am_right: [],
+    pm_left: [],
+    pm_right: []
+  };
 
   dates.forEach(date => {
-    const dayReadings = byDate[date];
-    const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
-    const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
-    const pml = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
-    const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
-
-    chartLabels.push(date);
-    // Store [dia, sys] range pairs for diastolic-to-systolic bars
-    amlData.push(aml ? {dia: aml.dia, sys: aml.sys} : null);
-    amrData.push(amr ? {dia: amr.dia, sys: amr.sys} : null);
-    pmlData.push(pml ? {dia: pml.dia, sys: pml.sys} : null);
-    pmrData.push(pmr ? {dia: pmr.dia, sys: pmr.sys} : null);
-
-    amlColors.push(aml ? '#87CEEB' : '#ccc');  // Left AM: light blue
-    amrColors.push(amr ? '#90EE90' : '#ccc');  // Right AM: light green
-    pmlColors.push(pml ? '#0066CC' : '#ccc');  // Left PM: blue
-    pmrColors.push(pmr ? '#228B22' : '#ccc');  // Right PM: green
+    chartData.am_left.push(byDate[date]['AM']?.['LEFT'] || null);
+    chartData.am_right.push(byDate[date]['AM']?.['RIGHT'] || null);
+    chartData.pm_left.push(byDate[date]['PM']?.['LEFT'] || null);
+    chartData.pm_right.push(byDate[date]['PM']?.['RIGHT'] || null);
   });
 
-  // Store for filtering and range bars
-  _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
-  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
+  window._chartData = chartData;
 
-  // Create table rows
-  const rows = dates.map(date => {
-    const dayReadings = byDate[date];
-    const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
-    const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
-    const pml = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
-    const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
-
-    return `<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="font-weight:700;color:var(--text);">${date}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:0.9rem;">
-        <div><div style="color:var(--muted);font-size:0.75rem;">AML:</div><div>${aml?fmtVal(aml.sys,aml.dia,aml.hr):'-'}</div></div>
-        <div><div style="color:var(--muted);font-size:0.75rem;">AMR:</div><div>${amr?fmtVal(amr.sys,amr.dia,amr.hr):'-'}</div></div>
-        <div><div style="color:var(--muted);font-size:0.75rem;">PML:</div><div>${pml?fmtVal(pml.sys,pml.dia,pml.hr):'-'}</div></div>
-        <div><div style="color:var(--muted);font-size:0.75rem;">PMR:</div><div>${pmr?fmtVal(pmr.sys,pmr.dia,pmr.hr):'-'}</div></div>
-      </div>
-    </div>`;
-  }).join('');
-
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   el.innerHTML = `
     <!-- Filters Header -->
     <div style="padding:16px 0;display:flex;gap:40px;justify-content:center;align-items:flex-start;margin-bottom:16px;">
@@ -2480,7 +2450,7 @@ function renderAnalysis() {
 
     <!-- Chart Container -->
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:20px;">
-      <svg id="chart-container" style="width:100%;height:400px;" viewBox="0 0 1200 400" preserveAspectRatio="none"></svg>
+      <svg id="chart-container" style="width:100%;height:400px;" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
 
     <!-- Legend -->
@@ -2498,15 +2468,14 @@ function renderAnalysis() {
 }
 
 function updateAnalysisChart() {
-  if (!_analysisChartData) return;
+  if (!window._chartData) return;
 
   const filterAM = document.getElementById('filter-am')?.checked ?? true;
   const filterPM = document.getElementById('filter-pm')?.checked ?? true;
   const filterLeft = document.getElementById('filter-left')?.checked ?? true;
   const filterRight = document.getElementById('filter-right')?.checked ?? true;
 
-  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
-
+  const { labels, am_left, am_right, pm_left, pm_right } = window._chartData;
   const svg = document.getElementById('chart-container');
   if (!svg) return;
   svg.innerHTML = '';
@@ -2567,49 +2536,52 @@ function updateAnalysisChart() {
   yTitle.textContent = 'BP Range (mmHg)';
   svg.appendChild(yTitle);
 
-  // Collect all bars
-  let barIdx = 0;
-  const allBars = [];
-  amlData.forEach((item, i) => {
-    if (item && filterAM && filterLeft) allBars.push({item, color: amlColors[i]});
-  });
-  amrData.forEach((item, i) => {
-    if (item && filterAM && filterRight) allBars.push({item, color: amrColors[i]});
-  });
-  pmlData.forEach((item, i) => {
-    if (item && filterPM && filterLeft) allBars.push({item, color: pmlColors[i]});
-  });
-  pmrData.forEach((item, i) => {
-    if (item && filterPM && filterRight) allBars.push({item, color: pmrColors[i]});
+  // Draw bars grouped by date with proper sequence: AM-L, AM-R, PM-L, PM-R
+  const barGroups = [];
+  labels.forEach((label, dateIdx) => {
+    const group = [];
+    if (filterAM && filterLeft && am_left[dateIdx]) group.push({sys: am_left[dateIdx].sys, dia: am_left[dateIdx].dia, color: '#87CEEB'});
+    if (filterAM && filterRight && am_right[dateIdx]) group.push({sys: am_right[dateIdx].sys, dia: am_right[dateIdx].dia, color: '#90EE90'});
+    if (filterPM && filterLeft && pm_left[dateIdx]) group.push({sys: pm_left[dateIdx].sys, dia: pm_left[dateIdx].dia, color: '#0066CC'});
+    if (filterPM && filterRight && pm_right[dateIdx]) group.push({sys: pm_right[dateIdx].sys, dia: pm_right[dateIdx].dia, color: '#228B22'});
+    if (group.length > 0) barGroups.push({dateIdx, group});
   });
 
-  const barW = (chartW - 3 * allBars.length) / allBars.length;
+  // Calculate bar width for grouped layout
+  const totalBarsCount = barGroups.reduce((sum, g) => sum + g.group.length, 0);
+  const barW = Math.min(35, (chartW / (labels.length || 1)) * 0.6);
+  const spacing = 3;
 
-  // Draw bars
-  allBars.forEach(({item, color}) => {
-    const {dia, sys} = item;
-    const h = ((sys - dia) / rangeY) * chartH;
-    const y = topMargin + ((maxY - sys) / rangeY) * chartH;
-    const x = leftMargin + barIdx * (barW + 3);
+  // Draw bars in groups
+  barGroups.forEach(({dateIdx, group}) => {
+    const groupCenterX = leftMargin + (dateIdx / (labels.length - 1 || 1)) * chartW;
+    const totalGroupWidth = group.length * barW + (group.length - 1) * spacing;
+    const startX = groupCenterX - totalGroupWidth / 2;
 
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', x);
-    rect.setAttribute('y', y);
-    rect.setAttribute('width', barW);
-    rect.setAttribute('height', h);
-    rect.setAttribute('fill', color);
-    rect.setAttribute('opacity', '0.85');
-    rect.setAttribute('stroke', color);
-    rect.setAttribute('stroke-width', '1');
-    svg.appendChild(rect);
-    barIdx++;
+    group.forEach((bar, barIdx) => {
+      const {sys, dia, color} = bar;
+      const h = ((sys - dia) / rangeY) * chartH;
+      const y = topMargin + ((maxY - sys) / rangeY) * chartH;
+      const x = startX + barIdx * (barW + spacing);
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', barW);
+      rect.setAttribute('height', h);
+      rect.setAttribute('fill', color);
+      rect.setAttribute('opacity', '0.85');
+      rect.setAttribute('stroke', color);
+      rect.setAttribute('stroke-width', '1');
+      svg.appendChild(rect);
+    });
   });
 
   // X-axis labels (dates)
-  const labelStep = Math.max(1, Math.floor(chartLabels.length / 6));
-  chartLabels.forEach((label, i) => {
+  const labelStep = Math.max(1, Math.floor(labels.length / 6));
+  labels.forEach((label, i) => {
     if (i % labelStep === 0) {
-      const x = leftMargin + (i / (chartLabels.length - 1 || 1)) * chartW;
+      const x = leftMargin + (i / (labels.length - 1 || 1)) * chartW;
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', x);
       text.setAttribute('y', svgH - 20);
