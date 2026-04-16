@@ -2481,7 +2481,7 @@ function renderAnalysis() {
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:20px;">
-      <div id="chart-container" style="width:100%;height:400px;position:relative;display:flex;align-items:flex-end;justify-content:space-around;gap:1px;padding:0;background:linear-gradient(to top,rgba(34,197,94,0.1) 0%,rgba(34,197,94,0.1) 40%,rgba(234,179,8,0.1) 40%,rgba(234,179,8,0.1) 50%,rgba(249,115,22,0.1) 50%,rgba(249,115,22,0.1) 60%,rgba(239,68,68,0.1) 60%,rgba(239,68,68,0.1) 100%);"></div>
+      <svg id="chart-container" style="width:100%;height:400px;" viewBox="0 0 1200 400" preserveAspectRatio="none"></svg>
     </div>
     <div class="card">
       <div class="legend-row" style="margin:0;">
@@ -2515,47 +2515,50 @@ function updateAnalysisChart() {
 
   const {amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
 
-  const container = document.getElementById('chart-container');
-  if (!container) return;
-  container.innerHTML = '';
+  const svg = document.getElementById('chart-container');
+  if (!svg) return;
+  svg.innerHTML = '';
 
   const minY = 60, maxY = 160, rangeY = maxY - minY;
+  const svgW = 1200, svgH = 400, margin = 20;
+  const chartW = svgW - 2 * margin, chartH = svgH - 2 * margin;
+  const barSpacing = 3;
+
+  let barIdx = 0;
+  const allBars = [];
 
   amlData.forEach((item, i) => {
-    if (item && filterAM && filterLeft) {
-      const {dia, sys} = item;
-      const h = ((sys - dia) / rangeY) * 100;
-      const bar = document.createElement('div');
-      bar.style.cssText = `flex:1;min-width:6px;height:${h}%;background:${amlColors[i]};border:1px solid ${amlColors[i]};border-radius:2px;opacity:0.9;`;
-      container.appendChild(bar);
-    }
+    if (item && filterAM && filterLeft) allBars.push({item, color: amlColors[i]});
   });
   amrData.forEach((item, i) => {
-    if (item && filterAM && filterRight) {
-      const {dia, sys} = item;
-      const h = ((sys - dia) / rangeY) * 100;
-      const bar = document.createElement('div');
-      bar.style.cssText = `flex:1;min-width:6px;height:${h}%;background:${amrColors[i]};border:1px solid ${amrColors[i]};border-radius:2px;opacity:0.9;`;
-      container.appendChild(bar);
-    }
+    if (item && filterAM && filterRight) allBars.push({item, color: amrColors[i]});
   });
   pmlData.forEach((item, i) => {
-    if (item && filterPM && filterLeft) {
-      const {dia, sys} = item;
-      const h = ((sys - dia) / rangeY) * 100;
-      const bar = document.createElement('div');
-      bar.style.cssText = `flex:1;min-width:6px;height:${h}%;background:${pmlColors[i]};border:1px solid ${pmlColors[i]};border-radius:2px;opacity:0.9;`;
-      container.appendChild(bar);
-    }
+    if (item && filterPM && filterLeft) allBars.push({item, color: pmlColors[i]});
   });
   pmrData.forEach((item, i) => {
-    if (item && filterPM && filterRight) {
-      const {dia, sys} = item;
-      const h = ((sys - dia) / rangeY) * 100;
-      const bar = document.createElement('div');
-      bar.style.cssText = `flex:1;min-width:6px;height:${h}%;background:${pmrColors[i]};border:1px solid ${pmrColors[i]};border-radius:2px;opacity:0.9;`;
-      container.appendChild(bar);
-    }
+    if (item && filterPM && filterRight) allBars.push({item, color: pmrColors[i]});
+  });
+
+  const barW = (chartW - barSpacing * allBars.length) / allBars.length;
+
+  allBars.forEach(({item, color}) => {
+    const {dia, sys} = item;
+    const h = ((sys - dia) / rangeY) * chartH;
+    const y = ((maxY - sys) / rangeY) * chartH + margin;
+    const x = margin + barIdx * (barW + barSpacing);
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', barW);
+    rect.setAttribute('height', h);
+    rect.setAttribute('fill', color);
+    rect.setAttribute('opacity', '0.85');
+    rect.setAttribute('stroke', color);
+    rect.setAttribute('stroke-width', '1');
+    svg.appendChild(rect);
+    barIdx++;
   });
 }
 
