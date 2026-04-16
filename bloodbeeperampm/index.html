@@ -2541,12 +2541,12 @@ function updateAnalysisChart() {
       plugins: [{
         id: 'rangeBarChart',
         afterDatasetsDraw(chart) {
-          if (!_rangeBarData) return;
+          if (!_analysisChartData) return;
 
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
           const xaxis = chart.scales.x;
-          const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _rangeBarData;
+          const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
 
           const filterAM = document.getElementById('filter-am')?.checked ?? true;
           const filterPM = document.getElementById('filter-pm')?.checked ?? true;
