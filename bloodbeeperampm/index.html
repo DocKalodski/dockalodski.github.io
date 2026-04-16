@@ -2481,7 +2481,7 @@ function renderAnalysis() {
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:20px;">
-      <div class="chart-canvas-wrap" id="chart-container" style="width:100%;height:500px;"></div>
+      <div id="chart-container" style="width:100%;height:500px;position:relative;display:flex;align-items:flex-end;gap:2px;padding:20px 0;"></div>
     </div>
     <div class="card">
       <div class="legend-row" style="margin:0;">
@@ -2513,104 +2513,45 @@ function updateAnalysisChart() {
   const filterLeft = document.getElementById('filter-left')?.checked ?? true;
   const filterRight = document.getElementById('filter-right')?.checked ?? true;
 
-  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
+  const {amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
 
-  const datasets = [];
-  if (filterAM && filterLeft) datasets.push({label: 'AML (AM Left)', data: amlData, backgroundColor: amlColors, borderColor: '#22c55e', borderWidth: 1});
-  if (filterAM && filterRight) datasets.push({label: 'AMR (AM Right)', data: amrData, backgroundColor: amrColors, borderColor: '#3b82f6', borderWidth: 1});
-  if (filterPM && filterLeft) datasets.push({label: 'PML (PM Left)', data: pmlData, backgroundColor: pmlColors, borderColor: '#f97316', borderWidth: 1});
-  if (filterPM && filterRight) datasets.push({label: 'PMR (PM Right)', data: pmrData, backgroundColor: pmrColors, borderColor: '#a855f7', borderWidth: 1});
+  const container = document.getElementById('chart-container');
+  if (!container) return;
+  container.innerHTML = '';
 
-  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+  const minY = 60, maxY = 160, rangeY = maxY - minY;
+  const barGroups = [];
 
-  const ctx = document.getElementById('chart-container');
-  if (ctx && datasets.length > 0) {
-    const canvas = document.createElement('canvas');
-    canvas.style.display = 'block';
-    const w = Math.max(ctx.offsetWidth || window.innerWidth - 40, 280);
-    const h = 500; // Fixed height for mobile/desktop
-    canvas.width = w * (window.devicePixelRatio || 1);
-    canvas.height = h * (window.devicePixelRatio || 1);
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.innerHTML = '';
-    ctx.appendChild(canvas);
-    chartInstance = new Chart(canvas, {
-      type: 'bar',
-      data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]},
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        scales: {y: {min: 60, max: 160, title: {display: true, text: 'BP Range (mmHg)'}}},
-        plugins: {legend: {display: false}, tooltip: {enabled: false}}
-      },
-      plugins: [{
-        id: 'rangeBarChart',
-        afterDatasetsDraw(chart) {
-          if (!_analysisChartData) return;
-          if (!chart.scales?.x || !chart.scales?.y) return;
+  amlData.forEach((item, i) => {
+    if (item && filterAM && filterLeft) barGroups.push({item, color: amlColors[i]});
+  });
+  amrData.forEach((item, i) => {
+    if (item && filterAM && filterRight) barGroups.push({item, color: amrColors[i]});
+  });
+  pmlData.forEach((item, i) => {
+    if (item && filterPM && filterLeft) barGroups.push({item, color: pmlColors[i]});
+  });
+  pmrData.forEach((item, i) => {
+    if (item && filterPM && filterRight) barGroups.push({item, color: pmrColors[i]});
+  });
 
-          const ctx = chart.ctx;
-          const yaxis = chart.scales.y;
-          const xaxis = chart.scales.x;
-          const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
+  barGroups.forEach(({item, color}) => {
+    const {dia, sys} = item;
+    const height = ((sys - dia) / rangeY) * 100;
+    const offset = ((dia - minY) / rangeY) * 100;
 
-          // Draw zone backgrounds
-          const zones = [
-            {min: 60, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
-            {min: 80, max: 120, color: 'rgba(34, 197, 94, 0.1)'},
-            {min: 120, max: 130, color: 'rgba(234, 179, 8, 0.1)'},
-            {min: 130, max: 140, color: 'rgba(249, 115, 22, 0.1)'},
-            {min: 140, max: 160, color: 'rgba(239, 68, 68, 0.1)'}
-          ];
-          zones.forEach(z => {
-            const yTop = yaxis.getPixelForValue(z.max);
-            const yBot = yaxis.getPixelForValue(z.min);
-            ctx.fillStyle = z.color;
-            ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
-          });
-
-          const barWidth = Math.max(xaxis.width / (chartLabels.length || 1) * 0.55, 3);
-
-          function drawRangeBars(data, colors, offset) {
-            data.forEach((item, idx) => {
-              if (!item) return;
-              const {dia, sys} = item;
-              if (!dia || !sys || isNaN(dia) || isNaN(sys)) return;
-              const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
-              const yDia = yaxis.getPixelForValue(dia);
-              const ySys = yaxis.getPixelForValue(sys);
-              if (isNaN(x) || isNaN(yDia) || isNaN(ySys)) return;
-              const w = barWidth / 4;
-              const h = Math.abs(yDia - ySys);
-              const y = Math.min(yDia, ySys);
-              if (h < 1) return;
-
-              ctx.save();
-              ctx.fillStyle = colors[idx];
-              ctx.beginPath();
-              ctx.rect(x, y, w, h);
-              ctx.fill();
-              ctx.strokeStyle = colors[idx];
-              ctx.lineWidth = 2;
-              ctx.stroke();
-              ctx.restore();
-            });
-          }
-
-          const filterAM = document.getElementById('filter-am')?.checked ?? true;
-          const filterPM = document.getElementById('filter-pm')?.checked ?? true;
-          const filterLeft = document.getElementById('filter-left')?.checked ?? true;
-          const filterRight = document.getElementById('filter-right')?.checked ?? true;
-
-          if (filterAM && filterLeft) drawRangeBars(amlData, amlColors, 0);
-          if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1);
-          if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2);
-          if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3);
-        }
-      }]
-    });
-  }
+    const bar = document.createElement('div');
+    bar.style.cssText = `
+      flex:1; min-width:8px;
+      height:${height}%;
+      margin-bottom:${offset}%;
+      background:${color};
+      border:1px solid ${color};
+      border-radius:2px;
+      opacity:0.85;
+    `;
+    container.appendChild(bar);
+  });
 }
 
 // ── REMINDERS ─────────────────────────────────────────────
