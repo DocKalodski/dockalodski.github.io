@@ -2368,6 +2368,7 @@ function renderChart() {
 // ── ANALYSIS ──────────────────────────────────────────────
 // Global storage for analysis chart data
 let _analysisChartData = null;
+let _rangeBarData = null;
 
 function renderAnalysis() {
   const readings = loadReadings();
@@ -2423,6 +2424,7 @@ function renderAnalysis() {
 
   // Store for filtering
   _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
+  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData};
 
   // Create table rows
   const rows = dates.map(date => {
@@ -2515,10 +2517,18 @@ function updateAnalysisChart() {
       plugins: [{
         id: 'rangeBarChart',
         afterDatasetsDraw(chart) {
+          if (!_rangeBarData) return;
+
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
           const xaxis = chart.scales.x;
+          const {chartLabels, amlData, amrData, pmlData, pmrData} = _rangeBarData;
           const barWidth = xaxis.width / chartLabels.length * 0.6;
+
+          const filterAM = document.getElementById('filter-am')?.checked ?? true;
+          const filterPM = document.getElementById('filter-pm')?.checked ?? true;
+          const filterLeft = document.getElementById('filter-left')?.checked ?? true;
+          const filterRight = document.getElementById('filter-right')?.checked ?? true;
 
           // Draw zone backgrounds
           const zones = [
@@ -2535,19 +2545,6 @@ function updateAnalysisChart() {
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
 
-          // Draw range bars for each dataset
-          const datasets = [
-            {data: amlData, color: '#22c55e'},
-            {data: amrData, color: '#3b82f6'},
-            {data: pmlData, color: '#f97316'},
-            {data: pmrData, color: '#a855f7'}
-          ];
-
-          if (filterAM && filterLeft) drawBars(amlData, '#22c55e', 0);
-          if (filterAM && filterRight) drawBars(amrData, '#3b82f6', 1);
-          if (filterPM && filterLeft) drawBars(pmlData, '#f97316', 2);
-          if (filterPM && filterRight) drawBars(pmrData, '#a855f7', 3);
-
           function drawBars(data, color, offset) {
             data.forEach((range, idx) => {
               if (!range) return;
@@ -2562,6 +2559,11 @@ function updateAnalysisChart() {
               ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
             });
           }
+
+          if (filterAM && filterLeft) drawBars(amlData, '#22c55e', 0);
+          if (filterAM && filterRight) drawBars(amrData, '#3b82f6', 1);
+          if (filterPM && filterLeft) drawBars(pmlData, '#f97316', 2);
+          if (filterPM && filterRight) drawBars(pmrData, '#a855f7', 3);
         }
       }]
     });
