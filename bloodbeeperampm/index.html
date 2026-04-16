@@ -2513,20 +2513,58 @@ function updateAnalysisChart() {
   const filterLeft = document.getElementById('filter-left')?.checked ?? true;
   const filterRight = document.getElementById('filter-right')?.checked ?? true;
 
-  const {amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
+  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
 
   const svg = document.getElementById('chart-container');
   if (!svg) return;
   svg.innerHTML = '';
 
   const minY = 60, maxY = 160, rangeY = maxY - minY;
-  const svgW = 1200, svgH = 400, margin = 20;
-  const chartW = svgW - 2 * margin, chartH = svgH - 2 * margin;
-  const barSpacing = 3;
+  const svgW = 1200, svgH = 400;
+  const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 60;
+  const chartW = svgW - leftMargin - rightMargin, chartH = svgH - topMargin - bottomMargin;
 
+  // Zone backgrounds
+  const zones = [{min:60,max:80,color:'rgba(100,100,100,0.05)'},{min:80,max:120,color:'rgba(34,197,94,0.1)'},{min:120,max:130,color:'rgba(234,179,8,0.1)'},{min:130,max:140,color:'rgba(249,115,22,0.1)'},{min:140,max:160,color:'rgba(239,68,68,0.1)'}];
+  zones.forEach(z=>{
+    const y1 = topMargin + ((maxY - z.max) / rangeY) * chartH;
+    const y2 = topMargin + ((maxY - z.min) / rangeY) * chartH;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', leftMargin);
+    rect.setAttribute('y', y1);
+    rect.setAttribute('width', chartW);
+    rect.setAttribute('height', y2 - y1);
+    rect.setAttribute('fill', z.color);
+    svg.appendChild(rect);
+  });
+
+  // Y-axis labels
+  for(let v = 60; v <= 160; v += 10) {
+    const y = topMargin + ((maxY - v) / rangeY) * chartH;
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', leftMargin - 10);
+    text.setAttribute('y', y + 4);
+    text.setAttribute('text-anchor', 'end');
+    text.setAttribute('font-size', '11');
+    text.setAttribute('fill', '#666');
+    text.textContent = v;
+    svg.appendChild(text);
+  }
+
+  // Y-axis title
+  const yTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  yTitle.setAttribute('x', 10);
+  yTitle.setAttribute('y', svgH / 2);
+  yTitle.setAttribute('font-size', '11');
+  yTitle.setAttribute('fill', '#666');
+  yTitle.setAttribute('text-anchor', 'middle');
+  yTitle.setAttribute('transform', `rotate(-90 10 ${svgH/2})`);
+  yTitle.textContent = 'BP Range (mmHg)';
+  svg.appendChild(yTitle);
+
+  // Collect all bars
   let barIdx = 0;
   const allBars = [];
-
   amlData.forEach((item, i) => {
     if (item && filterAM && filterLeft) allBars.push({item, color: amlColors[i]});
   });
@@ -2540,13 +2578,14 @@ function updateAnalysisChart() {
     if (item && filterPM && filterRight) allBars.push({item, color: pmrColors[i]});
   });
 
-  const barW = (chartW - barSpacing * allBars.length) / allBars.length;
+  const barW = (chartW - 3 * allBars.length) / allBars.length;
 
+  // Draw bars
   allBars.forEach(({item, color}) => {
     const {dia, sys} = item;
     const h = ((sys - dia) / rangeY) * chartH;
-    const y = ((maxY - sys) / rangeY) * chartH + margin;
-    const x = margin + barIdx * (barW + barSpacing);
+    const y = topMargin + ((maxY - sys) / rangeY) * chartH;
+    const x = leftMargin + barIdx * (barW + 3);
 
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     rect.setAttribute('x', x);
@@ -2559,6 +2598,22 @@ function updateAnalysisChart() {
     rect.setAttribute('stroke-width', '1');
     svg.appendChild(rect);
     barIdx++;
+  });
+
+  // X-axis labels (dates)
+  const labelStep = Math.max(1, Math.floor(chartLabels.length / 6));
+  chartLabels.forEach((label, i) => {
+    if (i % labelStep === 0) {
+      const x = leftMargin + (i / (chartLabels.length - 1 || 1)) * chartW;
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x);
+      text.setAttribute('y', svgH - 20);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-size', '10');
+      text.setAttribute('fill', '#666');
+      text.textContent = label;
+      svg.appendChild(text);
+    }
   });
 }
 
