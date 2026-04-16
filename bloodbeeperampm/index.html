@@ -905,8 +905,9 @@ function classify(sys, dia) {
 }
 function badgeHTML(sys, dia) { const c = classify(sys,dia); return `<span class="badge ${c.cls}">${c.label}</span>`; }
 // ── AM/PM CLASSIFICATION ──────────────────────────────────
-function isAM(r) { const h = new Date(r.timestamp).getHours(); return h >= 5 && h < 12; }
-function isPM(r) { const h = new Date(r.timestamp).getHours(); return h >= 18 && h < 24; }
+// AM: 6:00 AM to 5:59 PM | PM: 6:00 PM to 5:59 AM
+function isAM(r) { const h = new Date(r.timestamp).getHours(); return h >= 6 && h < 18; }
+function isPM(r) { const h = new Date(r.timestamp).getHours(); return h >= 18 || h < 6; }
 function getAMPM(r) { return isAM(r) ? '🌅 AM' : isPM(r) ? '🌙 PM' : '⏰ Other'; }
 function pulsePressure(sys, dia) {
   const pp = sys - dia;
