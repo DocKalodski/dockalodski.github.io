@@ -2576,13 +2576,15 @@ function updateAnalysisChart() {
             data.forEach((item, idx) => {
               if (!item) return;
               const {dia, sys} = item;
+              if (!dia || !sys) return;
               const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
+              if (isNaN(x) || isNaN(yDia) || isNaN(ySys)) return;
               ctx.fillStyle = colors[idx];
               ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
               ctx.strokeStyle = colors[idx];
-              ctx.lineWidth = 1;
+              ctx.lineWidth = 1.5;
               ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
             });
           }
