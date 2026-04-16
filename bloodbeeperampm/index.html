@@ -2448,34 +2448,34 @@ function renderAnalysis() {
   el.innerHTML = `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;">
       <div class="card-title">🔄 Left vs Right Arm Comparison</div>
-      <!-- Filters - Aligned with Chart Structure -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px;padding:12px 0;">
-        <div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-weight:600;font-size:0.95rem;margin:0;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"><span>AM</span></label>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <span style="display:inline-block;width:18px;height:18px;background:#87CEEB;border:1.5px solid #333;border-radius:2px;"></span>
-            <span style="display:inline-block;width:18px;height:18px;background:#90EE90;border:1.5px solid #333;border-radius:2px;"></span>
+      <!-- Filters - Clean and Simple -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:20px;margin-bottom:24px;padding:16px 0;font-size:0.95rem;">
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:700;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"><span>AM</span></label>
+          <div style="display:flex;gap:8px;">
+            <span style="width:16px;height:16px;background:#87CEEB;border:1px solid #333;"></span>
+            <span style="width:16px;height:16px;background:#90EE90;border:1px solid #333;"></span>
           </div>
         </div>
-        <div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-weight:600;font-size:0.95rem;margin:0;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"><span>PM</span></label>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <span style="display:inline-block;width:18px;height:18px;background:#0066CC;border:1.5px solid #333;border-radius:2px;"></span>
-            <span style="display:inline-block;width:18px;height:18px;background:#228B22;border:1.5px solid #333;border-radius:2px;"></span>
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:700;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"><span>PM</span></label>
+          <div style="display:flex;gap:8px;">
+            <span style="width:16px;height:16px;background:#0066CC;border:1px solid #333;"></span>
+            <span style="width:16px;height:16px;background:#228B22;border:1px solid #333;"></span>
           </div>
         </div>
-        <div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-weight:600;font-size:0.95rem;margin:0;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"><span>Left</span></label>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <span style="display:inline-block;width:18px;height:18px;background:#87CEEB;border:1.5px solid #333;border-radius:2px;"></span>
-            <span style="display:inline-block;width:18px;height:18px;background:#0066CC;border:1.5px solid #333;border-radius:2px;"></span>
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:700;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"><span>Left</span></label>
+          <div style="display:flex;gap:8px;">
+            <span style="width:16px;height:16px;background:#87CEEB;border:1px solid #333;"></span>
+            <span style="width:16px;height:16px;background:#0066CC;border:1px solid #333;"></span>
           </div>
         </div>
-        <div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:10px;">
-          <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-weight:600;font-size:0.95rem;margin:0;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"><span>Right</span></label>
-          <div style="display:flex;gap:8px;justify-content:center;">
-            <span style="display:inline-block;width:18px;height:18px;background:#90EE90;border:1.5px solid #333;border-radius:2px;"></span>
-            <span style="display:inline-block;width:18px;height:18px;background:#228B22;border:1.5px solid #333;border-radius:2px;"></span>
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <label style="display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-weight:700;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"><span>Right</span></label>
+          <div style="display:flex;gap:8px;">
+            <span style="width:16px;height:16px;background:#90EE90;border:1px solid #333;"></span>
+            <span style="width:16px;height:16px;background:#228B22;border:1px solid #333;"></span>
           </div>
         </div>
       </div>
