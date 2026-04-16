@@ -2543,70 +2543,65 @@ function updateAnalysisChart() {
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
 
-          const barWidth = xaxis.width / chartLabels.length * 0.5;
-          const barUnitWidth = barWidth / 5; // Smaller unit for tighter spacing
+          const barWidth = xaxis.width / chartLabels.length * 0.6;
+          const barUnitWidth = barWidth / 6;
 
-          function drawRangeBars(data, colors, offset, label) {
+          function drawRangeBars(data, colors, offset) {
             data.forEach((range, idx) => {
               if (!range) return;
               const [dia, sys] = range;
-              // offset 0,1 = AM group (L,R)  |  offset 2,3 = PM group (L,R)
-              const groupOffset = offset < 2 ? 0 : 1; // 0 for AM, 1 for PM
-              const withinGroupOffset = offset % 2; // 0 for Left, 1 for Right
-              const x = xaxis.getPixelForValue(idx) + (groupOffset * 2.5 + withinGroupOffset) * barUnitWidth;
+              // AM group: offset 0,1 (L,R) | PM group: offset 2,3 (L,R)
+              const groupNum = offset < 2 ? 0 : 1;
+              const posInGroup = offset % 2;
+              const x = xaxis.getPixelForValue(idx) + (groupNum * 3.2 + posInGroup * 1.5) * barUnitWidth;
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
-              ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, barUnitWidth * 0.9, yDia - ySys);
-              ctx.strokeStyle = colors[idx];
-              ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, barUnitWidth * 0.9, yDia - ySys);
+              const bw = barUnitWidth * 1.3;
 
-              // Label inside bar
-              const barMidX = x + barUnitWidth * 0.45;
-              const barMidY = (ySys + yDia) / 2;
-              ctx.fillStyle = '#fff';
-              ctx.font = 'bold 7px system-ui';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(label, barMidX, barMidY);
+              // Fill bar with color
+              ctx.fillStyle = colors[idx];
+              ctx.fillRect(x, ySys, bw, yDia - ySys);
+              // Stroke
+              ctx.strokeStyle = '#333';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, ySys, bw, yDia - ySys);
             });
           }
 
-          // Draw bars with group spacing
-          if (filterAM && filterLeft) drawRangeBars(amlData, amlColors, 0, 'AM-L');
-          if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1, 'AM-R');
-          if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2, 'PM-L');
-          if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3, 'PM-R');
+          // Draw bars
+          if (filterAM && filterLeft) drawRangeBars(amlData, amlColors, 0);
+          if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1);
+          if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2);
+          if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3);
 
-          // Draw group labels below x-axis
-          ctx.font = 'bold 9px system-ui';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = 'var(--text)';
-
-          // L/R labels (first level)
+          // L/R labels ABOVE bars (between AM and PM)
           chartLabels.forEach((_, idx) => {
             const x = xaxis.getPixelForValue(idx);
-            const y1 = xaxis.bottom + 5;
-            ctx.fillStyle = 'var(--muted)';
-            ctx.font = 'bold 8px system-ui';
-            // Left group
-            ctx.fillText('L', x - barWidth * 0.15, y1);
-            // Right group
-            ctx.fillText('R', x + barWidth * 0.15, y1);
+            const y = chartArea.top - 20;
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 11px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            // AM group L/R
+            if (filterAM && filterLeft) ctx.fillText('L', x - barWidth * 0.18, y);
+            if (filterAM && filterRight) ctx.fillText('R', x + barWidth * 0.04, y);
+            // PM group L/R
+            if (filterPM && filterLeft) ctx.fillText('L', x + barWidth * 0.22, y);
+            if (filterPM && filterRight) ctx.fillText('R', x + barWidth * 0.44, y);
           });
 
-          // AM/PM labels (second level)
+          // AM/PM labels BELOW x-axis
           chartLabels.forEach((_, idx) => {
             const x = xaxis.getPixelForValue(idx);
-            const y2 = xaxis.bottom + 18;
-            ctx.fillStyle = 'var(--text)';
-            ctx.font = 'bold 9px system-ui';
-            // AM group
-            if (filterAM && filterLeft) ctx.fillText('AM', x - barWidth * 0.2, y2);
-            // PM group
-            if (filterPM && filterLeft) ctx.fillText('PM', x + barWidth * 0.2, y2);
+            const y = xaxis.bottom + 20;
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 11px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            if (filterAM && filterLeft) ctx.fillText('AM', x - barWidth * 0.2, y);
+            if (filterPM && filterLeft) ctx.fillText('PM', x + barWidth * 0.24, y);
           });
         }
       }]
