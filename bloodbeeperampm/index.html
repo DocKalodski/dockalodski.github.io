@@ -851,6 +851,9 @@ function activateLicense() {
   const raw  = document.getElementById('lock-input').value;
   const inEl = document.getElementById('lock-input');
   const errEl = document.getElementById('lock-err');
+
+  alert('DEBUG: Received input: "' + raw + '"');
+
   const licenseData = _matchKey(raw);
 
   console.log('activateLicense called with raw:', raw);
@@ -858,11 +861,14 @@ function activateLicense() {
   console.log('LICENSES object:', LICENSES);
 
   if (!licenseData) {
+    alert('DEBUG: _matchKey failed. Key not found. LICENSES has: ' + Object.keys(LICENSES).join(', '));
     inEl.classList.add('error');
     errEl.innerHTML = '⛔ Invalid License Key<br><span style="font-size:0.7rem">Use: 007, acci, sheila, or beta(yourname)</span>';
     console.error('License validation failed for:', raw);
     return;
   }
+
+  alert('DEBUG: _matchKey succeeded! Got name: ' + licenseData.name);
 
   const licenseKey = raw.trim().toUpperCase();
   const isBeta = licenseData.role === 'beta';
