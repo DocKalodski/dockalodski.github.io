@@ -2368,7 +2368,6 @@ function renderChart() {
 // Global storage for analysis chart data
 let _analysisChartData = null;
 let _rangeBarData = null;
-let _analysisScrollIndex = 0;
 
 function renderAnalysis() {
   const readings = loadReadings();
@@ -2379,6 +2378,7 @@ function renderAnalysis() {
     return;
   }
 
+  // Helper functions to check AM/PM based on hour
   const isAMHour = (hour) => hour >= 6 && hour < 18;
 
   // Group readings by date and arm
@@ -2393,12 +2393,13 @@ function renderAnalysis() {
     byDate[date][key] = r;
   });
 
-  // Prepare data — store sys/dia ranges and readings
+  // Prepare chart data — store sys/dia ranges
   const dates = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
   const chartLabels = [];
   const amlData = [], amrData = [], pmlData = [], pmrData = [];
   const amlColors = [], amrColors = [], pmlColors = [], pmrColors = [];
-  const amlReadings = [], amrReadings = [], pmlReadings = [], pmrReadings = [];
+
+  const fmtVal = (sys, dia, hr) => `${sys}/${dia} ${hr||'-'} bpm`;
 
   dates.forEach(date => {
     const dayReadings = byDate[date];
@@ -2408,15 +2409,11 @@ function renderAnalysis() {
     const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
 
     chartLabels.push(date);
+    // Store [dia, sys] range pairs
     amlData.push(aml ? [aml.dia, aml.sys] : null);
     amrData.push(amr ? [amr.dia, amr.sys] : null);
     pmlData.push(pml ? [pml.dia, pml.sys] : null);
     pmrData.push(pmr ? [pmr.dia, pmr.sys] : null);
-
-    amlReadings.push(aml || null);
-    amrReadings.push(amr || null);
-    pmlReadings.push(pml || null);
-    pmrReadings.push(pmr || null);
 
     amlColors.push(aml ? DOT_C[classify(aml.sys, aml.dia).key][0] : '#ccc');
     amrColors.push(amr ? DOT_C[classify(amr.sys, amr.dia).key][0] : '#ccc');
@@ -2424,16 +2421,30 @@ function renderAnalysis() {
     pmrColors.push(pmr ? DOT_C[classify(pmr.sys, pmr.dia).key][0] : '#ccc');
   });
 
-  // Store for chart and data table
-  _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors, amlReadings, amrReadings, pmlReadings, pmrReadings};
-  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors, amlReadings, amrReadings, pmlReadings, pmrReadings};
+  // Store for filtering and range bars
+  _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
+  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
 
-  // Reset scroll if out of bounds
-  const maxScroll = Math.max(0, dates.length - 7);
-  if (_analysisScrollIndex > maxScroll) _analysisScrollIndex = maxScroll;
+  // Create table rows
+  const rows = dates.map(date => {
+    const dayReadings = byDate[date];
+    const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
+    const pml = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
+
+    return `<div style="display:grid;grid-template-columns:120px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="font-weight:700;color:var(--text);">${date}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-size:0.9rem;">
+        <div><div style="color:var(--muted);font-size:0.75rem;">AML:</div><div>${aml?fmtVal(aml.sys,aml.dia,aml.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">AMR:</div><div>${amr?fmtVal(amr.sys,amr.dia,amr.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">PML:</div><div>${pml?fmtVal(pml.sys,pml.dia,pml.hr):'-'}</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem;">PMR:</div><div>${pmr?fmtVal(pmr.sys,pmr.dia,pmr.hr):'-'}</div></div>
+      </div>
+    </div>`;
+  }).join('');
 
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
-
   el.innerHTML = `
     <div class="card">
       <div class="card-title">🔄 Left vs Right Arm Comparison</div>
@@ -2451,34 +2462,18 @@ function renderAnalysis() {
         <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90 (Bad)</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#7f1d1d;"></div> Crisis ≥180/≥120</div>
       </div>
-
-      <!-- Data Table -->
-      <div style="margin-top:24px;overflow-x:auto;">
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
-          <button onclick="scrollAnalysisLeft()" style="padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:1rem;flex-shrink:0;">←</button>
-          <div id="data-table-wrapper" style="flex:1;overflow-x:auto;"></div>
-          <button onclick="scrollAnalysisRight()" style="padding:6px 12px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:1rem;flex-shrink:0;">→</button>
-        </div>
-      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Detailed Readings</div>
+      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:14px;">All readings grouped by date</p>
+      <div>${rows}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Comparative Analysis</div>
+      <div id="analysis-stats"></div>
     </div>`;
 
   updateAnalysisChart();
-}
-
-function scrollAnalysisLeft() {
-  if (_analysisScrollIndex > 0) {
-    _analysisScrollIndex--;
-    updateAnalysisChart();
-  }
-}
-
-function scrollAnalysisRight() {
-  if (!_analysisChartData) return;
-  const maxScroll = Math.max(0, _analysisChartData.chartLabels.length - 7);
-  if (_analysisScrollIndex < maxScroll) {
-    _analysisScrollIndex++;
-    updateAnalysisChart();
-  }
 }
 
 function updateAnalysisChart() {
@@ -2489,7 +2484,7 @@ function updateAnalysisChart() {
   const filterLeft = document.getElementById('filter-left')?.checked ?? true;
   const filterRight = document.getElementById('filter-right')?.checked ?? true;
 
-  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors, amlReadings, amrReadings, pmlReadings, pmrReadings} = _analysisChartData;
+  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
 
   const datasets = [];
   if (filterAM && filterLeft) datasets.push({label: 'AML (AM Left)', data: amlData, backgroundColor: amlColors, borderColor: '#22c55e', borderWidth: 1});
@@ -2506,7 +2501,7 @@ function updateAnalysisChart() {
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
       type: 'bar',
-      data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]},
+      data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]}, // dummy dataset
       options: {
         responsive: true,
         maintainAspectRatio: true,
@@ -2543,34 +2538,20 @@ function updateAnalysisChart() {
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
 
-          const spacing = xaxis.width / chartLabels.length;
-          const groupWidth = spacing * 0.4;
-          const barW = groupWidth / 2.2;
-          const gap = spacing * 0.08;
-
-          // Store bar positions for label alignment
-          const barPositions = {};
+          const barWidth = xaxis.width / chartLabels.length * 0.6;
 
           function drawRangeBars(data, colors, offset) {
             data.forEach((range, idx) => {
               if (!range) return;
               const [dia, sys] = range;
-              const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
-              const groupNum = offset < 2 ? 0 : 1; // 0=AM, 1=PM
-              const posInGroup = offset % 2; // 0=Left, 1=Right
-
-              const x = xBase + (groupNum * (groupWidth + gap)) + (posInGroup * barW);
+              const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
-
-              // Outline only (no fill)
-              ctx.strokeStyle = '#333';
-              ctx.lineWidth = 1.5;
-              ctx.strokeRect(x, ySys, barW, yDia - ySys);
-
-              // Store position for labels
-              const key = `${idx}_${offset}`;
-              barPositions[key] = {x, groupNum, posInGroup, xBase};
+              ctx.fillStyle = colors[idx];
+              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
+              ctx.strokeStyle = colors[idx];
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
             });
           }
 
@@ -2578,107 +2559,9 @@ function updateAnalysisChart() {
           if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1);
           if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2);
           if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3);
-
-          // L/R labels ABOVE bars
-          chartLabels.forEach((_, idx) => {
-            const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
-            const y = chartArea.top - 12;
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 11px system-ui';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-
-            // AM L
-            if (filterAM && filterLeft) {
-              const x = xBase + barW / 2;
-              ctx.fillText('L', x, y);
-            }
-            // AM R
-            if (filterAM && filterRight) {
-              const x = xBase + barW + barW / 2;
-              ctx.fillText('R', x, y);
-            }
-            // PM L
-            if (filterPM && filterLeft) {
-              const x = xBase + groupWidth + gap + barW / 2;
-              ctx.fillText('L', x, y);
-            }
-            // PM R
-            if (filterPM && filterRight) {
-              const x = xBase + groupWidth + gap + barW + barW / 2;
-              ctx.fillText('R', x, y);
-            }
-          });
-
-          // AM/PM labels BELOW x-axis
-          chartLabels.forEach((_, idx) => {
-            const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
-            const y = xaxis.bottom + 16;
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 11px system-ui';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-
-            if (filterAM && (filterLeft || filterRight)) {
-              ctx.fillText('AM', xBase + groupWidth / 2, y);
-            }
-            if (filterPM && (filterLeft || filterRight)) {
-              ctx.fillText('PM', xBase + groupWidth + gap + groupWidth / 2, y);
-            }
-          });
         }
       }]
     });
-  }
-
-  // Build data table
-  const visibleLabels = chartLabels.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visibleAMLReadings = amlReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visibleAMRReadings = amrReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMLReadings = pmlReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMRReadings = pmrReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-
-  const visibleAMLColors = amlColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visibleAMRColors = amrColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMLColors = pmlColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMRColors = pmrColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-
-  const tableEl = document.getElementById('data-table-wrapper');
-  if (tableEl) {
-    let tableHTML = `<table style="border-collapse:collapse;font-size:0.9rem;">
-      <thead>
-        <tr>
-          <th style="padding:8px;text-align:left;border:1px solid var(--border);background:var(--bg);">Data</th>`;
-
-    visibleLabels.forEach(date => {
-      tableHTML += `<th style="padding:8px;text-align:center;border:1px solid var(--border);background:var(--bg);min-width:120px;font-weight:700;">${date}</th>`;
-    });
-
-    tableHTML += `</tr></thead><tbody>`;
-
-    // Build rows based on filters
-    const rows = [];
-    if (filterAM && filterLeft) rows.push({label: 'AM-L', readings: visibleAMLReadings, colors: visibleAMLColors});
-    if (filterAM && filterRight) rows.push({label: 'AM-R', readings: visibleAMRReadings, colors: visibleAMRColors});
-    if (filterPM && filterLeft) rows.push({label: 'PM-L', readings: visiblePMLReadings, colors: visiblePMLColors});
-    if (filterPM && filterRight) rows.push({label: 'PM-R', readings: visiblePMRReadings, colors: visiblePMRColors});
-
-    rows.forEach(row => {
-      tableHTML += `<tr>
-        <td style="padding:8px;text-align:left;border:1px solid var(--border);font-weight:700;background:var(--bg);">${row.label}</td>`;
-
-      row.readings.forEach((reading, idx) => {
-        const cellContent = reading ? `${reading.sys}/${reading.dia}-${reading.hr || '-'}` : '—';
-        const bgColor = reading ? row.colors[idx] : 'transparent';
-        const textColor = reading ? '#fff' : 'var(--muted)';
-        tableHTML += `<td style="padding:8px;text-align:center;border:1px solid var(--border);background:${bgColor};color:${textColor};">${cellContent}</td>`;
-      });
-
-      tableHTML += `</tr>`;
-    });
-
-    tableHTML += `</tbody></table>`;
-    tableEl.innerHTML = tableHTML;
   }
 }
 
