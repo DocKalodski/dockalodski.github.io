@@ -766,22 +766,26 @@ async function bbampmPushToCloud(dataKey,value){
 
 async function bbampmSyncFromCloud(){
   const uk=bbampmUserKey(); if(!uk) return;
+  const userLicenseKey=localStorage.getItem('bbampmampm_license_key')||'';
   try{
     const {data,error}=await sb.from('bbampmampm_data').select('*').eq('user_key',uk);
     if(error||!data||!data.length) return;
     const cloudR=data.find(r=>r.data_key==='readings')?.value||[];
     const cloudS=data.find(r=>r.data_key==='settings')?.value||null;
-    const local=JSON.parse(localStorage.getItem('bbampmampm_readings')||'[]');
+    const localCacheKey=`bbampmampm_readings_${userLicenseKey}`;
+    const local=JSON.parse(localStorage.getItem(localCacheKey)||'[]');
     const localIds=new Set(local.map(r=>r.id));
     const incoming=cloudR.filter(r=>!localIds.has(r.id));
     if(incoming.length){
       const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
       _readingsCache=merged;
-      localStorage.setItem('bbampmampm_readings',JSON.stringify(merged));
+      localStorage.setItem(localCacheKey,JSON.stringify(merged));
     }
-    if(cloudS&&!localStorage.getItem('bbampmampm_settings2')){
-      _settingsCache=cloudS;
-      localStorage.setItem('bbampmampm_settings2',JSON.stringify(cloudS));
+    if(cloudS){
+      const settingsCacheKey=`bbampmampm_settings_${userLicenseKey}`;
+      if(!localStorage.getItem(settingsCacheKey)){
+        _settingsCache=cloudS;
+        localStorage.setItem(settingsCacheKey,JSON.stringify(cloudS));
     }
     showRRSyncBadge(); renderAll();
   }catch(e){ console.warn('RR sync error:',e); }
@@ -819,66 +823,114 @@ function bbampmSubscribeRealtime(){
 // ║  Key can be any string (no spaces). 007 = developer.   ║
 // ╚══════════════════════════════════════════════════════════╝
 const LICENSES = {
-  '007':    'Doc Kalodski',  // no expiry — unlimited access
-  'ACCI':   'ACCI',          // no expiry — unlimited access
-  'SHEILA': 'Sheila',        // no expiry — unlimited access
-  // Format: BBAMPM-YYYY-MMDD-NAME-NNNN  (MM=month, DD=day added, NAME=short name, NNNN=sequence)
-  // Beta testers — expires Apr 30, 2026
-  'BBAMPM-BETA-APR2026': 'Beta Tester',
+  '007':    { name: 'Doc Kalodski', role: 'unlimited' },
+  'ACCI':   { name: 'ACCI',         role: 'unlimited' },
+  'SHEILA': { name: 'Sheila',       role: 'unlimited' },
 };
 
-// Beta keys expire Apr 30 2026. Add more expiry rules here as needed.
-const BETA_EXPIRY = { 'BBAMPM-BETA-APR2026': new Date('2026-05-01') };
 function _matchKey(input) {
-  const clean = input.trim().toUpperCase().replace(/-/g, '');
-  for (const [k, name] of Object.entries(LICENSES)) {
-    if (k.replace(/-/g, '').toUpperCase() === clean) {
-      const exp = BETA_EXPIRY[k];
-      if (exp && new Date() >= exp) return '__EXPIRED__';
-      return name;
-    }
+  const raw = input.trim();
+  const upper = raw.toUpperCase();
+
+  // Check standard unlimited licenses
+  if (LICENSES[upper]) {
+    return LICENSES[upper];
   }
+
+  // Check beta(name) format
+  const betaMatch = raw.match(/^beta\((.+)\)$/i);
+  if (betaMatch) {
+    const name = betaMatch[1].trim();
+    return { name: `Beta: ${name}`, role: 'beta', betaName: name };
+  }
+
   return null;
 }
 
 function activateLicense() {
   const raw  = document.getElementById('lock-input').value;
   const inEl = document.getElementById('lock-input');
-  const ebbampmEl = document.getElementById('lock-err');
-  const name  = _matchKey(raw);
-  if (name === '__EXPIRED__') {
+  const errEl = document.getElementById('lock-err');
+  const licenseData = _matchKey(raw);
+
+  if (!licenseData) {
     inEl.classList.add('error');
-    ebbampmEl.innerHTML = '⏳ Beta period ended Apr 30, 2026.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
+    errEl.innerHTML = '⛔ Invalid License Key<br><span style="font-size:0.7rem">Use: 007, acci, sheila, or beta(yourname)</span>';
     return;
   }
-  if (!name) {
-    inEl.classList.add('error');
-    ebbampmEl.innerHTML = '⛔ Illegal Access — Invalid License Key.<br><span style="font-size:0.7rem">Contact Doc Kalodski to get your personal key.</span>';
-    return;
+
+  const licenseKey = raw.trim().toUpperCase();
+  const isBeta = licenseData.role === 'beta';
+
+  // Check killpill for beta users
+  if (isBeta) {
+    const createdStr = localStorage.getItem(`bbampmampm_beta_created_${licenseKey}`);
+    if (createdStr) {
+      const created = new Date(createdStr);
+      const expiresAt = new Date(created.getTime() + 30 * 24 * 60 * 60 * 1000); // +30 days
+      if (new Date() >= expiresAt) {
+        inEl.classList.add('error');
+        errEl.innerHTML = '⏳ <strong>Beta Access Expired</strong><br><span style="font-size:0.7rem">Your 30-day trial ended on ' + expiresAt.toLocaleDateString('en-PH') + '.<br>Contact Doc Kalodski to upgrade.</span>';
+        return;
+      }
+    } else {
+      // First beta login — record creation date
+      localStorage.setItem(`bbampmampm_beta_created_${licenseKey}`, new Date().toISOString());
+    }
   }
-  localStorage.setItem('bbampmampm_license_key',  raw.trim().toUpperCase());
-  localStorage.setItem('bbampmampm_license_name', name);
+
+  localStorage.setItem('bbampmampm_license_key', licenseKey);
+  localStorage.setItem('bbampmampm_license_name', licenseData.name);
+  localStorage.setItem('bbampmampm_license_role', licenseData.role);
+
   if (!localStorage.getItem('bbampmampm_activated')) {
     localStorage.setItem('bbampmampm_activated', new Date().toISOString());
   }
-  inEl.classList.remove('error');  ebbampmEl.innerHTML = '';
+
+  inEl.classList.remove('error');
+  errEl.innerHTML = '';
   location.reload();
 }
 
 function checkLicense() {
-  const key  = localStorage.getItem('bbampmampm_license_key');
-  const name = key ? _matchKey(key) : null;
-  if (name) {
-    document.getElementById('lock-overlay').classList.add('hidden');
-    _applyLicensedTo(name);
-    const bb=document.getElementById('beta-banner');
-    if(bb) bb.style.display = (key==='BBAMPM-BETA-APR2026') ? '' : 'none';
-    return true;
+  const key = localStorage.getItem('bbampmampm_license_key');
+  const licenseData = key ? _matchKey(key) : null;
+
+  if (!licenseData) {
+    localStorage.removeItem('bbampmampm_license_key');
+    localStorage.removeItem('bbampmampm_license_name');
+    localStorage.removeItem('bbampmampm_license_role');
+    document.getElementById('lock-overlay').classList.remove('hidden');
+    return false;
   }
-  localStorage.removeItem('bbampmampm_license_key');
-  localStorage.removeItem('bbampmampm_license_name');
-  document.getElementById('lock-overlay').classList.remove('hidden');
-  return false;
+
+  // Check beta killpill on page load
+  if (licenseData.role === 'beta') {
+    const createdStr = localStorage.getItem(`bbampmampm_beta_created_${key}`);
+    if (createdStr) {
+      const created = new Date(createdStr);
+      const expiresAt = new Date(created.getTime() + 30 * 24 * 60 * 60 * 1000);
+      if (new Date() >= expiresAt) {
+        // Beta access expired
+        localStorage.removeItem('bbampmampm_license_key');
+        localStorage.removeItem('bbampmampm_license_name');
+        localStorage.removeItem('bbampmampm_license_role');
+        document.getElementById('lock-overlay').innerHTML = `
+          <div class="lock-box" style="text-align:center;">
+            <div class="lock-icon">⏳</div>
+            <h2>Access Expired</h2>
+            <div class="lock-sub">Your 30-day beta trial ended on ${expiresAt.toLocaleDateString('en-PH')}.<br><br>Contact Doc Kalodski to upgrade to unlimited access.</div>
+            <button class="lock-btn" onclick="location.reload()">Try Again</button>
+          </div>`;
+        document.getElementById('lock-overlay').classList.remove('hidden');
+        return false;
+      }
+    }
+  }
+
+  document.getElementById('lock-overlay').classList.add('hidden');
+  _applyLicensedTo(licenseData.name);
+  return true;
 }
 
 function _applyLicensedTo(name) {
@@ -929,7 +981,9 @@ const DEFAULT_SLOTS = [
 let _settingsCache = null;
 function loadSettings() {
   if (!_settingsCache) {
-    const raw = localStorage.getItem('bbampmampm_settings2');
+    const userKey = _getUserKey();
+    const cacheKey = `bbampmampm_settings_${userKey}`;
+    const raw = localStorage.getItem(cacheKey);
     _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
 
     // Migration: detect old default slots and upgrade to new 8-slot defaults
@@ -941,13 +995,20 @@ function loadSettings() {
       if (hasOldSlots && !hasNewSlots) {
         // Old default slots detected (and no new ones), replace with new 8-slot defaults
         _settingsCache.slots = DEFAULT_SLOTS.map(s=>({...s}));
-        localStorage.setItem('bbampmampm_settings2', JSON.stringify(_settingsCache));
+        localStorage.setItem(cacheKey, JSON.stringify(_settingsCache));
       }
     }
   }
   return _settingsCache;
 }
-function persistSettings(s) { _settingsCache = s; localStorage.setItem('bbampmampm_settings2', JSON.stringify(s)); bbampmPushToCloud('settings', s); }
+
+function persistSettings(s) {
+  const userKey = _getUserKey();
+  const cacheKey = `bbampmampm_settings_${userKey}`;
+  _settingsCache = s;
+  localStorage.setItem(cacheKey, JSON.stringify(s));
+  bbampmPushToCloud('settings', s);
+}
 function saveMedications() { const s=loadSettings(); s.medications=document.getElementById('s-meds').value; persistSettings(s); }
 
 function saveSlots() {
@@ -1092,11 +1153,35 @@ function toggleNotifications() {
 
 // ── STORAGE ───────────────────────────────────────────────
 let _readingsCache = null;
+let _userKey = null;
+
+function _getUserKey() {
+  if (!_userKey) _userKey = localStorage.getItem('bbampmampm_license_key') || 'default';
+  return _userKey;
+}
+
 function loadReadings() {
-  if (!_readingsCache) _readingsCache = JSON.parse(localStorage.getItem('bbampmampm_readings') || '[]');
+  const userKey = _getUserKey();
+  const cacheKey = `bbampmampm_readings_${userKey}`;
+  if (!_readingsCache) {
+    _readingsCache = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+    // Seed demo data on first login per user
+    if (!_readingsCache.length && !localStorage.getItem(`bbampmampm_seeded_${userKey}`)) {
+      _readingsCache = buildDemoReadings();
+      localStorage.setItem(`bbampmampm_seeded_${userKey}`, 'true');
+      saveReadings(_readingsCache);
+    }
+  }
   return _readingsCache;
 }
-function saveReadings(arr) { _readingsCache = arr; localStorage.setItem('bbampmampm_readings', JSON.stringify(arr)); bbampmPushToCloud('readings', arr); }
+
+function saveReadings(arr) {
+  const userKey = _getUserKey();
+  const cacheKey = `bbampmampm_readings_${userKey}`;
+  _readingsCache = arr;
+  localStorage.setItem(cacheKey, JSON.stringify(arr));
+  bbampmPushToCloud('readings', arr);
+}
 
 // ── DEMO DATA ─────────────────────────────────────────────
 // April 1–15, 2026 — 3 AM + 3 PM readings per day
