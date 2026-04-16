@@ -2581,16 +2581,20 @@ function updateAnalysisChart() {
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
               if (isNaN(x) || isNaN(yDia) || isNaN(ySys)) return;
+              const w = barWidth / 4;
               const h = Math.abs(yDia - ySys);
               const y = Math.min(yDia, ySys);
               if (h < 1) return;
+
+              ctx.save();
               ctx.fillStyle = colors[idx];
-              ctx.globalAlpha = 0.8;
-              ctx.fillRect(x, y, barWidth / 4, h);
-              ctx.globalAlpha = 1;
+              ctx.beginPath();
+              ctx.rect(x, y, w, h);
+              ctx.fill();
               ctx.strokeStyle = colors[idx];
               ctx.lineWidth = 2;
-              ctx.strokeRect(x, y, barWidth / 4, h);
+              ctx.stroke();
+              ctx.restore();
             });
           }
 
