@@ -2480,8 +2480,8 @@ function renderAnalysis() {
         </div>
       </div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:0;overflow-x:auto;width:100%;">
-      <div class="chart-canvas-wrap" id="chart-container" style="width:fit-content;min-width:100%;padding:20px;"></div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:20px;">
+      <div class="chart-canvas-wrap" id="chart-container" style="width:100%;"></div>
     </div>
     <div class="card">
       <div class="legend-row" style="margin:0;">
@@ -2526,22 +2526,15 @@ function updateAnalysisChart() {
   const ctx = document.getElementById('chart-container');
   if (ctx && datasets.length > 0) {
     const canvas = document.createElement('canvas');
-    canvas.width = 5000;
-    canvas.height = 500;
     canvas.style.display = 'block';
-    canvas.style.width = '5000px !important';
-    canvas.style.height = '500px !important';
-    canvas.style.maxWidth = 'none';
-    canvas.style.transform = 'none';
-
     ctx.innerHTML = '';
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
       type: 'bar',
       data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]}, // dummy dataset
       options: {
-        responsive: false,
-        maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: true,
         scales: {y: {min: 60, max: 160, title: {display: true, text: 'BP Range (mmHg)'}}},
         plugins: {legend: {display: false}, tooltip: {enabled: false}}
       },
