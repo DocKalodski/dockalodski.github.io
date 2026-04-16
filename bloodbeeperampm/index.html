@@ -2563,10 +2563,9 @@ function updateAnalysisChart() {
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
 
-              ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, barW, yDia - ySys);
+              // Outline only (no fill)
               ctx.strokeStyle = '#333';
-              ctx.lineWidth = 1;
+              ctx.lineWidth = 1.5;
               ctx.strokeRect(x, ySys, barW, yDia - ySys);
 
               // Store position for labels
