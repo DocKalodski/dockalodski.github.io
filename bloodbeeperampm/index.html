@@ -613,6 +613,10 @@
       <button type="button" class="btn-sm" onclick="loadDemoData()">Reload Demo</button>
     </div>
     <div class="setting-row">
+      <div><div class="setting-label">🧹 Clear Demo Data Only</div><div class="setting-sub">Removes seeded demo readings — keeps your real logged data</div></div>
+      <button type="button" class="btn-sm" onclick="clearDemoDataOnly()">Clear Demo</button>
+    </div>
+    <div class="setting-row">
       <div><div class="setting-label">🗑️ Erase All &amp; Start Fresh</div><div class="setting-sub">Deletes everything — use this when you're ready to log your real BP readings</div></div>
       <button type="button" class="btn-danger" onclick="clearAllData()">Erase All</button>
     </div>
@@ -1260,6 +1264,15 @@ function loadDemoData() {
   saveReadings(buildDemoReadings());
   renderAll();
   alert('Demo data loaded — 3 months of BP readings.');
+}
+
+function clearDemoDataOnly() {
+  if (!confirm('Remove only demo data? Your real readings will be kept.')) return;
+  const readings = loadReadings();
+  const realData = readings.filter(r => r.id < 4000000);
+  saveReadings(realData);
+  renderAll();
+  alert(`Cleared demo data. Kept ${realData.length} real reading(s).`);
 }
 
 function clearAllData() {
