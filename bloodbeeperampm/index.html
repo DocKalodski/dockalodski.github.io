@@ -853,9 +853,14 @@ function activateLicense() {
   const errEl = document.getElementById('lock-err');
   const licenseData = _matchKey(raw);
 
+  console.log('activateLicense called with raw:', raw);
+  console.log('_matchKey returned:', licenseData);
+  console.log('LICENSES object:', LICENSES);
+
   if (!licenseData) {
     inEl.classList.add('error');
     errEl.innerHTML = '⛔ Invalid License Key<br><span style="font-size:0.7rem">Use: 007, acci, sheila, or beta(yourname)</span>';
+    console.error('License validation failed for:', raw);
     return;
   }
 
@@ -887,16 +892,24 @@ function activateLicense() {
     localStorage.setItem('bbampmampm_activated', new Date().toISOString());
   }
 
+  console.log('localStorage set successfully');
+  console.log('bbampmampm_license_key:', localStorage.getItem('bbampmampm_license_key'));
+  console.log('bbampmampm_license_name:', localStorage.getItem('bbampmampm_license_name'));
+
   inEl.classList.remove('error');
   errEl.innerHTML = '';
+  console.log('About to reload page...');
   location.reload();
 }
 
 function checkLicense() {
   const key = localStorage.getItem('bbampmampm_license_key');
+  console.log('checkLicense: retrieved key from storage:', key);
   const licenseData = key ? _matchKey(key) : null;
+  console.log('checkLicense: _matchKey returned:', licenseData);
 
   if (!licenseData) {
+    console.error('checkLicense: license validation failed, showing lock overlay');
     localStorage.removeItem('bbampmampm_license_key');
     localStorage.removeItem('bbampmampm_license_name');
     localStorage.removeItem('bbampmampm_license_role');
@@ -929,6 +942,7 @@ function checkLicense() {
   }
 
   document.getElementById('lock-overlay').classList.add('hidden');
+  console.log('checkLicense: license valid, hiding lock overlay and applying name:', licenseData.name);
   _applyLicensedTo(licenseData.name);
   return true;
 }
