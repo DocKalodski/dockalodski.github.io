@@ -2543,27 +2543,35 @@ function updateAnalysisChart() {
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
 
-          const barWidth = xaxis.width / chartLabels.length * 0.65;
-          const barPairWidth = barWidth / 2;
-          const barUnitWidth = barPairWidth / 2;
+          const spacing = xaxis.width / chartLabels.length;
+          const groupWidth = spacing * 0.4;
+          const barW = groupWidth / 2.2;
+          const gap = spacing * 0.08;
+
+          // Store bar positions for label alignment
+          const barPositions = {};
 
           function drawRangeBars(data, colors, offset) {
             data.forEach((range, idx) => {
               if (!range) return;
               const [dia, sys] = range;
+              const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
               const groupNum = offset < 2 ? 0 : 1; // 0=AM, 1=PM
               const posInGroup = offset % 2; // 0=Left, 1=Right
-              const xBase = xaxis.getPixelForValue(idx);
-              const x = xBase + groupNum * barPairWidth + posInGroup * barUnitWidth;
+
+              const x = xBase + (groupNum * (groupWidth + gap)) + (posInGroup * barW);
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
-              const bw = barUnitWidth * 0.85;
 
               ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, bw, yDia - ySys);
+              ctx.fillRect(x, ySys, barW, yDia - ySys);
               ctx.strokeStyle = '#333';
               ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, bw, yDia - ySys);
+              ctx.strokeRect(x, ySys, barW, yDia - ySys);
+
+              // Store position for labels
+              const key = `${idx}_${offset}`;
+              barPositions[key] = {x, groupNum, posInGroup, xBase};
             });
           }
 
@@ -2574,38 +2582,50 @@ function updateAnalysisChart() {
 
           // L/R labels ABOVE bars
           chartLabels.forEach((_, idx) => {
-            const xBase = xaxis.getPixelForValue(idx);
-            const y = chartArea.top - 15;
+            const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
+            const y = chartArea.top - 12;
             ctx.fillStyle = '#333';
-            ctx.font = 'bold 12px system-ui';
+            ctx.font = 'bold 11px system-ui';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
 
-            // AM group center
-            const amCenter = xBase + barPairWidth / 2;
-            if (filterAM && (filterLeft || filterRight)) {
-              if (filterAM && filterLeft) ctx.fillText('L', amCenter - barUnitWidth * 0.5, y);
-              if (filterAM && filterRight) ctx.fillText('R', amCenter + barUnitWidth * 0.5, y);
+            // AM L
+            if (filterAM && filterLeft) {
+              const x = xBase + barW / 2;
+              ctx.fillText('L', x, y);
             }
-            // PM group center
-            const pmCenter = xBase + barPairWidth + barPairWidth / 2;
-            if (filterPM && (filterLeft || filterRight)) {
-              if (filterPM && filterLeft) ctx.fillText('L', pmCenter - barUnitWidth * 0.5, y);
-              if (filterPM && filterRight) ctx.fillText('R', pmCenter + barUnitWidth * 0.5, y);
+            // AM R
+            if (filterAM && filterRight) {
+              const x = xBase + barW + barW / 2;
+              ctx.fillText('R', x, y);
+            }
+            // PM L
+            if (filterPM && filterLeft) {
+              const x = xBase + groupWidth + gap + barW / 2;
+              ctx.fillText('L', x, y);
+            }
+            // PM R
+            if (filterPM && filterRight) {
+              const x = xBase + groupWidth + gap + barW + barW / 2;
+              ctx.fillText('R', x, y);
             }
           });
 
           // AM/PM labels BELOW x-axis
           chartLabels.forEach((_, idx) => {
-            const xBase = xaxis.getPixelForValue(idx);
-            const y = xaxis.bottom + 18;
+            const xBase = xaxis.getPixelForValue(idx) + spacing * 0.05;
+            const y = xaxis.bottom + 16;
             ctx.fillStyle = '#333';
-            ctx.font = 'bold 12px system-ui';
+            ctx.font = 'bold 11px system-ui';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
-            if (filterAM && (filterLeft || filterRight)) ctx.fillText('AM', xBase + barPairWidth / 2, y);
-            if (filterPM && (filterLeft || filterRight)) ctx.fillText('PM', xBase + barPairWidth * 1.5, y);
+            if (filterAM && (filterLeft || filterRight)) {
+              ctx.fillText('AM', xBase + groupWidth / 2, y);
+            }
+            if (filterPM && (filterLeft || filterRight)) {
+              ctx.fillText('PM', xBase + groupWidth + gap + groupWidth / 2, y);
+            }
           });
         }
       }]
