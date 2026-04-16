@@ -2631,54 +2631,44 @@ function updateAnalysisChart() {
     });
   }
 
-  // Build data table
+  // Build data cards (organized by date, readings listed vertically)
   const visibleLabels = chartLabels.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
   const visibleAMLReadings = amlReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
   const visibleAMRReadings = amrReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
   const visiblePMLReadings = pmlReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
   const visiblePMRReadings = pmrReadings.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
 
-  const visibleAMLColors = amlColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visibleAMRColors = amrColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMLColors = pmlColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-  const visiblePMRColors = pmrColors.slice(_analysisScrollIndex, _analysisScrollIndex + 7);
-
   const tableEl = document.getElementById('data-table-wrapper');
   if (tableEl) {
-    let tableHTML = `<table style="border-collapse:collapse;font-size:0.9rem;">
-      <thead>
-        <tr>
-          <th style="padding:8px;text-align:left;border:1px solid var(--border);background:var(--bg);">Data</th>`;
+    let cardsHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;font-size:0.85rem;">`;
 
-    visibleLabels.forEach(date => {
-      tableHTML += `<th style="padding:8px;text-align:center;border:1px solid var(--border);background:var(--bg);min-width:120px;font-weight:700;">${date}</th>`;
+    visibleLabels.forEach((date, idx) => {
+      const aml = visibleAMLReadings[idx];
+      const amr = visibleAMRReadings[idx];
+      const pml = visiblePMLReadings[idx];
+      const pmr = visiblePMRReadings[idx];
+
+      cardsHTML += `<div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--bg);">
+        <div style="font-weight:700;margin-bottom:12px;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:8px;">${date}</div>`;
+
+      if (filterAM && filterLeft && aml) {
+        cardsHTML += `<div style="margin-bottom:8px;"><span style="font-weight:600;color:var(--text);">AML:</span><br><span style="color:var(--text);">${aml.sys}/${aml.dia} ${aml.hr || '-'} bpm</span></div>`;
+      }
+      if (filterAM && filterRight && amr) {
+        cardsHTML += `<div style="margin-bottom:8px;"><span style="font-weight:600;color:var(--text);">AMR:</span><br><span style="color:var(--text);">${amr.sys}/${amr.dia} ${amr.hr || '-'} bpm</span></div>`;
+      }
+      if (filterPM && filterLeft && pml) {
+        cardsHTML += `<div style="margin-bottom:8px;"><span style="font-weight:600;color:var(--text);">PML:</span><br><span style="color:var(--text);">${pml.sys}/${pml.dia} ${pml.hr || '-'} bpm</span></div>`;
+      }
+      if (filterPM && filterRight && pmr) {
+        cardsHTML += `<div style="margin-bottom:8px;"><span style="font-weight:600;color:var(--text);">PMR:</span><br><span style="color:var(--text);">${pmr.sys}/${pmr.dia} ${pmr.hr || '-'} bpm</span></div>`;
+      }
+
+      cardsHTML += `</div>`;
     });
 
-    tableHTML += `</tr></thead><tbody>`;
-
-    // Build rows based on filters
-    const rows = [];
-    if (filterAM && filterLeft) rows.push({label: 'AM-L', readings: visibleAMLReadings, colors: visibleAMLColors});
-    if (filterAM && filterRight) rows.push({label: 'AM-R', readings: visibleAMRReadings, colors: visibleAMRColors});
-    if (filterPM && filterLeft) rows.push({label: 'PM-L', readings: visiblePMLReadings, colors: visiblePMLColors});
-    if (filterPM && filterRight) rows.push({label: 'PM-R', readings: visiblePMRReadings, colors: visiblePMRColors});
-
-    rows.forEach(row => {
-      tableHTML += `<tr>
-        <td style="padding:8px;text-align:left;border:1px solid var(--border);font-weight:700;background:var(--bg);">${row.label}</td>`;
-
-      row.readings.forEach((reading, idx) => {
-        const cellContent = reading ? `${reading.sys}/${reading.dia}-${reading.hr || '-'}` : '—';
-        const bgColor = reading ? row.colors[idx] : 'transparent';
-        const textColor = reading ? '#fff' : 'var(--muted)';
-        tableHTML += `<td style="padding:8px;text-align:center;border:1px solid var(--border);background:${bgColor};color:${textColor};">${cellContent}</td>`;
-      });
-
-      tableHTML += `</tr>`;
-    });
-
-    tableHTML += `</tbody></table>`;
-    tableEl.innerHTML = tableHTML;
+    cardsHTML += `</div>`;
+    tableEl.innerHTML = cardsHTML;
   }
 }
 
