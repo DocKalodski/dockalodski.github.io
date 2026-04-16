@@ -983,7 +983,17 @@ function loadSettings() {
   if (!_settingsCache) {
     const userKey = _getUserKey();
     const cacheKey = `bbampmampm_settings_${userKey}`;
-    const raw = localStorage.getItem(cacheKey);
+    let raw = localStorage.getItem(cacheKey);
+
+    // Migration: check for old storage key if new one doesn't exist
+    if (!raw && !localStorage.getItem(`bbampmampm_migrated_settings_${userKey}`)) {
+      const oldData = localStorage.getItem('bbampmampm_settings2');
+      if (oldData) {
+        raw = oldData;
+        localStorage.setItem(`bbampmampm_migrated_settings_${userKey}`, 'true');
+      }
+    }
+
     _settingsCache = raw ? JSON.parse(raw) : { slots: DEFAULT_SLOTS.map(s=>({...s})), notifications: false };
 
     // Migration: detect old default slots and upgrade to new 8-slot defaults
@@ -997,6 +1007,11 @@ function loadSettings() {
         _settingsCache.slots = DEFAULT_SLOTS.map(s=>({...s}));
         localStorage.setItem(cacheKey, JSON.stringify(_settingsCache));
       }
+    }
+
+    // Save migrated data to new per-user key
+    if (raw && !localStorage.getItem(cacheKey)) {
+      localStorage.setItem(cacheKey, JSON.stringify(_settingsCache));
     }
   }
   return _settingsCache;
@@ -1165,6 +1180,17 @@ function loadReadings() {
   const cacheKey = `bbampmampm_readings_${userKey}`;
   if (!_readingsCache) {
     _readingsCache = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+
+    // Migration: check for old storage key and migrate if needed
+    if (!_readingsCache.length && !localStorage.getItem(`bbampmampm_migrated_${userKey}`)) {
+      const oldData = localStorage.getItem('bbampmampm_readings');
+      if (oldData) {
+        _readingsCache = JSON.parse(oldData);
+        localStorage.setItem(`bbampmampm_migrated_${userKey}`, 'true');
+        saveReadings(_readingsCache);
+      }
+    }
+
     // Seed demo data on first login per user
     if (!_readingsCache.length && !localStorage.getItem(`bbampmampm_seeded_${userKey}`)) {
       _readingsCache = buildDemoReadings();
