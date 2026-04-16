@@ -2500,7 +2500,7 @@ function updateAnalysisChart() {
         responsive: true,
         maintainAspectRatio: true,
         scales: {y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}},
-        plugins: {legend: {position: 'bottom'}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
       }
     });
   }
