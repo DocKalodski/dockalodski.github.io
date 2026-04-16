@@ -2340,9 +2340,35 @@ function renderAnalysis() {
     byDate[date][key] = r;
   });
 
-  // Create table rows
+  // Prepare chart data
+  const dates = Object.keys(byDate).sort((a,b)=>new Date(b)-new Date(a));
+  const chartLabels = [];
+  const amlData = [], amrData = [], pmlData = [], pmrData = [];
+  const amlColors = [], amrColors = [], pmlColors = [], pmrColors = [];
+
   const fmtVal = (sys, dia, hr) => `${sys}/${dia} ${hr||'-'} bpm`;
-  const rows = Object.keys(byDate).sort((a,b)=>new Date(b)-new Date(a)).map(date => {
+
+  dates.forEach(date => {
+    const dayReadings = byDate[date];
+    const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
+    const pml = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
+    const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
+
+    chartLabels.push(date);
+    amlData.push(aml ? aml.sys : null);
+    amrData.push(amr ? amr.sys : null);
+    pmlData.push(pml ? pml.sys : null);
+    pmrData.push(pmr ? pmr.sys : null);
+
+    amlColors.push(aml ? DOT_C[classify(aml.sys, aml.dia).key][0] : '#ccc');
+    amrColors.push(amr ? DOT_C[classify(amr.sys, amr.dia).key][0] : '#ccc');
+    pmlColors.push(pml ? DOT_C[classify(pml.sys, pml.dia).key][0] : '#ccc');
+    pmrColors.push(pmr ? DOT_C[classify(pmr.sys, pmr.dia).key][0] : '#ccc');
+  });
+
+  // Create table rows
+  const rows = dates.map(date => {
     const dayReadings = byDate[date];
     const aml = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='LEFT');
     const amr = Object.values(dayReadings).find(r => isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
@@ -2360,12 +2386,52 @@ function renderAnalysis() {
     </div>`;
   }).join('');
 
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   el.innerHTML = `
     <div class="card">
       <div class="card-title">🔄 Left vs Right Arm Comparison</div>
-      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:14px;">All readings grouped by date • AML=AM Left, AMR=AM Right, PML=PM Left, PMR=PM Right</p>
+      <div class="chart-canvas-wrap" id="chart-container"></div>
+      <div class="legend-row">
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> AML (AM Left)</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#3b82f6;"></div> AMR (AM Right)</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> PML (PM Left)</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#a855f7;"></div> PMR (PM Right)</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Detailed Readings</div>
+      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:14px;">All readings grouped by date</p>
       <div>${rows}</div>
     </div>`;
+
+  // Render the chart
+  const ctx = document.getElementById('chart-container');
+  if (ctx) {
+    const canvas = document.createElement('canvas');
+    ctx.innerHTML = '';
+    ctx.appendChild(canvas);
+    chartInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          {label: 'AML (AM Left)', data: amlData, backgroundColor: amlColors, borderColor: '#22c55e', borderWidth: 1},
+          {label: 'AMR (AM Right)', data: amrData, backgroundColor: amrColors, borderColor: '#3b82f6', borderWidth: 1},
+          {label: 'PML (PM Left)', data: pmlData, backgroundColor: pmlColors, borderColor: '#f97316', borderWidth: 1},
+          {label: 'PMR (PM Right)', data: pmrData, backgroundColor: pmrColors, borderColor: '#a855f7', borderWidth: 1},
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: undefined,
+        scales: {
+          y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}
+        },
+        plugins: {legend: {position: 'bottom'}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
+      }
+    });
+  }
 }
 
 // ── REMINDERS ─────────────────────────────────────────────
