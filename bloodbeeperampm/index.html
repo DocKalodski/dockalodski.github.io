@@ -2503,9 +2503,41 @@ function updateAnalysisChart() {
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        scales: {y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}},
-        plugins: {legend: {display: false}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
-      }
+        scales: {
+          y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}
+        },
+        plugins: {
+          legend: {display: false},
+          tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}},
+          annotation: {
+            drawTime: 'beforeDatasetsDraw',
+            annotations: {}
+          }
+        }
+      },
+      plugins: [{
+        id: 'bpZoneBackground',
+        afterDatasetsDraw(chart) {
+          const ctx = chart.ctx;
+          const yaxis = chart.scales.y;
+          const xaxis = chart.scales.x;
+
+          // Zones: Normal <120, Elevated 120-129, High 130-139, Very High ≥140
+          const zones = [
+            {min: 60, max: 120, color: 'rgba(34, 197, 94, 0.1)', label: 'Normal'},
+            {min: 120, max: 130, color: 'rgba(234, 179, 8, 0.1)', label: 'Elevated'},
+            {min: 130, max: 140, color: 'rgba(249, 115, 22, 0.1)', label: 'High'},
+            {min: 140, max: 200, color: 'rgba(239, 68, 68, 0.1)', label: 'Very High'}
+          ];
+
+          zones.forEach(zone => {
+            const yTop = yaxis.getPixelForValue(zone.max);
+            const yBot = yaxis.getPixelForValue(zone.min);
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
+          });
+        }
+      }]
     });
   }
 }
