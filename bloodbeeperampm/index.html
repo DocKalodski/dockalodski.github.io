@@ -7,7 +7,7 @@
   <meta name="description" content="Blood pressure monitor with AM/PM tracking and cloud sync">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%230ea5e9' width='180' height='180' rx='40'/><text x='90' y='105' font-size='70' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>♥</text></svg>">
-  <title>BloodBeeper-AM/PM v1.0 by Doc Kalodski</title>
+  <title id="page-title">BloodBeeper-AM/PM v1.0 by Doc Kalodski</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
@@ -745,8 +745,10 @@
 
 // ── VERSION ───────────────────────────────────────────────
 const APP_VERSION = '1.0.0';
+const APP_VERSION_DISPLAY = '1.0';  // For UI display
 const APP_NAME = 'BloodBeeper-AM/PM';
-const APP_AUTHOR = 'Doc Kalodski';
+const APP_AUTHOR = 'by Doc Kalodski';
+const APP_BRAND = `BloodBeeper-AM/PM v1.0 · by Doc Kalodski`;
 // Version 1.0 — LOCKED. Reference this commit for official v1.
 
 // ── SUPABASE SYNC ─────────────────────────────────────────
@@ -1359,8 +1361,8 @@ function printReport() {
 
   document.getElementById('print-report').innerHTML = `
     <div class="pr-header">
-      <h2>📡 BloodBeeper-AM/PM v1.0 — Blood Pressure Report</h2>
-      <p>Printed: ${now.toLocaleString('en-PH')} &nbsp;·&nbsp; AHA 2017 Guidelines &nbsp;·&nbsp; by Doc Kalodski</p>
+      <h2>📡 ${APP_NAME} v${APP_VERSION_DISPLAY} — Blood Pressure Report</h2>
+      <p>Printed: ${now.toLocaleString('en-PH')} &nbsp;·&nbsp; AHA 2017 Guidelines &nbsp;·&nbsp; ${APP_AUTHOR}</p>
     </div>
     <div class="pr-summary">
       <span><strong>Total Readings:</strong> ${readings.length}</span>
@@ -2401,7 +2403,7 @@ function renderAnalysis() {
 
   const report = [
     `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
-    `<span class="ai-head">  BloodBeeper-AM/PM — BP ANALYSIS REPORT</span>`,
+    `<span class="ai-head">  ${APP_NAME} — BP ANALYSIS REPORT</span>`,
     `<span class="ai-head">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>`,
     `<span class="ai-label">Generated   :</span> ${new Date().toLocaleString('en-PH')}`,
     `<span class="ai-label">Data Range  :</span> ${fmt(sorted[0].timestamp)} → ${fmt(sorted[sorted.length-1].timestamp)}`,
@@ -2551,7 +2553,7 @@ function checkReminders() {
         document.getElementById('reminder-text').textContent = `⏰ Time for your ${sl.name} BP reading!`;
         banner.dataset.key = key;
         banner.classList.add('show');
-        if (s.notifications && Notification.permission==='granted') new Notification('BloodBeeperAMPM',{body:`Time for your ${sl.name} BP reading!`});
+        if (s.notifications && Notification.permission==='granted') new Notification(APP_NAME,{body:`Time for your ${sl.name} BP reading!`});
         document.getElementById('in-slot').value = sl.id;
         return;
       }
