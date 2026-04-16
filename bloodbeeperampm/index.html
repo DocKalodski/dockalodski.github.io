@@ -2366,6 +2366,9 @@ function renderChart() {
 }
 
 // ── ANALYSIS ──────────────────────────────────────────────
+// Global storage for analysis chart data
+let _analysisChartData = null;
+
 function renderAnalysis() {
   const readings = loadReadings();
   const el = document.getElementById('analysis-content');
@@ -2417,6 +2420,9 @@ function renderAnalysis() {
     pmrColors.push(pmr ? DOT_C[classify(pmr.sys, pmr.dia).key][0] : '#ccc');
   });
 
+  // Store for filtering
+  _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
+
   // Create table rows
   const rows = dates.map(date => {
     const dayReadings = byDate[date];
@@ -2440,6 +2446,12 @@ function renderAnalysis() {
   el.innerHTML = `
     <div class="card">
       <div class="card-title">🔄 Left vs Right Arm Comparison</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;padding:12px;background:var(--bg);border-radius:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"> AM</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"> PM</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"> Left</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"> Right</label>
+      </div>
       <div class="chart-canvas-wrap" id="chart-container"></div>
       <div class="legend-row">
         <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> AML (AM Left)</div>
@@ -2454,30 +2466,39 @@ function renderAnalysis() {
       <div>${rows}</div>
     </div>`;
 
-  // Render the chart
+  updateAnalysisChart();
+}
+
+function updateAnalysisChart() {
+  if (!_analysisChartData) return;
+
+  const filterAM = document.getElementById('filter-am')?.checked ?? true;
+  const filterPM = document.getElementById('filter-pm')?.checked ?? true;
+  const filterLeft = document.getElementById('filter-left')?.checked ?? true;
+  const filterRight = document.getElementById('filter-right')?.checked ?? true;
+
+  const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _analysisChartData;
+
+  const datasets = [];
+  if (filterAM && filterLeft) datasets.push({label: 'AML (AM Left)', data: amlData, backgroundColor: amlColors, borderColor: '#22c55e', borderWidth: 1});
+  if (filterAM && filterRight) datasets.push({label: 'AMR (AM Right)', data: amrData, backgroundColor: amrColors, borderColor: '#3b82f6', borderWidth: 1});
+  if (filterPM && filterLeft) datasets.push({label: 'PML (PM Left)', data: pmlData, backgroundColor: pmlColors, borderColor: '#f97316', borderWidth: 1});
+  if (filterPM && filterRight) datasets.push({label: 'PMR (PM Right)', data: pmrData, backgroundColor: pmrColors, borderColor: '#a855f7', borderWidth: 1});
+
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
   const ctx = document.getElementById('chart-container');
-  if (ctx) {
+  if (ctx && datasets.length > 0) {
     const canvas = document.createElement('canvas');
     ctx.innerHTML = '';
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
       type: 'bar',
-      data: {
-        labels: chartLabels,
-        datasets: [
-          {label: 'AML (AM Left)', data: amlData, backgroundColor: amlColors, borderColor: '#22c55e', borderWidth: 1},
-          {label: 'AMR (AM Right)', data: amrData, backgroundColor: amrColors, borderColor: '#3b82f6', borderWidth: 1},
-          {label: 'PML (PM Left)', data: pmlData, backgroundColor: pmlColors, borderColor: '#f97316', borderWidth: 1},
-          {label: 'PMR (PM Right)', data: pmrData, backgroundColor: pmrColors, borderColor: '#a855f7', borderWidth: 1},
-        ]
-      },
+      data: {labels: chartLabels, datasets},
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        indexAxis: undefined,
-        scales: {
-          y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}
-        },
+        scales: {y: {min: 60, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}},
         plugins: {legend: {position: 'bottom'}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
       }
     });
