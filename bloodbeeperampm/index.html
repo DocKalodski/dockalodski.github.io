@@ -2394,7 +2394,7 @@ function renderAnalysis() {
     byDate[date][key] = r;
   });
 
-  // Prepare chart data
+  // Prepare chart data — store sys/dia ranges
   const dates = Object.keys(byDate).sort((a,b)=>new Date(a)-new Date(b));
   const chartLabels = [];
   const amlData = [], amrData = [], pmlData = [], pmrData = [];
@@ -2410,10 +2410,11 @@ function renderAnalysis() {
     const pmr = Object.values(dayReadings).find(r => !isAMHour(new Date(r.timestamp).getHours()) && (r.arm||'').toUpperCase()==='RIGHT');
 
     chartLabels.push(date);
-    amlData.push(aml ? aml.sys : null);
-    amrData.push(amr ? amr.sys : null);
-    pmlData.push(pml ? pml.sys : null);
-    pmrData.push(pmr ? pmr.sys : null);
+    // Store [dia, sys] range pairs
+    amlData.push(aml ? [aml.dia, aml.sys] : null);
+    amrData.push(amr ? [amr.dia, amr.sys] : null);
+    pmlData.push(pml ? [pml.dia, pml.sys] : null);
+    pmrData.push(pmr ? [pmr.dia, pmr.sys] : null);
 
     amlColors.push(aml ? DOT_C[classify(aml.sys, aml.dia).key][0] : '#ccc');
     amrColors.push(amr ? DOT_C[classify(amr.sys, amr.dia).key][0] : '#ccc');
@@ -2421,8 +2422,9 @@ function renderAnalysis() {
     pmrColors.push(pmr ? DOT_C[classify(pmr.sys, pmr.dia).key][0] : '#ccc');
   });
 
-  // Store for filtering
+  // Store for filtering and range bars
   _analysisChartData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
+  _rangeBarData = {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors};
 
   // Create table rows
   const rows = dates.map(date => {
@@ -2500,35 +2502,64 @@ function updateAnalysisChart() {
     ctx.appendChild(canvas);
     chartInstance = new Chart(canvas, {
       type: 'bar',
-      data: {labels: chartLabels, datasets},
+      data: {labels: chartLabels, datasets: [{data: [], borderWidth: 0}]}, // dummy dataset
       options: {
         responsive: true,
         maintainAspectRatio: true,
-        scales: {y: {min: 1, max: 200, title: {display: true, text: 'Systolic (mmHg)'}}},
-        plugins: {legend: {display: false}, tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y} mmHg`}}}
+        scales: {y: {min: 0, max: 200, title: {display: true, text: 'BP Range (mmHg)'}}},
+        plugins: {legend: {display: false}, tooltip: {enabled: false}}
       },
       plugins: [{
-        id: 'bpZoneBackground',
+        id: 'rangeBarChart',
         afterDatasetsDraw(chart) {
+          if (!_rangeBarData) return;
+
           const ctx = chart.ctx;
           const yaxis = chart.scales.y;
           const xaxis = chart.scales.x;
+          const {chartLabels, amlData, amrData, pmlData, pmrData, amlColors, amrColors, pmlColors, pmrColors} = _rangeBarData;
 
-          // Zones
+          const filterAM = document.getElementById('filter-am')?.checked ?? true;
+          const filterPM = document.getElementById('filter-pm')?.checked ?? true;
+          const filterLeft = document.getElementById('filter-left')?.checked ?? true;
+          const filterRight = document.getElementById('filter-right')?.checked ?? true;
+
+          // Draw zone backgrounds
           const zones = [
-            {min: 1, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
+            {min: 0, max: 80, color: 'rgba(100, 100, 100, 0.05)'},
             {min: 80, max: 120, color: 'rgba(34, 197, 94, 0.1)'},
             {min: 120, max: 130, color: 'rgba(234, 179, 8, 0.1)'},
             {min: 130, max: 140, color: 'rgba(249, 115, 22, 0.1)'},
             {min: 140, max: 200, color: 'rgba(239, 68, 68, 0.1)'}
           ];
-
-          zones.forEach(zone => {
-            const yTop = yaxis.getPixelForValue(zone.max);
-            const yBot = yaxis.getPixelForValue(zone.min);
-            ctx.fillStyle = zone.color;
+          zones.forEach(z => {
+            const yTop = yaxis.getPixelForValue(z.max);
+            const yBot = yaxis.getPixelForValue(z.min);
+            ctx.fillStyle = z.color;
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
+
+          const barWidth = xaxis.width / chartLabels.length * 0.6;
+
+          function drawRangeBars(data, colors, offset) {
+            data.forEach((range, idx) => {
+              if (!range) return;
+              const [dia, sys] = range;
+              const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
+              const yDia = yaxis.getPixelForValue(dia);
+              const ySys = yaxis.getPixelForValue(sys);
+              ctx.fillStyle = colors[idx];
+              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
+              ctx.strokeStyle = colors[idx];
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
+            });
+          }
+
+          if (filterAM && filterLeft) drawRangeBars(amlData, amlColors, 0);
+          if (filterAM && filterRight) drawRangeBars(amrData, amrColors, 1);
+          if (filterPM && filterLeft) drawRangeBars(pmlData, pmlColors, 2);
+          if (filterPM && filterRight) drawRangeBars(pmrData, pmrColors, 3);
         }
       }]
     });
