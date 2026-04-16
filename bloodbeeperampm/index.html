@@ -786,6 +786,7 @@ async function bbampmSyncFromCloud(){
       if(!localStorage.getItem(settingsCacheKey)){
         _settingsCache=cloudS;
         localStorage.setItem(settingsCacheKey,JSON.stringify(cloudS));
+      }
     }
     showRRSyncBadge(); renderAll();
   }catch(e){ console.warn('RR sync error:',e); }
