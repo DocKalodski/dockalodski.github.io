@@ -2568,7 +2568,7 @@ function updateAnalysisChart() {
             ctx.fillRect(xaxis.left, yTop, xaxis.width, yBot - yTop);
           });
 
-          const barWidth = xaxis.width / chartLabels.length * 0.6;
+          const barWidth = Math.max(xaxis.width / (chartLabels.length || 1) * 0.6, 4);
 
           function drawRangeBars(data, colors, offset) {
             data.forEach((range, idx) => {
@@ -2577,11 +2577,13 @@ function updateAnalysisChart() {
               const x = xaxis.getPixelForValue(idx) + (offset - 1.5) * (barWidth / 4);
               const yDia = yaxis.getPixelForValue(dia);
               const ySys = yaxis.getPixelForValue(sys);
+              const barHeight = yDia - ySys;
+              if (barHeight < 1) return; // Skip if bar too small
               ctx.fillStyle = colors[idx];
-              ctx.fillRect(x, ySys, barWidth / 4, yDia - ySys);
+              ctx.fillRect(x, ySys, barWidth / 4, barHeight);
               ctx.strokeStyle = colors[idx];
               ctx.lineWidth = 1;
-              ctx.strokeRect(x, ySys, barWidth / 4, yDia - ySys);
+              ctx.strokeRect(x, ySys, barWidth / 4, barHeight);
             });
           }
 
