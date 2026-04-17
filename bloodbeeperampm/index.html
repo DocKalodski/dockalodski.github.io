@@ -2967,8 +2967,8 @@ async function bbampmRenderClients() {
   document.getElementById('s-meds').value = _s.medications || '';
   populateSlotDropdown();
 
-  // LOCKED: Load ONLY Doc's April 11-17 data
-  saveReadings(buildDemoReadings());
+  // Demo lock removed — real data now flows through
+  // saveReadings(buildDemoReadings());
 
   renderAll();
   checkReminders();
