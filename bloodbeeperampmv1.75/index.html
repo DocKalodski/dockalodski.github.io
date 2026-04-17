@@ -2465,8 +2465,28 @@ function renderAnalysis() {
 
     if (!byDate[date]) byDate[date] = {};
     if (!byDate[date][timeKey]) byDate[date][timeKey] = {};
+    if (!byDate[date][timeKey][arm]) byDate[date][timeKey][arm] = [];
 
-    byDate[date][timeKey][arm] = r;
+    byDate[date][timeKey][arm].push(r);
+  });
+
+  // Average readings with same date/time/arm
+  Object.keys(byDate).forEach(date => {
+    Object.keys(byDate[date]).forEach(timeKey => {
+      Object.keys(byDate[date][timeKey]).forEach(arm => {
+        const readings = byDate[date][timeKey][arm];
+        if (Array.isArray(readings) && readings.length > 0) {
+          const avg = {
+            sys: Math.round(readings.reduce((sum, r) => sum + r.sys, 0) / readings.length),
+            dia: Math.round(readings.reduce((sum, r) => sum + r.dia, 0) / readings.length),
+            hr: Math.round(readings.reduce((sum, r) => sum + (r.hr || 0), 0) / readings.length),
+            timestamp: readings[0].timestamp,
+            arm: readings[0].arm
+          };
+          byDate[date][timeKey][arm] = avg;
+        }
+      });
+    });
   });
 
   // Build chart data in correct sequence: AM_L, AM_R, PM_L, PM_R
