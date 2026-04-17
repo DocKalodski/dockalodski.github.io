@@ -2645,9 +2645,9 @@ function updateAnalysisTable() {
         let bgColor = '#f0f0f0', textColor = '#000';
         if (sys >= 180 || dia >= 120) { bgColor = '#7f1d1d'; textColor = '#fff'; } // Crisis
         else if (sys >= 140 || dia >= 90) { bgColor = '#ef4444'; textColor = '#fff'; } // Very High
-        else if (sys >= 130 && dia >= 80) { bgColor = '#f97316'; textColor = '#fff'; } // High: both must qualify
-        else if (sys >= 120 && dia < 80) { bgColor = '#eab308'; textColor = '#000'; } // Elevated
-        else { bgColor = '#22c55e'; textColor = '#fff'; } // Normal
+        else if (sys >= 130 || (dia >= 80 && sys >= 120)) { bgColor = '#f97316'; textColor = '#fff'; } // High: SBP 130-139 OR (DBP 80-89 with SBP 120-129)
+        else if (sys >= 120 && dia < 80) { bgColor = '#eab308'; textColor = '#000'; } // Elevated: SBP 120-129 with DBP <80
+        else { bgColor = '#22c55e'; textColor = '#fff'; } // Normal: SBP <120 AND DBP <80
 
         cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;color:${textColor};">${sys}/${dia}</div><div style="font-size:0.75rem;color:${textColor};opacity:0.8;">@${time}</div><div style="font-size:0.85rem;color:${textColor};font-weight:600;">♥${reading.hr || '—'}</div>`;
         cell.style.textAlign = 'center';
