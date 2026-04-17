@@ -2868,36 +2868,6 @@ function updateAnalysisChart() {
     }
   });
 
-  // Legend
-  const legendItems = [
-    {color:'#22c55e', label:'Normal <120/80 (Good)'},
-    {color:'#eab308', label:'Elevated 120-129 (Monitor)'},
-    {color:'#f97316', label:'High 130-139/80-89 (Bad)'},
-    {color:'#ef4444', label:'Very High ≥140/≥90 (Bad)'},
-    {color:'#8b5a3c', label:'Crisis ≥180/≥120'}
-  ];
-  let legendX = leftMargin;
-  const legendY = svgH - 12;
-  legendItems.forEach(item => {
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', legendX);
-    rect.setAttribute('y', legendY - 12);
-    rect.setAttribute('width', 14);
-    rect.setAttribute('height', 14);
-    rect.setAttribute('fill', item.color);
-    svg.appendChild(rect);
-
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', legendX + 20);
-    text.setAttribute('y', legendY);
-    text.setAttribute('font-size', '16');
-    text.setAttribute('font-weight', 'bold');
-    text.setAttribute('fill', '#222');
-    text.textContent = item.label;
-    svg.appendChild(text);
-
-    legendX += 230;
-  });
 }
 
 // ── REMINDERS ─────────────────────────────────────────────
