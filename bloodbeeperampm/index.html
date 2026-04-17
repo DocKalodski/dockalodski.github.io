@@ -1294,40 +1294,38 @@ function saveReadings(arr) {
 // ── DEMO DATA ─────────────────────────────────────────────
 // April 1–15, 2026 — 3 AM + 3 PM readings per day
 function buildDemoReadings() {
-  const out = [];
-  const notes = ['','','after walk','rested','after meds','stressed',''];
-  // AM times: 6:15, 7:30, 9:45 | PM times: 18:15, 19:30, 21:45
-  const amTimes = [[6,15],[7,30],[9,45]];
-  const pmTimes = [[18,15],[19,30],[21,45]];
-
-  for (let day = 1; day <= 15; day++) {
-    const progress = (day - 1) / 14; // 0 → 1
-    // Trend: Stage 2 (Apr 1) → Stage 1 (Apr 15)
-    const baseSysAm = Math.round(142 - progress * 16);
-    const baseDiaAm = Math.round(92  - progress * 10);
-    // PM slightly lower than AM
-    const baseSysPm = Math.round(138 - progress * 14);
-    const baseDiaPm = Math.round(89  - progress * 9);
-
-    const rnd = (n, range) => Math.round(n + (Math.random() * range * 2 - range));
-
-    amTimes.forEach(([h, m], i) => {
-      const t = new Date(2026, 3, day, h, m + Math.floor(Math.random()*5), 0);
-      out.push({ id: 4000000 + day*100 + i, timestamp: t.toISOString(),
-        sys: Math.max(105, rnd(baseSysAm, 4)),
-        dia: Math.max(65,  rnd(baseDiaAm, 3)),
-        notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s1' });
-    });
-
-    pmTimes.forEach(([h, m], i) => {
-      const t = new Date(2026, 3, day, h, m + Math.floor(Math.random()*5), 0);
-      out.push({ id: 4000000 + day*100 + 10 + i, timestamp: t.toISOString(),
-        sys: Math.max(100, rnd(baseSysPm, 4)),
-        dia: Math.max(62,  rnd(baseDiaPm, 3)),
-        notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s2' });
-    });
-  }
-  return out;
+  // DOC'S ACTUAL DATA (Apr 11-17, 2026)
+  return [
+    // Apr 11 (Sat) — PM only
+    {id:5011101,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,arm:'L-std',slotId:'s5'},
+    {id:5011102,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,arm:'R-std',slotId:'s5'},
+    // Apr 12 (Sun) — AM only
+    {id:5012101,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:137,dia:99,arm:'L-sit',slotId:'s1'},
+    {id:5012102,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:139,dia:97,arm:'R-sit',slotId:'s1'},
+    // Apr 13 (Mon) — AM + PM
+    {id:5013101,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,arm:'L-sit',slotId:'s1'},
+    {id:5013102,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:101,arm:'R-sit',slotId:'s1'},
+    {id:5013103,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:136,dia:88,arm:'L-std',slotId:'s8'},
+    {id:5013104,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:122,dia:87,arm:'R-std',slotId:'s8'},
+    // Apr 14 (Tue) — AM + PM
+    {id:5014101,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,arm:'L-sit',slotId:'s3'},
+    {id:5014102,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:126,dia:91,arm:'R-sit',slotId:'s3'},
+    {id:5014103,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:126,dia:92,arm:'L-std',slotId:'s8'},
+    {id:5014104,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:120,dia:92,arm:'R-std',slotId:'s8'},
+    // Apr 15 (Wed) — AM + PM
+    {id:5015101,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,arm:'L-sit',slotId:'s1'},
+    {id:5015102,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:128,dia:93,arm:'R-sit',slotId:'s1'},
+    {id:5015103,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,arm:'L-sit',slotId:'s3'},
+    {id:5015104,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,arm:'R-sit',slotId:'s3'},
+    // Apr 16 (Thu) — AM + PM
+    {id:5016101,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,arm:'L-sit',slotId:'s1'},
+    {id:5016102,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,arm:'R-sit',slotId:'s1'},
+    {id:5016103,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:139,dia:99,arm:'L-sit',slotId:'s6'},
+    {id:5016104,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:130,dia:98,arm:'R-sit',slotId:'s6'},
+    // Apr 17 (Fri) — AM only
+    {id:5017101,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:137,dia:100,arm:'L-sit',slotId:'s1'},
+    {id:5017102,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:94,arm:'R-sit',slotId:'s1'},
+  ];
 }
 
 function loadDemoData() {
@@ -1350,34 +1348,34 @@ function loadDocData() {
   if (!confirm('Load your April 11-17 readings?')) return;
   const data = [
     // Apr 11 (Sat) — PM only
-    {id:5011101,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,arm:'LEFT',slotId:'s5'},
-    {id:5011102,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,arm:'RIGHT',slotId:'s5'},
+    {id:5011101,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,arm:'L-std',slotId:'s5'},
+    {id:5011102,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,arm:'R-std',slotId:'s5'},
     // Apr 12 (Sun) — AM only
-    {id:5012101,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:137,dia:99,arm:'LEFT',slotId:'s1'},
-    {id:5012102,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:139,dia:97,arm:'RIGHT',slotId:'s1'},
-    // Apr 13 (Mon)
-    {id:5013101,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,arm:'LEFT',slotId:'s1'},
-    {id:5013102,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:101,arm:'RIGHT',slotId:'s1'},
-    {id:5013103,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:136,dia:88,arm:'LEFT',slotId:'s8'},
-    {id:5013104,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:122,dia:87,arm:'RIGHT',slotId:'s8'},
-    // Apr 14 (Tue)
-    {id:5014101,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,arm:'LEFT',slotId:'s3'},
-    {id:5014102,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:126,dia:91,arm:'RIGHT',slotId:'s3'},
-    {id:5014103,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:126,dia:92,arm:'LEFT',slotId:'s8'},
-    {id:5014104,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:120,dia:92,arm:'RIGHT',slotId:'s8'},
-    // Apr 15 (Wed)
-    {id:5015101,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,arm:'LEFT',slotId:'s1'},
-    {id:5015102,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:128,dia:93,arm:'RIGHT',slotId:'s1'},
-    {id:5015103,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,arm:'LEFT',slotId:'s3'},
-    {id:5015104,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,arm:'RIGHT',slotId:'s3'},
-    // Apr 16 (Thu)
-    {id:5016101,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,arm:'LEFT',slotId:'s1'},
-    {id:5016102,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,arm:'RIGHT',slotId:'s1'},
-    {id:5016103,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:139,dia:99,arm:'LEFT',slotId:'s6'},
-    {id:5016104,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:130,dia:98,arm:'RIGHT',slotId:'s6'},
+    {id:5012101,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:137,dia:99,arm:'L-sit',slotId:'s1'},
+    {id:5012102,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:139,dia:97,arm:'R-sit',slotId:'s1'},
+    // Apr 13 (Mon) — AM + PM
+    {id:5013101,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,arm:'L-sit',slotId:'s1'},
+    {id:5013102,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:101,arm:'R-sit',slotId:'s1'},
+    {id:5013103,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:136,dia:88,arm:'L-std',slotId:'s8'},
+    {id:5013104,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:122,dia:87,arm:'R-std',slotId:'s8'},
+    // Apr 14 (Tue) — AM + PM
+    {id:5014101,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,arm:'L-sit',slotId:'s3'},
+    {id:5014102,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:126,dia:91,arm:'R-sit',slotId:'s3'},
+    {id:5014103,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:126,dia:92,arm:'L-std',slotId:'s8'},
+    {id:5014104,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:120,dia:92,arm:'R-std',slotId:'s8'},
+    // Apr 15 (Wed) — AM + PM
+    {id:5015101,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,arm:'L-sit',slotId:'s1'},
+    {id:5015102,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:128,dia:93,arm:'R-sit',slotId:'s1'},
+    {id:5015103,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,arm:'L-sit',slotId:'s3'},
+    {id:5015104,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,arm:'R-sit',slotId:'s3'},
+    // Apr 16 (Thu) — AM + PM
+    {id:5016101,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,arm:'L-sit',slotId:'s1'},
+    {id:5016102,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,arm:'R-sit',slotId:'s1'},
+    {id:5016103,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:139,dia:99,arm:'L-sit',slotId:'s6'},
+    {id:5016104,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:130,dia:98,arm:'R-sit',slotId:'s6'},
     // Apr 17 (Fri) — AM only
-    {id:5017101,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:137,dia:100,arm:'LEFT',slotId:'s1'},
-    {id:5017102,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:94,arm:'RIGHT',slotId:'s1'},
+    {id:5017101,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:137,dia:100,arm:'L-sit',slotId:'s1'},
+    {id:5017102,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:94,arm:'R-sit',slotId:'s1'},
   ];
   // Load locally only — skip cloud sync
   const userKey = _getUserKey();
