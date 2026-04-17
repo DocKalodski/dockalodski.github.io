@@ -2967,8 +2967,12 @@ async function bbampmRenderClients() {
   document.getElementById('s-meds').value = _s.medications || '';
   populateSlotDropdown();
 
-  // Auto-seed demo on first open
-  if (!loadReadings().length) { saveReadings(buildDemoReadings()); }
+  // LOCKED: Load ONLY Doc's April 11-17 data
+  const userKey = _getUserKey();
+  const cacheKey = `bbampmampm_readings_${userKey}`;
+  const docData = buildDemoReadings(); // Returns Apr 11-17 only
+  _readingsCache = docData;
+  localStorage.setItem(cacheKey, JSON.stringify(docData));
 
   renderAll();
   checkReminders();
