@@ -2511,44 +2511,44 @@ function renderAnalysis() {
 
   el.innerHTML = `
     <!-- Chart Navigation -->
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;align-items:center;">
-      <button onclick="shiftChart(-1)" style="padding:8px 14px;border:1px solid var(--border);background:var(--bg);border-radius:8px;cursor:pointer;font-weight:600;font-size:1.1rem;">←</button>
-      <span style="font-size:0.9rem;color:var(--muted);min-width:140px;text-align:center;font-weight:600;">7-Day Rolling Window</span>
-      <button onclick="shiftChart(1)" style="padding:8px 14px;border:1px solid var(--border);background:var(--bg);border-radius:8px;cursor:pointer;font-weight:600;font-size:1.1rem;">→</button>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:6px;align-items:center;">
+      <button onclick="shiftChart(-1)" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);border-radius:6px;cursor:pointer;font-weight:600;font-size:0.95rem;">←</button>
+      <span style="font-size:0.8rem;color:var(--muted);min-width:120px;text-align:center;font-weight:600;">7-Day Rolling</span>
+      <button onclick="shiftChart(1)" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg);border-radius:6px;cursor:pointer;font-weight:600;font-size:0.95rem;">→</button>
     </div>
 
     <!-- Filters Header -->
-    <div id="analysis-filters" style="padding:6px 0;display:flex;gap:16px;justify-content:center;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;">
+    <div id="analysis-filters" style="padding:4px 0;display:flex;gap:12px;justify-content:center;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;">
       <div style="text-align:center;">
-        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:5px;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"><span>AM</span></label>
+        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:2px;"><input type="checkbox" id="filter-am" checked onchange="updateAnalysisChart()"><span>AM</span></label>
         <div style="display:flex;gap:4px;justify-content:center;">
           <span style="width:16px;height:16px;background:#87CEEB;border:1px solid #999;border-radius:1px;"></span>
           <span style="width:16px;height:16px;background:#90EE90;border:1px solid #999;border-radius:1px;"></span>
         </div>
       </div>
       <div style="text-align:center;">
-        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:5px;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"><span>PM</span></label>
+        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:2px;"><input type="checkbox" id="filter-pm" checked onchange="updateAnalysisChart()"><span>PM</span></label>
         <div style="display:flex;gap:4px;justify-content:center;">
           <span style="width:16px;height:16px;background:#0066CC;border:1px solid #999;border-radius:1px;"></span>
           <span style="width:16px;height:16px;background:#228B22;border:1px solid #999;border-radius:1px;"></span>
         </div>
       </div>
       <div style="text-align:center;">
-        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:5px;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"><span>Left</span></label>
+        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:2px;"><input type="checkbox" id="filter-left" checked onchange="updateAnalysisChart()"><span>Left</span></label>
         <div style="display:flex;gap:4px;justify-content:center;">
           <span style="width:16px;height:16px;background:#87CEEB;border:1px solid #999;border-radius:1px;"></span>
           <span style="width:16px;height:16px;background:#0066CC;border:1px solid #999;border-radius:1px;"></span>
         </div>
       </div>
       <div style="text-align:center;">
-        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:5px;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"><span>Right</span></label>
+        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:2px;"><input type="checkbox" id="filter-right" checked onchange="updateAnalysisChart()"><span>Right</span></label>
         <div style="display:flex;gap:4px;justify-content:center;">
           <span style="width:16px;height:16px;background:#90EE90;border:1px solid #999;border-radius:1px;"></span>
           <span style="width:16px;height:16px;background:#228B22;border:1px solid #999;border-radius:1px;"></span>
         </div>
       </div>
       <div style="text-align:center;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:5px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:2px;">
           <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;"><input type="checkbox" id="filter-hr" checked onchange="updateAnalysisChart()"><span>HR</span></label>
         </div>
         <div style="display:flex;gap:4px;justify-content:center;">
@@ -2584,12 +2584,12 @@ function renderAnalysis() {
     </div>
 
     <!-- Chart Container -->
-    <div class="analysis-card" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;padding:20px;">
-      <svg id="chart-container" class="analysis-chart" style="width:100%;height:400px;" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="analysis-card" style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;padding:10px;">
+      <svg id="chart-container" class="analysis-chart" style="width:100%;height:320px;" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
 
     <!-- Legend -->
-    <div class="analysis-card card" style="padding:12px 20px;">
+    <div class="analysis-card card" style="padding:8px 12px;margin-bottom:6px;">
       <div class="analysis-legend legend-row" style="margin:0;justify-content:center;gap:24px;flex-wrap:wrap;">
         <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal <120/80 (Good)</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129 (Monitor)</div>
@@ -2601,7 +2601,7 @@ function renderAnalysis() {
     </div>
 
     <!-- Data Table -->
-    <div class="analysis-card card" style="padding:16px;overflow-x:auto;">
+    <div class="analysis-card card" style="padding:12px;overflow-x:auto;">
       <div class="card-title">Reading Data</div>
       <table id="analysis-data-table" class="slot-table" style="font-size:0.95rem;">
         <thead>
@@ -2671,9 +2671,9 @@ function updateAnalysisTable() {
 
         cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;color:${textColor};">${sys}/${dia}</div><div style="font-size:0.75rem;color:${textColor};opacity:0.8;">@${time}</div><div style="font-size:0.85rem;color:${textColor};font-weight:600;">♥${reading.hr || '—'}</div>`;
         cell.style.textAlign = 'center';
-        cell.style.padding = '8px 4px';
+        cell.style.padding = '6px 3px';
         cell.style.backgroundColor = bgColor;
-        cell.style.borderRadius = '6px';
+        cell.style.borderRadius = '4px';
         cell.style.fontWeight = '600';
       } else {
         cell.textContent = '—';
