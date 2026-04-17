@@ -1348,40 +1348,36 @@ function loadDocData() {
   if (!confirm('Load your April 11-17 readings?')) return;
   const data = [
     // Apr 11
-    {id:5001101,timestamp:new Date(2026,3,11,7,0).toISOString(),sys:137,dia:100,hr:81,arm:'LEFT',slotId:'s1'},
-    {id:5001102,timestamp:new Date(2026,3,11,7,0).toISOString(),sys:135,dia:98,hr:79,arm:'RIGHT',slotId:'s1'},
-    {id:5001103,timestamp:new Date(2026,3,11,19,0).toISOString(),sys:134,dia:99,hr:80,arm:'LEFT',slotId:'s2'},
-    {id:5001104,timestamp:new Date(2026,3,11,19,0).toISOString(),sys:132,dia:97,hr:78,arm:'RIGHT',slotId:'s2'},
+    {id:5001103,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,hr:81,arm:'LEFT',slotId:'s2'},
+    {id:5001104,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,hr:81,arm:'RIGHT',slotId:'s2'},
     // Apr 12
-    {id:5001201,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:136,dia:99,hr:80,arm:'LEFT',slotId:'s1'},
-    {id:5001202,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:134,dia:97,hr:78,arm:'RIGHT',slotId:'s1'},
-    {id:5001203,timestamp:new Date(2026,3,12,19,0).toISOString(),sys:133,dia:98,hr:79,arm:'LEFT',slotId:'s2'},
-    {id:5001204,timestamp:new Date(2026,3,12,19,0).toISOString(),sys:131,dia:96,hr:77,arm:'RIGHT',slotId:'s2'},
+    {id:5001201,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:137,dia:99,hr:80,arm:'LEFT',slotId:'s1'},
+    {id:5001202,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:139,dia:97,hr:78,arm:'RIGHT',slotId:'s1'},
+    {id:5001203,timestamp:new Date(2026,3,12,0,0).toISOString(),sys:136,dia:88,hr:79,arm:'LEFT',slotId:'s2'},
+    {id:5001204,timestamp:new Date(2026,3,12,0,0).toISOString(),sys:122,dia:87,hr:89,arm:'RIGHT',slotId:'s2'},
     // Apr 13
     {id:5001301,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,hr:78,arm:'LEFT',slotId:'s1'},
     {id:5001302,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:103,hr:81,arm:'RIGHT',slotId:'s1'},
-    {id:5001303,timestamp:new Date(2026,3,13,19,0).toISOString(),sys:132,dia:101,hr:75,arm:'LEFT',slotId:'s2'},
-    {id:5001304,timestamp:new Date(2026,3,13,19,0).toISOString(),sys:130,dia:99,hr:73,arm:'RIGHT',slotId:'s2'},
+    {id:5001303,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:132,dia:101,hr:75,arm:'LEFT',slotId:'s2'},
+    {id:5001304,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:130,dia:99,hr:73,arm:'RIGHT',slotId:'s2'},
     // Apr 14
-    {id:5001401,timestamp:new Date(2026,3,14,7,0).toISOString(),sys:130,dia:100,hr:99,arm:'LEFT',slotId:'s1'},
-    {id:5001402,timestamp:new Date(2026,3,14,7,0).toISOString(),sys:128,dia:98,hr:97,arm:'RIGHT',slotId:'s1'},
-    {id:5001403,timestamp:new Date(2026,3,14,19,0).toISOString(),sys:127,dia:97,hr:90,arm:'LEFT',slotId:'s2'},
-    {id:5001404,timestamp:new Date(2026,3,14,19,0).toISOString(),sys:125,dia:95,hr:88,arm:'RIGHT',slotId:'s2'},
+    {id:5001401,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,hr:99,arm:'LEFT',slotId:'s1'},
+    {id:5001402,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:128,dia:98,hr:97,arm:'RIGHT',slotId:'s1'},
+    {id:5001403,timestamp:new Date(2026,3,14,0,0).toISOString(),sys:126,dia:92,hr:80,arm:'LEFT',slotId:'s2'},
+    {id:5001404,timestamp:new Date(2026,3,14,0,0).toISOString(),sys:120,dia:81,hr:88,arm:'RIGHT',slotId:'s2'},
     // Apr 15
     {id:5001501,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,hr:83,arm:'LEFT',slotId:'s1'},
     {id:5001502,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:131,dia:93,hr:85,arm:'RIGHT',slotId:'s1'},
-    {id:5001503,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:128,dia:92,hr:81,arm:'LEFT',slotId:'s2'},
-    {id:5001504,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:126,dia:90,hr:79,arm:'RIGHT',slotId:'s2'},
+    {id:5001503,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,hr:81,arm:'LEFT',slotId:'s2'},
+    {id:5001504,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,hr:90,arm:'RIGHT',slotId:'s2'},
     // Apr 16
     {id:5001601,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,hr:99,arm:'LEFT',slotId:'s1'},
-    {id:5001602,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:126,dia:93,hr:97,arm:'RIGHT',slotId:'s1'},
-    {id:5001603,timestamp:new Date(2026,3,16,19,0).toISOString(),sys:125,dia:94,hr:92,arm:'LEFT',slotId:'s2'},
-    {id:5001604,timestamp:new Date(2026,3,16,19,0).toISOString(),sys:123,dia:92,hr:90,arm:'RIGHT',slotId:'s2'},
+    {id:5001602,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,hr:99,arm:'RIGHT',slotId:'s1'},
+    {id:5001603,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:139,dia:99,hr:88,arm:'LEFT',slotId:'s2'},
+    {id:5001604,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:130,dia:98,hr:90,arm:'RIGHT',slotId:'s2'},
     // Apr 17
     {id:5001701,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:137,dia:100,hr:88,arm:'LEFT',slotId:'s1'},
-    {id:5001702,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:98,hr:86,arm:'RIGHT',slotId:'s1'},
-    {id:5001703,timestamp:new Date(2026,3,17,19,0).toISOString(),sys:132,dia:97,hr:84,arm:'LEFT',slotId:'s2'},
-    {id:5001704,timestamp:new Date(2026,3,17,19,0).toISOString(),sys:130,dia:95,hr:82,arm:'RIGHT',slotId:'s2'},
+    {id:5001702,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:94,hr:87,arm:'RIGHT',slotId:'s1'},
   ];
   saveReadings(data);
   renderAll();
