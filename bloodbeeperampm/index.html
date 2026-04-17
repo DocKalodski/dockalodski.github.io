@@ -2968,11 +2968,7 @@ async function bbampmRenderClients() {
   populateSlotDropdown();
 
   // LOCKED: Load ONLY Doc's April 11-17 data
-  const userKey = _getUserKey();
-  const cacheKey = `bbampmampm_readings_${userKey}`;
-  const docData = buildDemoReadings(); // Returns Apr 11-17 only
-  _readingsCache = docData;
-  localStorage.setItem(cacheKey, JSON.stringify(docData));
+  saveReadings(buildDemoReadings());
 
   renderAll();
   checkReminders();
