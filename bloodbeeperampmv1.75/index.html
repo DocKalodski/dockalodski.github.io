@@ -2633,15 +2633,28 @@ function updateAnalysisTable() {
     typeCell.style.fontWeight = '600';
     row.appendChild(typeCell);
 
-    // Data cells (compact format)
+    // Data cells (compact format) with color coding
     dates.forEach(date => {
       const cell = document.createElement('td');
       const reading = byDate[date]?.[period]?.[arm];
       if (reading) {
         const time = new Date(reading.timestamp).toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
-        cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;">${reading.sys}/${reading.dia}</div><div style="font-size:0.75rem;color:#666;">@${time}</div><div style="font-size:0.85rem;color:#ff6b6b;font-weight:600;">♥${reading.hr || '—'}</div>`;
+        const sys = reading.sys, dia = reading.dia;
+
+        // Color coding based on BP zones
+        let bgColor = '#f0f0f0', textColor = '#000';
+        if (sys >= 180 || dia >= 120) { bgColor = '#7f1d1d'; textColor = '#fff'; } // Crisis
+        else if (sys >= 140 || dia >= 90) { bgColor = '#ef4444'; textColor = '#fff'; } // Very High
+        else if (sys >= 130 || dia >= 80) { bgColor = '#f97316'; textColor = '#fff'; } // High
+        else if (sys >= 120) { bgColor = '#eab308'; textColor = '#000'; } // Elevated
+        else { bgColor = '#22c55e'; textColor = '#fff'; } // Normal
+
+        cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;color:${textColor};">${sys}/${dia}</div><div style="font-size:0.75rem;color:${textColor};opacity:0.8;">@${time}</div><div style="font-size:0.85rem;color:${textColor};font-weight:600;">♥${reading.hr || '—'}</div>`;
         cell.style.textAlign = 'center';
-        cell.style.padding = '4px 2px';
+        cell.style.padding = '8px 4px';
+        cell.style.backgroundColor = bgColor;
+        cell.style.borderRadius = '6px';
+        cell.style.fontWeight = '600';
       } else {
         cell.textContent = '—';
         cell.style.textAlign = 'center';
