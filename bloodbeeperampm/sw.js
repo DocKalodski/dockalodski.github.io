@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bloodbeeper-v1';
+const CACHE_NAME = 'bloodbeeper-v2';
 const ASSETS = [
   '/bloodbeeperampm/',
   '/bloodbeeperampm/index.html',
