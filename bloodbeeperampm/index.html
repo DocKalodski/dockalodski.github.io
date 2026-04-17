@@ -734,15 +734,9 @@
       <div class="drum-label">Diastolic</div>
       <div class="drum-wrap"><div class="drum-scroll" id="drum-dia"></div></div>
     </div>
-    <div class="drum-sep" style="font-size:1.4rem;padding-top:68px;">♥</div>
-    <div class="drum-col">
-      <div class="drum-label">Pulse</div>
-      <div class="drum-wrap"><div class="drum-scroll" id="drum-hr"></div></div>
-    </div>
   </div>
   <input type="hidden" id="in-sys" value="120">
   <input type="hidden" id="in-dia" value="80">
-  <input type="hidden" id="in-hr" value="70">
   <input type="hidden" id="editing-id" value="">
   <div id="bp-preview-display" style="text-align:center;font-size:2.3rem;font-weight:800;letter-spacing:-1.5px;color:var(--text);padding:4px 0;min-height:48px;"></div>
   <div id="preview-badge" style="text-align:center;margin-bottom:14px;min-height:28px;"></div>
@@ -807,12 +801,20 @@ const SB_URL='https://psudkrlyxulfakqbdblt.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzdWRrcmx5eHVsZmFrcWJkYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjUwMDgsImV4cCI6MjA5MDg0MTAwOH0.zfWBHqaEk1efJG_FczEgjZlTHufo2I-C4RiM0Wdk9pE';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
+// ── SYNC STATE & DEBOUNCE ─────────────────────────────────
+let _lastLocalUpdateTime = 0;        // Timestamp of our last push (echo detection)
+let _syncDebounceTimer = null;        // Debounce timer for batch renders
+let _pendingSyncData = null;          // Batched sync data
+const SYNC_DEBOUNCE_MS = 250;         // Batch rapid changes
+const ECHO_GRACE_MS = 1000;           // Ignore echoes within 1 second
+
 function bbampmUserKey(){const k=localStorage.getItem('bbampmampm_license_key')||'';return k==='007'?'BBAMPM-2026-0404-DOC-0101':k;}
 function bbampmIsDev(){return localStorage.getItem('bbampmampm_license_key')==='007';}
 function showRRSyncBadge(){const el=document.getElementById('bbampm-sync-badge');if(el)el.style.display='inline';}
 
 async function bbampmPushToCloud(dataKey,value){
   const uk=bbampmUserKey(); if(!uk) return;
+  _lastLocalUpdateTime = Date.now();  // Mark our timestamp for echo detection
   try{ await sb.from('bbampmampm_data').upsert({user_key:uk,data_key:dataKey,value,updated_at:new Date().toISOString()},{onConflict:'user_key,data_key'}); }
   catch(e){ console.warn('RR push error:',e); }
 }
@@ -847,11 +849,33 @@ async function bbampmSyncFromCloud(){
 
 function bbampmSubscribeRealtime(){
   const uk=bbampmUserKey(); if(!uk) return;
-  sb.channel('bbampm-'+uk)
-    .on('postgres_changes',{event:'*',schema:'public',table:'bbampmampm_data',filter:'user_key=eq.'+uk},payload=>{
-      const d=payload.new; if(!d) return;
-      if(d.data_key==='readings'){
-        const cloud=d.value||[];
+
+  // Debounced handler — batches rapid changes, prevents feedback loop
+  function handleSyncPayload(payload) {
+    const d=payload.new; if(!d) return;
+
+    // ── ECHO DETECTION: ignore changes we made within grace period
+    const now = Date.now();
+    const isEcho = (now - _lastLocalUpdateTime) < ECHO_GRACE_MS;
+
+    if(isEcho) {
+      console.log('[BBAMPM] Ignoring echo update (we made this change)');
+      return;
+    }
+
+    _pendingSyncData = d; // Queue for debounced render
+
+    // Clear existing debounce timer
+    if(_syncDebounceTimer) clearTimeout(_syncDebounceTimer);
+
+    // Debounce: only render after 250ms of silence
+    _syncDebounceTimer = setTimeout(() => {
+      if(!_pendingSyncData) return;
+      const data = _pendingSyncData;
+      _pendingSyncData = null;
+
+      if(data.data_key==='readings'){
+        const cloud=data.value||[];
         const local=loadReadings();
         const localIds=new Set(local.map(r=>r.id));
         const incoming=cloud.filter(r=>!localIds.has(r.id));
@@ -859,15 +883,19 @@ function bbampmSubscribeRealtime(){
           const merged=[...local,...incoming].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
           _readingsCache=merged;
           localStorage.setItem('bbampmampm_readings',JSON.stringify(merged));
-          renderAll();
+          renderDashboard(); // Only dashboard, not full analysis
         }
       }
-      if(d.data_key==='settings'&&d.value){
-        _settingsCache=d.value;
-        localStorage.setItem('bbampmampm_settings2',JSON.stringify(d.value));
+      if(data.data_key==='settings'&&data.value){
+        _settingsCache=data.value;
+        localStorage.setItem('bbampmampm_settings2',JSON.stringify(data.value));
       }
       showRRSyncBadge();
-    })
+    }, SYNC_DEBOUNCE_MS);
+  }
+
+  sb.channel('bbampm-'+uk)
+    .on('postgres_changes',{event:'*',schema:'public',table:'bbampmampm_data',filter:'user_key=eq.'+uk},handleSyncPayload)
     .subscribe();
 }
 
@@ -1277,11 +1305,9 @@ function buildDemoReadings() {
     // Trend: Stage 2 (Apr 1) → Stage 1 (Apr 15)
     const baseSysAm = Math.round(142 - progress * 16);
     const baseDiaAm = Math.round(92  - progress * 10);
-    const baseHrAm  = Math.round(78  - progress * 6);
     // PM slightly lower than AM
     const baseSysPm = Math.round(138 - progress * 14);
     const baseDiaPm = Math.round(89  - progress * 9);
-    const baseHrPm  = Math.round(74  - progress * 5);
 
     const rnd = (n, range) => Math.round(n + (Math.random() * range * 2 - range));
 
@@ -1290,7 +1316,6 @@ function buildDemoReadings() {
       out.push({ id: 4000000 + day*100 + i, timestamp: t.toISOString(),
         sys: Math.max(105, rnd(baseSysAm, 4)),
         dia: Math.max(65,  rnd(baseDiaAm, 3)),
-        hr:  Math.max(58,  rnd(baseHrAm, 3)),
         notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s1' });
     });
 
@@ -1299,7 +1324,6 @@ function buildDemoReadings() {
       out.push({ id: 4000000 + day*100 + 10 + i, timestamp: t.toISOString(),
         sys: Math.max(100, rnd(baseSysPm, 4)),
         dia: Math.max(62,  rnd(baseDiaPm, 3)),
-        hr:  Math.max(55,  rnd(baseHrPm, 3)),
         notes: notes[Math.floor(Math.random()*notes.length)], slotId:'s2' });
     });
   }
@@ -1323,60 +1347,45 @@ function clearDemoDataOnly() {
 }
 
 function loadDocData() {
-  if (!confirm('Load your April 11-24 readings?')) return;
+  if (!confirm('Load your April 11-17 readings?')) return;
   const data = [
-    // Apr 11
-    {id:5001101,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,hr:81,arm:'LEFT',slotId:'s5'},
-    {id:5001102,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,hr:81,arm:'RIGHT',slotId:'s5'},
-    // Apr 12
-    {id:5001201,timestamp:new Date(2026,3,12,6,30).toISOString(),sys:137,dia:99,hr:80,arm:'LEFT',slotId:'s1'},
-    {id:5001202,timestamp:new Date(2026,3,12,6,30).toISOString(),sys:139,dia:97,hr:78,arm:'RIGHT',slotId:'s1'},
-    // Apr 13
-    {id:5001301,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,hr:78,arm:'LEFT',slotId:'s1'},
-    {id:5001302,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:103,hr:81,arm:'RIGHT',slotId:'s1'},
-    {id:5001303,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:136,dia:88,hr:89,arm:'LEFT',slotId:'s8'},
-    {id:5001304,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:122,dia:87,hr:89,arm:'RIGHT',slotId:'s8'},
-    // Apr 14
-    {id:5001401,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,hr:99,arm:'LEFT',slotId:'s3'},
-    {id:5001402,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:126,dia:91,hr:97,arm:'RIGHT',slotId:'s3'},
-    {id:5001403,timestamp:new Date(2026,3,14,0,0).toISOString(),sys:126,dia:92,hr:80,arm:'LEFT',slotId:'s8'},
-    {id:5001404,timestamp:new Date(2026,3,14,0,0).toISOString(),sys:120,dia:92,hr:81,arm:'RIGHT',slotId:'s8'},
-    // Apr 15
-    {id:5001501,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,hr:83,arm:'LEFT',slotId:'s1'},
-    {id:5001502,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:128,dia:93,hr:85,arm:'RIGHT',slotId:'s1'},
-    {id:5001503,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,hr:92,arm:'LEFT',slotId:'s6'},
-    {id:5001504,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,hr:90,arm:'RIGHT',slotId:'s6'},
-    // Apr 16
-    {id:5001601,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,hr:99,arm:'LEFT',slotId:'s2'},
-    {id:5001602,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,hr:99,arm:'RIGHT',slotId:'s2'},
-    // Apr 18 (Sat)
-    {id:5001801,timestamp:new Date(2026,3,18,22,0).toISOString(),sys:135,dia:100,hr:81,arm:'LEFT',slotId:'s5'},
-    {id:5001802,timestamp:new Date(2026,3,18,22,0).toISOString(),sys:136,dia:101,hr:81,arm:'RIGHT',slotId:'s5'},
-    // Apr 20 (Mon)
-    {id:5002001,timestamp:new Date(2026,3,20,7,0).toISOString(),sys:137,dia:102,hr:78,arm:'LEFT',slotId:'s1'},
-    {id:5002002,timestamp:new Date(2026,3,20,7,0).toISOString(),sys:135,dia:103,hr:81,arm:'RIGHT',slotId:'s1'},
-    {id:5002003,timestamp:new Date(2026,3,20,0,0).toISOString(),sys:136,dia:88,hr:89,arm:'LEFT',slotId:'s8'},
-    {id:5002004,timestamp:new Date(2026,3,20,0,0).toISOString(),sys:122,dia:87,hr:89,arm:'RIGHT',slotId:'s8'},
-    // Apr 21 (Tue)
-    {id:5002101,timestamp:new Date(2026,3,21,10,0).toISOString(),sys:130,dia:100,hr:99,arm:'LEFT',slotId:'s3'},
-    {id:5002102,timestamp:new Date(2026,3,21,10,0).toISOString(),sys:126,dia:91,hr:97,arm:'RIGHT',slotId:'s3'},
-    {id:5002103,timestamp:new Date(2026,3,21,0,0).toISOString(),sys:126,dia:92,hr:80,arm:'LEFT',slotId:'s8'},
-    {id:5002104,timestamp:new Date(2026,3,21,0,0).toISOString(),sys:120,dia:92,hr:81,arm:'RIGHT',slotId:'s8'},
-    // Apr 22 (Wed)
-    {id:5002201,timestamp:new Date(2026,3,22,7,0).toISOString(),sys:133,dia:95,hr:83,arm:'LEFT',slotId:'s1'},
-    {id:5002202,timestamp:new Date(2026,3,22,7,0).toISOString(),sys:128,dia:93,hr:85,arm:'RIGHT',slotId:'s1'},
-    {id:5002203,timestamp:new Date(2026,3,22,19,0).toISOString(),sys:123,dia:88,hr:92,arm:'LEFT',slotId:'s6'},
-    {id:5002204,timestamp:new Date(2026,3,22,19,0).toISOString(),sys:116,dia:88,hr:90,arm:'RIGHT',slotId:'s6'},
-    // Apr 23 (Thu)
-    {id:5002301,timestamp:new Date(2026,3,23,8,0).toISOString(),sys:128,dia:95,hr:99,arm:'LEFT',slotId:'s2'},
-    {id:5002302,timestamp:new Date(2026,3,23,8,0).toISOString(),sys:132,dia:96,hr:99,arm:'RIGHT',slotId:'s2'},
-    // Apr 24 (Fri)
-    {id:5002401,timestamp:new Date(2026,3,24,21,0).toISOString(),sys:139,dia:99,hr:88,arm:'LEFT',slotId:'s5'},
-    {id:5002402,timestamp:new Date(2026,3,24,21,0).toISOString(),sys:130,dia:98,hr:90,arm:'RIGHT',slotId:'s5'},
+    // Apr 11 (Sat) — PM only
+    {id:5011101,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:135,dia:100,arm:'LEFT',slotId:'s5'},
+    {id:5011102,timestamp:new Date(2026,3,11,22,0).toISOString(),sys:136,dia:101,arm:'RIGHT',slotId:'s5'},
+    // Apr 12 (Sun) — AM only
+    {id:5012101,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:137,dia:99,arm:'LEFT',slotId:'s1'},
+    {id:5012102,timestamp:new Date(2026,3,12,7,0).toISOString(),sys:139,dia:97,arm:'RIGHT',slotId:'s1'},
+    // Apr 13 (Mon)
+    {id:5013101,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:137,dia:102,arm:'LEFT',slotId:'s1'},
+    {id:5013102,timestamp:new Date(2026,3,13,7,0).toISOString(),sys:135,dia:101,arm:'RIGHT',slotId:'s1'},
+    {id:5013103,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:136,dia:88,arm:'LEFT',slotId:'s8'},
+    {id:5013104,timestamp:new Date(2026,3,13,0,0).toISOString(),sys:122,dia:87,arm:'RIGHT',slotId:'s8'},
+    // Apr 14 (Tue)
+    {id:5014101,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:130,dia:100,arm:'LEFT',slotId:'s3'},
+    {id:5014102,timestamp:new Date(2026,3,14,10,0).toISOString(),sys:126,dia:91,arm:'RIGHT',slotId:'s3'},
+    {id:5014103,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:126,dia:92,arm:'LEFT',slotId:'s8'},
+    {id:5014104,timestamp:new Date(2026,3,14,12,0).toISOString(),sys:120,dia:92,arm:'RIGHT',slotId:'s8'},
+    // Apr 15 (Wed)
+    {id:5015101,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:133,dia:95,arm:'LEFT',slotId:'s1'},
+    {id:5015102,timestamp:new Date(2026,3,15,7,0).toISOString(),sys:128,dia:93,arm:'RIGHT',slotId:'s1'},
+    {id:5015103,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:123,dia:88,arm:'LEFT',slotId:'s3'},
+    {id:5015104,timestamp:new Date(2026,3,15,19,0).toISOString(),sys:116,dia:88,arm:'RIGHT',slotId:'s3'},
+    // Apr 16 (Thu)
+    {id:5016101,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:128,dia:95,arm:'LEFT',slotId:'s1'},
+    {id:5016102,timestamp:new Date(2026,3,16,8,0).toISOString(),sys:132,dia:96,arm:'RIGHT',slotId:'s1'},
+    {id:5016103,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:139,dia:99,arm:'LEFT',slotId:'s6'},
+    {id:5016104,timestamp:new Date(2026,3,16,21,0).toISOString(),sys:130,dia:98,arm:'RIGHT',slotId:'s6'},
+    // Apr 17 (Fri) — AM only
+    {id:5017101,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:137,dia:100,arm:'LEFT',slotId:'s1'},
+    {id:5017102,timestamp:new Date(2026,3,17,9,0).toISOString(),sys:135,dia:94,arm:'RIGHT',slotId:'s1'},
   ];
-  saveReadings(data);
+  // Load locally only — skip cloud sync
+  const userKey = _getUserKey();
+  const cacheKey = `bbampmampm_readings_${userKey}`;
+  _readingsCache = data;
+  localStorage.setItem(cacheKey, JSON.stringify(data));
   renderAll();
-  alert(`Loaded ${data.length} readings from April 11-24, 2026.`);
+  alert(`Loaded ${data.length} readings from April 11-17, 2026.`);
 }
 
 function clearAllData() {
@@ -1427,14 +1436,14 @@ function importBackup(input) {
 function exportCSV() {
   const r = loadReadings();
   if (!r.length) { alert('No data to export.'); return; }
-  const header = ['Date','Time','Systolic','Diastolic','Heart Rate','Slot','Status','Notes'];
+  const header = ['Date','Time','Systolic','Diastolic','Slot','Status','Notes'];
   const rows = r.slice().sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)).map(rd => {
     const dt = new Date(rd.timestamp);
     const sl = getSlot(rd.slotId);
     return [
       dt.toLocaleDateString('en-PH'),
       dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),
-      rd.sys, rd.dia, rd.hr||'',
+      rd.sys, rd.dia,
       sl.name, classify(rd.sys,rd.dia).label,
       rd.notes||''
     ];
@@ -1468,7 +1477,6 @@ function printReport() {
       <td>${fmt(dt)}</td>
       <td>${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</td>
       <td><strong>${r.sys}/${r.dia}</strong></td>
-      <td>${r.hr||'—'}</td>
       <td>${sl.name}</td>
       <td>${armTxt}</td>
       <td>${cl.label}</td>
@@ -1510,7 +1518,6 @@ function openSheet(afterEl) {
   if (!drumsReady) {
     drumSys = initDrum('drum-sys', 'in-sys', 60, 220, 120);
     drumDia = initDrum('drum-dia', 'in-dia', 40, 150, 80);
-    drumHr  = initDrum('drum-hr',  'in-hr',  40, 180, 70);
     const n = new Date();
     const nH = n.getHours(), nAP = nH>=12?1:0, nH12 = nH%12||12;
     drumMonth = initDrumArr('drum-month', DT_MONTHS, n.getMonth(),    syncDatetime);
@@ -1530,7 +1537,7 @@ function closeSheet() {
 }
 
 // ── DRUM PICKERS ──────────────────────────────────────────
-let drumSys = null, drumDia = null, drumHr = null;
+let drumSys = null, drumDia = null;
 let drumMonth = null, drumDay = null, drumYear = null, drumHour = null, drumMin = null, drumAmpm = null;
 
 const DT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1668,7 +1675,6 @@ function previewLive() {
 function saveReading() {
   const sys   = parseInt(document.getElementById('in-sys').value);
   const dia   = parseInt(document.getElementById('in-dia').value);
-  const hr    = parseInt(document.getElementById('in-hr').value) || null;
   const notes = document.getElementById('in-notes').value;
   const arm   = document.getElementById('in-arm').value;
   const editId = document.getElementById('editing-id').value;
@@ -1707,10 +1713,10 @@ function saveReading() {
   let readings = loadReadings();
   if (editId) {
     const idx = readings.findIndex(r => String(r.id) === editId);
-    if (idx !== -1) readings[idx] = { ...readings[idx], sys, dia, hr, notes, slotId, arm, timestamp: ts };
+    if (idx !== -1) readings[idx] = { ...readings[idx], sys, dia, notes, slotId, arm, timestamp: ts };
     cancelEdit();
   } else {
-    readings.push({ id: Date.now(), timestamp: ts, sys, dia, hr, notes, slotId, arm });
+    readings.push({ id: Date.now(), timestamp: ts, sys, dia, notes, slotId, arm });
   }
 
   saveReadings(readings);
@@ -1726,7 +1732,6 @@ function clearForm() {
   document.getElementById('editing-id').value = '';
   if (drumSys) drumSys.setValue(120);
   if (drumDia) drumDia.setValue(80);
-  if (drumHr)  drumHr.setValue(70);
 }
 
 function editReading(id, _triggerEl) {
@@ -1736,7 +1741,6 @@ function editReading(id, _triggerEl) {
     // Drive drum pickers to the reading's values
     if (drumSys) drumSys.setValue(r.sys);
     if (drumDia) drumDia.setValue(r.dia);
-    if (drumHr)  drumHr.setValue(r.hr || 70);
     document.getElementById('in-notes').value = r.notes || '';
     document.getElementById('in-arm').value   = r.arm   || '';
     document.getElementById('editing-id').value = String(r.id);
@@ -1780,13 +1784,11 @@ function showCalInlineForm(panelId, dateISO, readingId) {
   panel.insertAdjacentHTML('beforeend',`
     <div class="cal-inline-form" id="${fid}" style="background:var(--card);border:2px solid var(--accent);border-radius:10px;padding:12px;margin-top:8px;">
       <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-bottom:8px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Systolic</label>
           <input type="number" id="${fid}-sys" value="${r?r.sys:''}" placeholder="120" min="60" max="250" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Diastolic</label>
           <input type="number" id="${fid}-dia" value="${r?r.dia:''}" placeholder="80" min="40" max="150" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
-        <div><label style="font-size:0.78rem;color:var(--muted);display:block;">HR</label>
-          <input type="number" id="${fid}-hr" value="${r&&r.hr?r.hr:''}" placeholder="70" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Date &amp; Time</label>
@@ -1807,7 +1809,6 @@ function showCalInlineForm(panelId, dateISO, readingId) {
 function saveCalInline(fid, readingId) {
   const sys  = parseInt(document.getElementById(`${fid}-sys`).value);
   const dia  = parseInt(document.getElementById(`${fid}-dia`).value);
-  const hr   = parseInt(document.getElementById(`${fid}-hr`).value)||null;
   const dt   = document.getElementById(`${fid}-dt`).value;
   let slot = document.getElementById(`${fid}-slot`).value;
   const notes= document.getElementById(`${fid}-notes`).value;
@@ -1882,16 +1883,12 @@ function renderDashSummary() {
   const avgDiaAm = week7am.length ? Math.round(week7am.reduce((a,r) => a+r.dia, 0) / week7am.length) : 0;
   const highestAm = week7am.length ? week7am.reduce((w,r) => r.sys > w.sys ? r : w, week7am[0]) : null;
   const lowestAm = week7am.length ? week7am.reduce((b,r) => r.sys < b.sys ? r : b, week7am[0]) : null;
-  const hrAm = week7am.filter(r => r.hr);
-  const avgHrAm = hrAm.length ? Math.round(hrAm.reduce((a,r) => a+r.hr, 0) / hrAm.length) : null;
 
   // PM stats
   const avgSysPm = week7pm.length ? Math.round(week7pm.reduce((a,r) => a+r.sys, 0) / week7pm.length) : 0;
   const avgDiaPm = week7pm.length ? Math.round(week7pm.reduce((a,r) => a+r.dia, 0) / week7pm.length) : 0;
   const highestPm = week7pm.length ? week7pm.reduce((w,r) => r.sys > w.sys ? r : w, week7pm[0]) : null;
   const lowestPm = week7pm.length ? week7pm.reduce((b,r) => r.sys < b.sys ? r : b, week7pm[0]) : null;
-  const hrPm = week7pm.filter(r => r.hr);
-  const avgHrPm = hrPm.length ? Math.round(hrPm.reduce((a,r) => a+r.hr, 0) / hrPm.length) : null;
 
   const amHtml = week7am.length ? `
     <div class="stat-box" style="border-left:4px solid #f97316;background:rgba(249,115,22,0.05);">
@@ -1940,7 +1937,7 @@ function readingItemHTML(r, editingId='') {
   return `<div class="reading-item${isEditing?' highlight':''}">
     <div class="ri-icon" title="${sl.name}">${sl.emoji}</div>
     <div class="ri-body">
-      <span class="ri-bp">${r.sys}/${r.dia}</span>${r.hr?` <span style="color:var(--muted);font-size:0.82rem;">· ${r.hr} bpm</span>`:''}
+      <span class="ri-bp">${r.sys}/${r.dia}</span>
       <div class="ri-meta">${dateStr} ${timeStr}${r.notes?` · <em>${r.notes}</em>`:''}</div>
       <span class="slot-pill">${sl.emoji} ${sl.name}</span>
     </div>
@@ -1974,13 +1971,12 @@ function calRowHTML(r, panelId) {
     </div>
     <div class="cr-main">
       <span class="cr-bp">${r.sys}/${r.dia}</span>
-      ${r.hr?`<span class="cr-hr">❤️ ${r.hr} bpm</span>`:''}
     </div>
     <div class="cr-meta">
       <span class="badge ${c.cls}">${c.label}</span>
       <span style="font-size:0.75rem;color:var(--muted);font-weight:700;">${getAMPM(r)}</span>
       <span class="cr-slot">${sl.emoji||''} ${sl.name}</span>
-      ${r.arm?`<span class="cr-slot">· ${{ 'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||r.arm}</span>`:''}
+      ${r.arm?`<span class="cr-slot">· ${{'L-sit':'L arm','R-sit':'R arm','L-std':'L standing','R-std':'R standing'}[r.arm]||r.arm}</span>`:''}
       ${r.notes?`<span class="cr-notes">· ${r.notes}</span>`:''}
     </div>
   </div>`;
@@ -2111,16 +2107,14 @@ function groupByDay(readings, nDays=7, offset=0) {
 
     const amSys = dayRam.length ? Math.round(dayRam.reduce((a,r)=>a+r.sys,0)/dayRam.length) : null;
     const amDia = dayRam.length ? Math.round(dayRam.reduce((a,r)=>a+r.dia,0)/dayRam.length) : null;
-    const amHr = dayRam.some(r=>r.hr) ? Math.round(dayRam.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayRam.filter(r=>r.hr).length) : null;
 
     const pmSys = dayRpm.length ? Math.round(dayRpm.reduce((a,r)=>a+r.sys,0)/dayRpm.length) : null;
     const pmDia = dayRpm.length ? Math.round(dayRpm.reduce((a,r)=>a+r.dia,0)/dayRpm.length) : null;
-    const pmHr = dayRpm.some(r=>r.hr) ? Math.round(dayRpm.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/dayRpm.filter(r=>r.hr).length) : null;
 
     result.push({
       label,
-      am: {sys: amSys, dia: amDia, hr: amHr, count: dayRam.length},
-      pm: {sys: pmSys, dia: pmDia, hr: pmHr, count: dayRpm.length},
+      am: {sys: amSys, dia: amDia, count: dayRam.length},
+      pm: {sys: pmSys, dia: pmDia, count: dayRpm.length},
       count: dayR.length,
     });
   }
@@ -2142,16 +2136,14 @@ function groupByWeek(readings) {
 
     const amSys = weekRam.length ? Math.round(weekRam.reduce((a,r)=>a+r.sys,0)/weekRam.length) : null;
     const amDia = weekRam.length ? Math.round(weekRam.reduce((a,r)=>a+r.dia,0)/weekRam.length) : null;
-    const amHr = weekRam.some(r=>r.hr) ? Math.round(weekRam.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekRam.filter(r=>r.hr).length) : null;
 
     const pmSys = weekRpm.length ? Math.round(weekRpm.reduce((a,r)=>a+r.sys,0)/weekRpm.length) : null;
     const pmDia = weekRpm.length ? Math.round(weekRpm.reduce((a,r)=>a+r.dia,0)/weekRpm.length) : null;
-    const pmHr = weekRpm.some(r=>r.hr) ? Math.round(weekRpm.filter(r=>r.hr).reduce((a,r)=>a+(r.hr||0),0)/weekRpm.filter(r=>r.hr).length) : null;
 
     result.push({
       label,
-      am: {sys: amSys, dia: amDia, hr: amHr, count: weekRam.length},
-      pm: {sys: pmSys, dia: pmDia, hr: pmHr, count: weekRpm.length},
+      am: {sys: amSys, dia: amDia, count: weekRam.length},
+      pm: {sys: pmSys, dia: pmDia, count: weekRpm.length},
       count: weekR.length,
     });
   }
@@ -2179,7 +2171,6 @@ function renderChart() {
   const labels = points.map(p => p.label);
   const showSys = true;
   const showDia = true;
-  const showHr  = true;
 
   const dotColor = (sys, dia) => sys === null ? 'transparent' :
     ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
@@ -2262,14 +2253,6 @@ function renderChart() {
         data: scatterReadings.filter(isPM).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.dia}:null; }).filter(Boolean),
         backgroundColor:'#93c5fd', pointRadius:4, pointHoverRadius:5 });
     }
-    if (showHr) {
-      datasets.push({ label:'🌅 AM HR', showLine:false,
-        data: scatterReadings.filter(isAM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#7c3aed', pointRadius:3 });
-      datasets.push({ label:'🌙 PM HR', showLine:false,
-        data: scatterReadings.filter(isPM).filter(r=>r.hr).map(r=>{ const l=rLabel(r); return l?{x:l,y:r.hr}:null; }).filter(Boolean),
-        backgroundColor:'#d8b4fe', pointRadius:3 });
-    }
     // Trend lines superimposed — same {x,y} format as scatter dots
     if (showSys) {
       datasets.push({ label:'🌅 AM avg', showLine:true,
@@ -2286,14 +2269,6 @@ function renderChart() {
       datasets.push({ label:'🌙 PM dia avg', showLine:true,
         data:points.filter(p=>p.pm.dia!==null).map(p=>({x:p.label,y:p.pm.dia})),
         borderColor:'#93c5fd', pointRadius:0, tension:0.35, borderWidth:1.5, fill:false });
-    }
-    if (showHr) {
-      datasets.push({ label:'🌅 AM hr avg', showLine:true,
-        data:points.filter(p=>p.am.hr!==null).map(p=>({x:p.label,y:p.am.hr})),
-        borderColor:'#7c3aed', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
-      datasets.push({ label:'🌙 PM hr avg', showLine:true,
-        data:points.filter(p=>p.pm.hr!==null).map(p=>({x:p.label,y:p.pm.hr})),
-        borderColor:'#d8b4fe', pointRadius:0, tension:0.35, borderWidth:1, fill:false });
     }
   } else {
     // Line chart: orange=AM, blue=PM, no dashes
@@ -2320,16 +2295,6 @@ function renderChart() {
         pointBorderColor:'#fff', pointBorderWidth:1.5,
         pointRadius:points.map(p=>p.pm.count?4:0),
         tension:0.35, borderWidth:1.8, fill:false, spanGaps:true });
-    }
-    if (showHr) {
-      datasets.push({ label:'🌅 AM HR', data:points.map(p=>p.am.hr),
-        borderColor:'#7c3aed', pointBackgroundColor:'#7c3aed',
-        pointRadius:points.map(p=>p.am.hr?3:0),
-        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
-      datasets.push({ label:'🌙 PM HR', data:points.map(p=>p.pm.hr),
-        borderColor:'#d8b4fe', pointBackgroundColor:'#d8b4fe',
-        pointRadius:points.map(p=>p.pm.hr?3:0),
-        tension:0.35, borderWidth:1.5, fill:false, spanGaps:true });
     }
   }
 
@@ -2401,12 +2366,12 @@ function renderChart() {
           let y = yStart;
           if (p.am.sys !== null) {
             ctx.fillStyle = DOT_C[classify(p.am.sys, p.am.dia).key];
-            ctx.fillText(`AM ${p.am.sys}/${p.am.dia}${p.am.hr ? ' HR '+p.am.hr : ''}`, xPos, y);
+            ctx.fillText(`AM ${p.am.sys}/${p.am.dia}`, xPos, y);
             y += 9;
           }
           if (p.pm.sys !== null) {
             ctx.fillStyle = DOT_C[classify(p.pm.sys, p.pm.dia).key];
-            ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}${p.pm.hr ? ' HR '+p.pm.hr : ''}`, xPos, y);
+            ctx.fillText(`PM ${p.pm.sys}/${p.pm.dia}`, xPos, y);
           }
         });
         // Draw AM / PM labels inside bars (bar chart only)
@@ -2514,12 +2479,6 @@ function renderAnalysis() {
           <span style="width:16px;height:16px;background:#228B22;border:1px solid #999;border-radius:1px;"></span>
         </div>
       </div>
-      <div style="text-align:center;">
-        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:5px;"><input type="checkbox" id="filter-hr" checked onchange="updateAnalysisChart()"><span>Heart Rate</span></label>
-        <div style="display:flex;gap:4px;justify-content:center;">
-          <span style="width:16px;height:16px;background:#a855f7;border:1px solid #999;border-radius:50%;"></span>
-        </div>
-      </div>
       <div style="border-left:2px solid #ddd;padding-left:16px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
         <div style="text-align:center;">
           <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-weight:600;font-size:0.9rem;margin-bottom:4px;"><input type="checkbox" id="trend-aml" checked onchange="updateAnalysisChart()"><span>Trend AM L</span></label>
@@ -2561,7 +2520,6 @@ function renderAnalysis() {
         <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89 (Bad)</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90 (Bad)</div>
         <div class="zone-legend-item"><div class="zone-dot" style="background:#7f1d1d;"></div> Crisis ≥180/≥120</div>
-        <div class="zone-legend-item"><div style="font-size:1.2rem;width:10px;height:10px;display:flex;align-items:center;justify-content:center;color:#ff6b6b;">♥</div> Heart Rate (bpm)</div>
       </div>
     </div>
 
@@ -2624,7 +2582,7 @@ function updateAnalysisTable() {
       const reading = byDate[date]?.[period]?.[arm];
       if (reading) {
         const time = new Date(reading.timestamp).toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
-        cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;">${reading.sys}/${reading.dia}</div><div style="font-size:0.75rem;color:#666;">@${time}</div><div style="font-size:0.85rem;color:#ff6b6b;font-weight:600;">♥${reading.hr || '—'}</div>`;
+        cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;">${reading.sys}/${reading.dia}</div><div style="font-size:0.75rem;color:#666;">@${time}</div>`;
         cell.style.textAlign = 'center';
         cell.style.padding = '4px 2px';
       } else {
@@ -2646,7 +2604,6 @@ function updateAnalysisChart() {
   const filterPM = document.getElementById('filter-pm')?.checked ?? true;
   const filterLeft = document.getElementById('filter-left')?.checked ?? true;
   const filterRight = document.getElementById('filter-right')?.checked ?? true;
-  const filterHR = document.getElementById('filter-hr')?.checked ?? true;
   const trendAML = document.getElementById('trend-aml')?.checked ?? true;
   const trendAMR = document.getElementById('trend-amr')?.checked ?? true;
   const trendPML = document.getElementById('trend-pml')?.checked ?? true;
@@ -2718,10 +2675,10 @@ function updateAnalysisChart() {
   const barGroups = [];
   labels.forEach((label, dateIdx) => {
     const group = [];
-    if (filterAM && filterLeft && am_left[dateIdx]) group.push({sys: am_left[dateIdx].sys, dia: am_left[dateIdx].dia, hr: am_left[dateIdx].hr, color: '#87CEEB', arrayIdx: 0});
-    if (filterAM && filterRight && am_right[dateIdx]) group.push({sys: am_right[dateIdx].sys, dia: am_right[dateIdx].dia, hr: am_right[dateIdx].hr, color: '#90EE90', arrayIdx: 1});
-    if (filterPM && filterLeft && pm_left[dateIdx]) group.push({sys: pm_left[dateIdx].sys, dia: pm_left[dateIdx].dia, hr: pm_left[dateIdx].hr, color: '#0066CC', arrayIdx: 2});
-    if (filterPM && filterRight && pm_right[dateIdx]) group.push({sys: pm_right[dateIdx].sys, dia: pm_right[dateIdx].dia, hr: pm_right[dateIdx].hr, color: '#228B22', arrayIdx: 3});
+    if (filterAM && filterLeft && am_left[dateIdx]) group.push({sys: am_left[dateIdx].sys, dia: am_left[dateIdx].dia, color: '#87CEEB', arrayIdx: 0});
+    if (filterAM && filterRight && am_right[dateIdx]) group.push({sys: am_right[dateIdx].sys, dia: am_right[dateIdx].dia, color: '#90EE90', arrayIdx: 1});
+    if (filterPM && filterLeft && pm_left[dateIdx]) group.push({sys: pm_left[dateIdx].sys, dia: pm_left[dateIdx].dia, color: '#0066CC', arrayIdx: 2});
+    if (filterPM && filterRight && pm_right[dateIdx]) group.push({sys: pm_right[dateIdx].sys, dia: pm_right[dateIdx].dia, color: '#228B22', arrayIdx: 3});
     if (group.length > 0) barGroups.push({dateIdx, group});
   });
 
@@ -2757,47 +2714,6 @@ function updateAnalysisChart() {
     });
   });
 
-  // Draw HR as circles - plot from raw data
-  if (filterHR) {
-    const dataArrays = [{data: am_left, arrayIdx: 0}, {data: am_right, arrayIdx: 1}, {data: pm_left, arrayIdx: 2}, {data: pm_right, arrayIdx: 3}];
-    let allHR = [];
-    dataArrays.forEach(({data}) => data.forEach(r => { if (r && r.hr) allHR.push(r.hr); }));
-
-    if (allHR.length > 0) {
-      const hmin = Math.min(...allHR), hmax = Math.max(...allHR), hrange = Math.max(1, hmax - hmin);
-
-      // For each date
-      labels.forEach((label, dateIdx) => {
-        // For each of the 4 data arrays
-        dataArrays.forEach(({data, arrayIdx}) => {
-          const reading = data[dateIdx];
-          if (!reading || !reading.hr) return;
-
-          // Check if this reading should be displayed (based on filters)
-          const isPM = arrayIdx >= 2;
-          const isRight = arrayIdx % 2 === 1;
-          if (isPM && !filterPM) return;
-          if (!isPM && !filterAM) return;
-          if (isRight && !filterRight) return;
-          if (!isRight && !filterLeft) return;
-
-          // Calculate position
-          const dateX = leftMargin + (dateIdx / Math.max(1, labels.length - 1)) * chartW;
-          const barOffset = (arrayIdx - 1.5) * (barW + spacing);
-          const heartX = dateX + barOffset + barW / 2;
-          const heartY = topMargin + ((hmax - reading.hr) / hrange) * chartH;
-
-          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          circle.setAttribute('cx', heartX.toFixed(1));
-          circle.setAttribute('cy', heartY.toFixed(1));
-          circle.setAttribute('r', '8');
-          circle.setAttribute('fill', '#ff0000');
-          circle.setAttribute('opacity', '0.8');
-          svg.appendChild(circle);
-        });
-      });
-    }
-  }
 
   // Draw trend lines
   const trendData = [
@@ -3002,7 +2918,7 @@ async function bbampmRenderClients() {
       const count=readings.length;
       const latest=readings[0];
       const lastDate=latest?new Date(latest.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'—';
-      const latestBP=latest?`${latest.sys}/${latest.dia} mmHg · HR ${latest.hr}`:'—';
+      const latestBP=latest?`${latest.sys}/${latest.dia} mmHg`:'—';
       const cat=latest?classify(latest.sys,latest.dia):null;
       const catColor=cat?DOT_C[cat.key]:'#94a3b8';
       return `<div style="background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid ${catColor};">
