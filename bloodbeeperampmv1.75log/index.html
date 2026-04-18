@@ -658,7 +658,7 @@
       <div><div class="setting-label">🧹 Clear Demo Data Only</div><div class="setting-sub">Removes seeded demo readings — keeps your real logged data</div></div>
       <button type="button" class="btn-sm" onclick="clearDemoDataOnly()">Clear Demo</button>
     </div>
-    <div class="setting-row">
+    <div class="setting-row" id="doc-data-loader" style="display:none;">
       <div><div class="setting-label">📥 Load My Data (Apr 11-17)</div><div class="setting-sub">Loads your April 11-17, 2026 readings (AML, AMR, PML, PMR)</div></div>
       <button type="button" class="btn-sm" onclick="loadDocData()">Load My Data</button>
     </div>
@@ -948,6 +948,12 @@ function checkLogin() {
 function _applyUserName(username) {
   const el = document.getElementById('user-name');
   if (el) el.textContent = username;
+
+  // Show "Load My Data" button only for admin
+  const docDataLoader = document.getElementById('doc-data-loader');
+  if (docDataLoader) {
+    docDataLoader.style.display = (username === 'cmstaclara@up.edu.ph') ? 'flex' : 'none';
+  }
 }
 
 function logoutUser() {
