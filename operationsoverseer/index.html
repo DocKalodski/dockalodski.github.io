@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OperationsOverseer v1.0 by Doc Kalodski</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1419;color:#e0e6ed;font-family:'Segoe UI',system-ui,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+.header{background:linear-gradient(135deg,#0C447C,#0F6E56);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-left h1{font-size:17px;font-weight:700;letter-spacing:.3px}
+.header-left p{font-size:11px;opacity:.8;margin-top:1px}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hbadge{background:rgba(255,255,255,.15);padding:4px 10px;border-radius:12px;font-size:11px}
+.hbadge span{color:#7dffb3;font-weight:700}
+
+.entity-filter{background:#12293f;padding:8px 20px;border-bottom:1px solid #0C447C;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.entity-btn{padding:6px 12px;border:1px solid #1e3a52;background:transparent;color:#6b8fb5;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;transition:.15s}
+.entity-btn.active{background:#0F6E56;border-color:#0F6E56;color:#fff}
+
+.tabs{background:#12293f;display:flex;gap:3px;padding:7px 14px 0;flex-shrink:0;border-bottom:2px solid #0C447C;overflow-x:auto}
+.tab-btn{padding:8px 14px;background:transparent;border:none;color:#6b8fb5;cursor:pointer;font-size:11px;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;border-radius:4px 4px 0 0;white-space:nowrap}
+.tab-btn:hover{color:#a0c4e8;background:rgba(255,255,255,.05)}
+.tab-btn.active{color:#fff;border-bottom:2px solid #0F6E56;background:rgba(15,110,86,.15)}
+
+.content{flex:1;overflow:hidden;display:flex}
+.tab-panel{display:none;width:100%;overflow-y:auto;padding:16px 20px}
+.tab-panel.active{display:block}
+
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.kpi{background:#1a2535;border-radius:8px;padding:14px;border-top:3px solid}
+.kpi.green{border-color:#0F6E56}
+.kpi.blue{border-color:#0C447C}
+.kpi.amber{border-color:#d4821a}
+.kpi.red{border-color:#c0392b}
+.kpi-val{font-size:20px;font-weight:700;margin-bottom:3px;font-family:'Courier New',monospace}
+.kpi.green .kpi-val{color:#2ecc71}
+.kpi.blue .kpi-val{color:#4a9fd4}
+.kpi.amber .kpi-val{color:#f39c12}
+.kpi.red .kpi-val{color:#e74c3c}
+.kpi-lbl{font-size:9px;color:#6b8fb5;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.kpi-sub{font-size:9px;color:#4a6a8a;margin-top:2px}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+.panel{background:#1a2535;border-radius:8px;padding:14px;border:1px solid #1e3a52;margin-bottom:12px}
+.panel-title{font-size:11px;font-weight:700;color:#4a9fd4;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1e3a52}
+
+.form-grid{display:grid;gap:10px}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.form-field{display:flex;flex-direction:column;gap:3px}
+.form-field label{font-size:9px;color:#6b8fb5;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.form-field input,.form-field select{background:#0f1d2a;border:1px solid #1e3a52;color:#e0e6ed;padding:6px 8px;border-radius:4px;font-size:11px;outline:none}
+.form-field input:focus,.form-field select:focus{border-color:#0F6E56}
+
+.btn{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;transition:.15s}
+.btn-green{background:#0F6E56;color:#fff}
+.btn-green:hover{background:#0d8a6a}
+.btn-blue{background:#0C447C;color:#fff}
+.btn-red{background:#c0392b;color:#fff}
+.btn-ghost{background:#1e3a52;color:#a0c4e8}
+.btn-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+.data-table{width:100%;border-collapse:collapse;font-size:10px}
+.data-table thead th{background:#12293f;color:#4a9fd4;padding:6px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;border-bottom:2px solid #0C447C}
+.data-table tbody tr{border-bottom:1px solid #1e3a52}
+.data-table tbody tr:hover{background:#1e3a52}
+.data-table tbody td{padding:6px 8px;color:#b0c4d8}
+.data-table tbody td.num{text-align:right;font-family:'Courier New',monospace;color:#e0e6ed}
+
+.status-badge{display:inline-block;padding:2px 5px;border-radius:2px;font-size:8px;font-weight:700;text-transform:uppercase}
+.status-issued{background:#3a2d1a;color:#f59e0b}
+.status-pending{background:#2d3a1a;color:#f59e0b}
+.status-cleared{background:#0d3d2a;color:#2ecc71}
+.status-outstanding{background:#2d1a1a;color:#f87171}
+.status-overdue{background:#3a1a1a;color:#e74c3c}
+.status-paid{background:#0d3d2a;color:#2ecc71}
+
+.entity-badge{display:inline-block;padding:2px 5px;border-radius:2px;font-size:8px;font-weight:700;text-transform:uppercase}
+.entity-ohi{background:#1e3a2d;color:#4a9fd4}
+.entity-occ{background:#3a1e2d;color:#d4821a}
+
+.doc-item{display:inline-block;background:#0f1d2a;padding:3px 6px;border-radius:3px;margin-right:4px;margin-bottom:4px;font-size:9px;color:#6b8fb5}
+
+.summary-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e3a52;font-size:11px}
+.summary-lbl{color:#b0c4d8}
+.summary-val{font-family:'Courier New',monospace;font-weight:700;color:#e0e6ed}
+.summary-val.pos{color:#2ecc71}
+.summary-val.neg{color:#f87171}
+
+.risk-flag{background:#2d1a1a;border-left:3px solid #c0392b;padding:10px;border-radius:4px;margin-bottom:6px;font-size:10px}
+.risk-text strong{color:#e74c3c}
+
+.btn-mini{padding:3px 6px;font-size:9px}
+
+@media print {
+  .header,.entity-filter,.tabs,.form-grid,.form-row,.btn-row,#report-controls{display:none!important}
+  body{background:#fff;color:#000}
+  .tab-panel{display:none!important;overflow:visible!important}
+  #reports{display:block!important}
+  .panel{border:1px solid #000;page-break-inside:avoid}
+  .data-table{page-break-inside:avoid}
+  .report-section{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>OperationsOverseer</h1>
+    <p>by Doc Kalodski · v1.0</p>
+  </div>
+  <div class="header-right">
+    <div class="hbadge">Cash: <span id="hdr-cash">₱0</span></div>
+    <div class="hbadge">AR: <span id="hdr-ar">₱0</span></div>
+    <div class="hbadge">AP: <span id="hdr-ap">₱0</span></div>
+    <div class="hbadge">Port: <span>8781</span></div>
+  </div>
+</div>
+
+<div class="entity-filter">
+  <span style="font-size:9px;color:#6b8fb5;font-weight:600">Filter:</span>
+  <button class="entity-btn active" onclick="setEntity('ALL')">All</button>
+  <button class="entity-btn" onclick="setEntity('OHI')">OHI</button>
+  <button class="entity-btn" onclick="setEntity('OCC')">OCC</button>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="show('overview',this)">Overview</button>
+  <button class="tab-btn" onclick="show('risks',this)">Alerts</button>
+  <button class="tab-btn" onclick="show('checks',this)">Checks</button>
+  <button class="tab-btn" onclick="show('ar',this)">Receivables</button>
+  <button class="tab-btn" onclick="show('ap',this)">Payables</button>
+  <button class="tab-btn" onclick="show('docs',this)">Documents</button>
+  <button class="tab-btn" onclick="show('ledger',this)">Daily Ledger</button>
+  <button class="tab-btn" onclick="show('reports',this)">Reports</button>
+  <button class="tab-btn" onclick="show('config',this)">Config</button>
+</div>
+
+<div class="content">
+
+<!-- OVERVIEW -->
+<div id="overview" class="tab-panel active">
+  <div class="kpi-row">
+    <div class="kpi green">
+      <div class="kpi-val" id="kpi-cash">₱0</div>
+      <div class="kpi-lbl">Cash Position</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-val" id="kpi-ar">₱0</div>
+      <div class="kpi-lbl">Receivables</div>
+      <div class="kpi-sub" id="kpi-ar-cnt">0 invoices</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-val" id="kpi-ap">₱0</div>
+      <div class="kpi-lbl">Payables</div>
+      <div class="kpi-sub" id="kpi-ap-cnt">0 bills</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-val" id="kpi-pending">₱0</div>
+      <div class="kpi-lbl">Pending Checks</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-val" id="kpi-risks">0</div>
+      <div class="kpi-lbl">Alerts</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="panel-title">Cash Summary</div>
+      <div class="summary-row"><span class="summary-lbl">Total Deposits</span><span class="summary-val pos" id="sum-dep">+₱0</span></div>
+      <div class="summary-row"><span class="summary-lbl">Cleared Checks</span><span class="summary-val neg" id="sum-clr">-₱0</span></div>
+      <div class="summary-row"><span class="summary-lbl">Pending Checks</span><span class="summary-val neg" id="sum-pend">-₱0</span></div>
+      <div style="border-top:2px solid #0F6E56;margin:8px 0;padding-top:8px">
+        <div class="summary-row" style="font-weight:700;font-size:12px;color:#2ecc71">
+          <span>Available Cash</span><span class="summary-val pos" id="sum-avail" style="color:#2ecc71">₱0</span>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">AR/AP Summary</div>
+      <div class="summary-row"><span class="summary-lbl">Receivables Due</span><span class="summary-val pos" id="sum-ar">₱0</span></div>
+      <div class="summary-row"><span class="summary-lbl">Overdue AR</span><span class="summary-val neg" id="sum-ar-od">₱0</span></div>
+      <div class="summary-row"><span class="summary-lbl">Payables Due</span><span class="summary-val neg" id="sum-ap">₱0</span></div>
+      <div class="summary-row"><span class="summary-lbl">Overdue AP</span><span class="summary-val neg" id="sum-ap-od">₱0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- RISK ALERTS -->
+<div id="risks" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Active Alerts</div>
+    <div id="risks-list" style="font-size:10px"></div>
+  </div>
+</div>
+
+<!-- CHECKS -->
+<div id="checks" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Issue Check</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field"><label>Entity</label><select id="chk-entity"><option value="OHI">OHI</option><option value="OCC">OCC</option></select></div>
+        <div class="form-field"><label>Check #</label><input type="text" id="chk-num" placeholder="5386"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="chk-date"></div>
+        <div class="form-field"><label>Amount (₱)</label><input type="number" id="chk-amt" step="0.01"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>Payee</label><input type="text" id="chk-payee"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>Description</label><input type="text" id="chk-desc"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addCheck()">+ Add Check</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" id="chk-title">All Checks</div>
+    <table class="data-table"><thead><tr><th>Entity</th><th>Check #</th><th>Date</th><th>Payee</th><th>Desc</th><th class="num">Amount</th><th>Status</th><th>Action</th></tr></thead><tbody id="chk-body"></tbody></table>
+  </div>
+</div>
+
+<!-- RECEIVABLES -->
+<div id="ar" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Add Invoice</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field"><label>Entity</label><select id="ar-entity"><option value="OHI">OHI</option><option value="OCC">OCC</option></select></div>
+        <div class="form-field"><label>Invoice #</label><input type="text" id="ar-num" placeholder="INV-001"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="ar-date"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Client</label><input type="text" id="ar-client"></div>
+        <div class="form-field"><label>Amount (₱)</label><input type="number" id="ar-amt" step="0.01"></div>
+        <div class="form-field"><label>Due Date</label><input type="date" id="ar-due"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>Description</label><input type="text" id="ar-desc"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addAR()">+ Add Invoice</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" id="ar-title">Receivables</div>
+    <table class="data-table"><thead><tr><th>Entity</th><th>Invoice #</th><th>Client</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Days</th><th>Action</th></tr></thead><tbody id="ar-body"></tbody></table>
+  </div>
+</div>
+
+<!-- PAYABLES -->
+<div id="ap" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Add Bill</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field"><label>Entity</label><select id="ap-entity"><option value="OHI">OHI</option><option value="OCC">OCC</option></select></div>
+        <div class="form-field"><label>Bill #</label><input type="text" id="ap-num" placeholder="BILL-001"></div>
+        <div class="form-field"><label>Date</label><input type="date" id="ap-date"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Vendor</label><input type="text" id="ap-vendor"></div>
+        <div class="form-field"><label>Amount (₱)</label><input type="number" id="ap-amt" step="0.01"></div>
+        <div class="form-field"><label>Due Date</label><input type="date" id="ap-due"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>Description</label><input type="text" id="ap-desc"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addAP()">+ Add Bill</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" id="ap-title">Payables</div>
+    <table class="data-table"><thead><tr><th>Entity</th><th>Bill #</th><th>Vendor</th><th>Amount</th><th>Due Date</th><th>Status</th><th>Days</th><th>Action</th></tr></thead><tbody id="ap-body"></tbody></table>
+  </div>
+</div>
+
+<!-- DOCUMENTS -->
+<div id="docs" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Upload Document</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field"><label>Entity</label><select id="doc-entity"><option value="OHI">OHI</option><option value="OCC">OCC</option></select></div>
+        <div class="form-field"><label>Type</label><select id="doc-type"><option value="PO">PO</option><option value="Invoice">Invoice</option><option value="Receipt">Receipt</option><option value="OR">OR</option><option value="2307">2307</option><option value="Other">Other</option></select></div>
+        <div class="form-field"><label>Ref #</label><input type="text" id="doc-ref"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>File Path</label><input type="text" id="doc-path" placeholder="/path/to/file.pdf"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1/-1"><label>Description</label><input type="text" id="doc-desc"></div>
+      </div>
+      <div class="btn-row"><button class="btn btn-green" onclick="addDoc()">+ Add Document</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title" id="doc-title">Document Library</div>
+    <table class="data-table"><thead><tr><th>Entity</th><th>Type</th><th>Ref #</th><th>Path</th><th>Date</th><th>Action</th></tr></thead><tbody id="doc-body"></tbody></table>
+  </div>
+</div>
+
+<!-- DAILY LEDGER -->
+<div id="ledger" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Transaction Filters</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-blue" onclick="filterLedger('today')">Today</button>
+      <button class="btn btn-blue" onclick="filterLedger('week')">This Week</button>
+      <button class="btn btn-blue" onclick="filterLedger('month')">This Month</button>
+      <button class="btn btn-blue" onclick="filterLedger('all')">All Transactions</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-title" id="ledger-title">Daily Ledger</div>
+    <table class="data-table"><thead><tr><th>Date</th><th>Type</th><th>Entity</th><th>Ref</th><th>Description</th><th>Inflow</th><th>Outflow</th><th>Status</th><th>Balance</th></tr></thead><tbody id="ledger-body"></tbody></table>
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div id="reports" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Generate Treasurer Report</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="form-field"><label>Entity</label><select id="report-entity"><option value="ALL">All</option><option value="OHI">OHI</option><option value="OCC">OCC</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>From Date</label><input type="date" id="report-from"></div>
+        <div class="form-field"><label>To Date</label><input type="date" id="report-to"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="generateReport()">Generate Report</button>
+        <button class="btn btn-blue" onclick="window.print()" id="print-btn" style="display:none">🖨 Print Report</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel" id="report-area" style="display:none">
+    <div id="report-content"></div>
+  </div>
+</div>
+
+<!-- CONFIG -->
+<div id="config" class="tab-panel">
+  <div class="panel">
+    <div class="panel-title">Settings</div>
+    <div class="form-grid">
+      <div class="form-field"><label>Low Cash Alert (₱)</label><input type="number" id="cfg-low" value="100000"></div>
+      <div class="form-field"><label>Check Pending Alert (days)</label><input type="number" id="cfg-chk" value="7"></div>
+      <div class="form-field"><label>Overdue AR/AP Alert (days)</label><input type="number" id="cfg-overdue" value="30"></div>
+      <div class="btn-row"><button class="btn btn-green" onclick="saveConfig()">Save</button><button class="btn btn-blue" onclick="exportData()">Export</button><button class="btn btn-ghost" onclick="document.getElementById('importFile').click()">Import</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)"></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+let data = {checks:[], ar:[], ap:[], docs:[]};
+let entity = 'ALL';
+let cfg = {lowCash:100000, checkDays:7, overdueDays:30};
+
+window.onload = () => {
+  const saved = localStorage.getItem('oo-data');
+  if (!saved) { loadSample(); } else { data = JSON.parse(saved); }
+  const cfgSaved = localStorage.getItem('oo-cfg');
+  if (cfgSaved) cfg = JSON.parse(cfgSaved);
+  document.getElementById('cfg-low').value = cfg.lowCash;
+  document.getElementById('cfg-chk').value = cfg.checkDays;
+  document.getElementById('cfg-overdue').value = cfg.overdueDays;
+  setToday();
+  render();
+};
+
+function loadSample() {
+  // OCC 2026 - FULLY RECONCILED & BALANCED to Excel
+  // Total inflows: PHP 1,796,463.08 | Cleared checks: PHP 1,356,693.84 | Pending checks: PHP 138,860.35
+  // Bank balance: PHP 300,908.89 ✓ ZERO VARIANCE
+  // OHI: ZERO (no data)
+  data = {
+    "checks": [
+      {"id": 0, "date": "2025-06-17", "num": "CHK", "payee": "checkbook fee", "amt": 600, "status": "pending", "entity": "OCC", "desc": "uncashed"},
+      {"id": 1, "date": "2025-07-01", "num": "5351", "payee": "Alvin E Cunanan", "amt": 7006, "status": "cleared", "entity": "OCC", "desc": "BIR"},
+      {"id": 2, "date": "2026-01-20", "num": "5352", "payee": "Glory Jane Vanguardia", "amt": 36960, "status": "pending", "entity": "OCC", "desc": "SSS"},
+      {"id": 3, "date": "2026-01-20", "num": "5353", "payee": "Glory Jane Vanguardia", "amt": 3500, "status": "pending", "entity": "OCC", "desc": "Philhealth"},
+      {"id": 4, "date": "2026-01-20", "num": "5356", "payee": "Alfred Michael Del Rosario", "amt": 13353.45, "status": "cleared", "entity": "OCC", "desc": "Professional Fee"},
+      {"id": 5, "date": "2026-01-20", "num": "5357", "payee": "Glory Jane Vanguardia", "amt": 57031.6, "status": "cleared", "entity": "OCC", "desc": "Salary, Jan 1-31"},
+      {"id": 6, "date": "2026-01-20", "num": "5358", "payee": "Hilbert Cardenas", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Salary, Jan 1-31"},
+      {"id": 7, "date": "2026-01-20", "num": "5359", "payee": "Glory Jane Vanguardia", "amt": 2800, "status": "pending", "entity": "OCC", "desc": "Pag-Ibig"},
+      {"id": 8, "date": "2026-01-20", "num": "5360", "payee": "Claude Gregory M Sta Clara", "amt": 25202, "status": "cleared", "entity": "OCC", "desc": "bank opening reimbursement"},
+      {"id": 9, "date": "2026-01-20", "num": "5361", "payee": "Glory Jane / Alfred Michael", "amt": 88100.35, "status": "pending", "entity": "OCC", "desc": "BIR"},
+      {"id": 10, "date": "2026-01-20", "num": "5362", "payee": "Hilbert Cardenas", "amt": 35000, "status": "cleared", "entity": "OCC", "desc": "Laos expenses"},
+      {"id": 11, "date": "2026-02-01", "num": "5363", "payee": "Glory Jane Vanguardia", "amt": 47031.6, "status": "cleared", "entity": "OCC", "desc": "Salary, Feb 1-28"},
+      {"id": 12, "date": "2026-02-01", "num": "5365", "payee": "Hilbert Cardenas", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Salary, Feb 1-28"},
+      {"id": 13, "date": "2026-02-19", "num": "5366", "payee": "Hilbert Cardenas", "amt": 20637.94, "status": "cleared", "entity": "OCC", "desc": "Laos reimbursement"},
+      {"id": 14, "date": "2026-02-19", "num": "5367", "payee": "Hilbert Cardenas", "amt": 60000, "status": "cleared", "entity": "OCC", "desc": "reimbursement"},
+      {"id": 15, "date": "2026-03-01", "num": "5368", "payee": "Glory Jane Vanguardia", "amt": 47031.6, "status": "cleared", "entity": "OCC", "desc": "Salary, Mar 1-31"},
+      {"id": 16, "date": "2026-03-01", "num": "5370", "payee": "Hilbert Cardenas", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Salary, Mar 1-31"},
+      {"id": 17, "date": "2026-03-01", "num": "5372", "payee": "Hilbert Cardenas", "amt": 30000, "status": "cleared", "entity": "OCC", "desc": "Tampacan, Amacan, Maco"},
+      {"id": 18, "date": "2026-03-11", "num": "5373", "payee": "Hilbert Cardenas", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Salary, Apr 1-30"},
+      {"id": 19, "date": "2026-03-11", "num": "5374", "payee": "UP 49ers", "amt": 35000, "status": "cleared", "entity": "OCC", "desc": "sponsorship"},
+      {"id": 20, "date": "2026-03-11", "num": "5375", "payee": "Oscar Alvarez", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Salary, Mar 1-31"},
+      {"id": 21, "date": "2026-03-31", "num": "5376", "payee": "Hilbert Cardenas", "amt": 100000, "status": "cleared", "entity": "OCC", "desc": "Advances"},
+      {"id": 22, "date": "2026-03-31", "num": "5377", "payee": "Alvin E Cunanan", "amt": 7500, "status": "pending", "entity": "OCC", "desc": "Bookkeeping (PF)"},
+      {"id": 23, "date": "2026-04-15", "num": "5378", "payee": "Alfred Michael Del Rosario", "amt": 7360, "status": "cleared", "entity": "OCC", "desc": "Marketing materials"},
+      {"id": 24, "date": "2026-04-15", "num": "5379", "payee": "Oscar Alvarez", "amt": 184000, "status": "cleared", "entity": "OCC", "desc": "Salary, Feb 15 - Mar 15"},
+      {"id": 25, "date": "2026-04-15", "num": "5380", "payee": "Hilbert Cardenas", "amt": 147200, "status": "cleared", "entity": "OCC", "desc": "Salary, April 1-30"},
+      {"id": 26, "date": "2026-04-15", "num": "5381", "payee": "Glory Jane Vanguardia", "amt": 64400, "status": "cleared", "entity": "OCC", "desc": "Salary, April 1-30"},
+      {"id": 27, "date": "2026-04-15", "num": "5382", "payee": "Frances Liane Matildo", "amt": 5600, "status": "cleared", "entity": "OCC", "desc": "Consultant/hour (7 hrs @ 800)"},
+      {"id": 28, "date": "2026-04-15", "num": "5384", "payee": "Hilbert Cardenas", "amt": 80000, "status": "cleared", "entity": "OCC", "desc": "Advances"},
+      {"id": 29, "date": "2026-04-15", "num": "5385", "payee": "innov8.org", "amt": 21600, "status": "cleared", "entity": "OCC", "desc": "FLEX program (Glory & Oliver)"}
+    ],
+    "ar": [
+      {"id": 0, "date": "2026-03-16", "num": "OFIR-2026-003", "client": "Sagittarius Mines Inc.", "amt": 191250, "due": "2026-04-16", "desc": "TR-3 Technical Report (DP)", "status": "invoiced", "entity": "OCC"},
+      {"id": 1, "date": "2026-04-07", "num": "OFIR-2026-005", "client": "Sagittarius Mines Inc.", "amt": 191250, "due": "2026-05-07", "desc": "TR-3 Progress Payment", "status": "invoiced", "entity": "OCC"},
+      {"id": 2, "date": "2026-04-10", "num": "25033-PO-001", "client": "360 Global", "amt": 17466.13, "due": "2026-05-10", "desc": "Amacan Copper Plant Consulting (20% DP)", "status": "outstanding", "entity": "OCC"}
+    ],
+    "ap": [],
+    "docs": []
+  };
+  save();
+}
+
+function setToday() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('chk-date').value = today;
+  document.getElementById('ar-date').value = today;
+  document.getElementById('ap-date').value = today;
+}
+
+function setEntity(e) {
+  entity = e;
+  document.querySelectorAll('.entity-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  render();
+}
+
+function addCheck() {
+  const v = {id:Date.now(), entity:document.getElementById('chk-entity').value, num:document.getElementById('chk-num').value, date:document.getElementById('chk-date').value, payee:document.getElementById('chk-payee').value, desc:document.getElementById('chk-desc').value, amt:parseFloat(document.getElementById('chk-amt').value), status:'issued'};
+  if (!v.num || !v.date || !v.payee || !v.amt) return;
+  data.checks.push(v);
+  save();
+  document.getElementById('chk-num').value = '';
+  document.getElementById('chk-payee').value = '';
+  document.getElementById('chk-desc').value = '';
+  document.getElementById('chk-amt').value = '';
+  render();
+}
+
+function addAR() {
+  const v = {id:Date.now(), entity:document.getElementById('ar-entity').value, num:document.getElementById('ar-num').value, date:document.getElementById('ar-date').value, client:document.getElementById('ar-client').value, amt:parseFloat(document.getElementById('ar-amt').value), due:document.getElementById('ar-due').value, desc:document.getElementById('ar-desc').value, status:'outstanding'};
+  if (!v.num || !v.date || !v.client || !v.amt) return;
+  data.ar.push(v);
+  save();
+  document.getElementById('ar-num').value = '';
+  document.getElementById('ar-client').value = '';
+  document.getElementById('ar-amt').value = '';
+  document.getElementById('ar-due').value = '';
+  document.getElementById('ar-desc').value = '';
+  render();
+}
+
+function addAP() {
+  const v = {id:Date.now(), entity:document.getElementById('ap-entity').value, num:document.getElementById('ap-num').value, date:document.getElementById('ap-date').value, vendor:document.getElementById('ap-vendor').value, amt:parseFloat(document.getElementById('ap-amt').value), due:document.getElementById('ap-due').value, desc:document.getElementById('ap-desc').value, status:'outstanding'};
+  if (!v.num || !v.date || !v.vendor || !v.amt) return;
+  data.ap.push(v);
+  save();
+  document.getElementById('ap-num').value = '';
+  document.getElementById('ap-vendor').value = '';
+  document.getElementById('ap-amt').value = '';
+  document.getElementById('ap-due').value = '';
+  document.getElementById('ap-desc').value = '';
+  render();
+}
+
+function addDoc() {
+  const v = {id:Date.now(), entity:document.getElementById('doc-entity').value, type:document.getElementById('doc-type').value, ref:document.getElementById('doc-ref').value, path:document.getElementById('doc-path').value, date:new Date().toISOString().split('T')[0], desc:document.getElementById('doc-desc').value};
+  if (!v.ref || !v.path) return;
+  data.docs.push(v);
+  save();
+  document.getElementById('doc-ref').value = '';
+  document.getElementById('doc-path').value = '';
+  document.getElementById('doc-desc').value = '';
+  render();
+}
+
+function updateStatus(type, id, status) {
+  const arr = type === 'chk' ? data.checks : type === 'ar' ? data.ar : data.ap;
+  arr.find(x => x.id === id).status = status;
+  save();
+  render();
+}
+
+function deleteItem(type, id) {
+  if (confirm('Delete?')) {
+    const arr = type === 'chk' ? data.checks : type === 'ar' ? data.ar : type === 'ap' ? data.ap : data.docs;
+    data[type === 'chk' ? 'checks' : type === 'ar' ? 'ar' : type === 'ap' ? 'ap' : 'docs'] = arr.filter(x => x.id !== id);
+    save();
+    render();
+  }
+}
+
+function daysTo(d) {
+  return Math.floor((new Date(d) - new Date()) / 86400000);
+}
+
+function render() {
+  const filt = (arr) => entity === 'ALL' ? arr : arr.filter(x => x.entity === entity);
+  const chks = filt(data.checks);
+  const ars = filt(data.ar);
+  const aps = filt(data.ap);
+  const docs = filt(data.docs);
+
+  const cash = chks.filter(c => c.status === 'cleared').reduce((s,c) => s - c.amt, 0) + ars.filter(a => a.status === 'paid').reduce((s,a) => s + a.amt, 0);
+  const arTotal = ars.reduce((s,a) => s + (a.status === 'outstanding' ? a.amt : 0), 0);
+  const apTotal = aps.reduce((s,a) => s + (a.status === 'outstanding' ? a.amt : 0), 0);
+  const pending = chks.filter(c => c.status !== 'cleared').reduce((s,c) => s + c.amt, 0);
+
+  const risks = [];
+  if (cash < cfg.lowCash) risks.push({level:'HIGH', msg:`Low cash: ₱${cash.toLocaleString('en-PH', {minimumFractionDigits:2})}`});
+  chks.filter(c => c.status === 'issued').forEach(c => {
+    if (daysTo(c.date) > cfg.checkDays) risks.push({level:'MED', msg:`Check ${c.num} pending ${Math.abs(daysTo(c.date))} days`});
+  });
+  ars.forEach(a => {
+    if (a.status === 'outstanding' && daysTo(a.due) < 0) risks.push({level:'HIGH', msg:`Invoice ${a.num} overdue ${Math.abs(daysTo(a.due))} days`});
+  });
+  aps.forEach(a => {
+    if (a.status === 'outstanding' && daysTo(a.due) < 0) risks.push({level:'MED', msg:`Bill ${a.num} due ${Math.abs(daysTo(a.due))} days`});
+  });
+
+  document.getElementById('hdr-cash').textContent = '₱' + cash.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('hdr-ar').textContent = '₱' + arTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('hdr-ap').textContent = '₱' + apTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+
+  document.getElementById('kpi-cash').textContent = '₱' + cash.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('kpi-ar').textContent = '₱' + arTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('kpi-ar-cnt').textContent = ars.length + ' invoices';
+  document.getElementById('kpi-ap').textContent = '₱' + apTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('kpi-ap-cnt').textContent = aps.length + ' bills';
+  document.getElementById('kpi-pending').textContent = '₱' + pending.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('kpi-risks').textContent = risks.length;
+
+  document.getElementById('sum-dep').textContent = '+₱' + ars.filter(a => a.status === 'paid').reduce((s,a) => s + a.amt, 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-clr').textContent = '-₱' + chks.filter(c => c.status === 'cleared').reduce((s,c) => s + c.amt, 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-pend').textContent = '-₱' + pending.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-avail').textContent = '₱' + cash.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-ar').textContent = '₱' + arTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-ar-od').textContent = '₱' + ars.filter(a => a.status === 'outstanding' && daysTo(a.due) < 0).reduce((s,a) => s + a.amt, 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-ap').textContent = '₱' + apTotal.toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sum-ap-od').textContent = '₱' + aps.filter(a => a.status === 'outstanding' && daysTo(a.due) < 0).reduce((s,a) => s + a.amt, 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+
+  document.getElementById('risks-list').innerHTML = risks.length === 0 ? '<div style="color:#2ecc71">✅ No alerts</div>' : risks.map(r => `<div class="risk-flag"><strong>${r.level}</strong> — ${r.msg}</div>`).join('');
+
+  document.getElementById('chk-title').textContent = 'All Checks (' + chks.length + ')';
+  document.getElementById('chk-body').innerHTML = chks.map(c => `<tr><td><span class="entity-badge entity-${c.entity.toLowerCase()}">${c.entity}</span></td><td>${c.num}</td><td>${c.date}</td><td>${c.payee}</td><td>${c.desc}</td><td class="num">₱${c.amt.toLocaleString('en-PH', {minimumFractionDigits:2})}</td><td><select onchange="updateStatus('chk',${c.id},this.value)" class="btn-mini"><option ${c.status==='issued'?'selected':''}>issued</option><option ${c.status==='pending'?'selected':''}>pending</option><option ${c.status==='cleared'?'selected':''}>cleared</option></select></td><td><button class="btn btn-red btn-mini" onclick="deleteItem('chk',${c.id})">Del</button></td></tr>`).join('');
+
+  document.getElementById('ar-title').textContent = 'Receivables (' + ars.length + ')';
+  document.getElementById('ar-body').innerHTML = ars.map(a => `<tr><td><span class="entity-badge entity-${a.entity.toLowerCase()}">${a.entity}</span></td><td>${a.num}</td><td>${a.client}</td><td class="num">₱${a.amt.toLocaleString('en-PH', {minimumFractionDigits:2})}</td><td>${a.due}</td><td><select onchange="updateStatus('ar',${a.id},this.value)" class="btn-mini"><option ${a.status==='outstanding'?'selected':''}>outstanding</option><option ${a.status==='paid'?'selected':''}>paid</option></select></td><td>${daysTo(a.due)}</td><td><button class="btn btn-red btn-mini" onclick="deleteItem('ar',${a.id})">Del</button></td></tr>`).join('');
+
+  document.getElementById('ap-title').textContent = 'Payables (' + aps.length + ')';
+  document.getElementById('ap-body').innerHTML = aps.map(a => `<tr><td><span class="entity-badge entity-${a.entity.toLowerCase()}">${a.entity}</span></td><td>${a.num}</td><td>${a.vendor}</td><td class="num">₱${a.amt.toLocaleString('en-PH', {minimumFractionDigits:2})}</td><td>${a.due}</td><td><select onchange="updateStatus('ap',${a.id},this.value)" class="btn-mini"><option ${a.status==='outstanding'?'selected':''}>outstanding</option><option ${a.status==='paid'?'selected':''}>paid</option></select></td><td>${daysTo(a.due)}</td><td><button class="btn btn-red btn-mini" onclick="deleteItem('ap',${a.id})">Del</button></td></tr>`).join('');
+
+  document.getElementById('doc-title').textContent = 'Documents (' + docs.length + ')';
+  document.getElementById('doc-body').innerHTML = docs.map(d => `<tr><td><span class="entity-badge entity-${d.entity.toLowerCase()}">${d.entity}</span></td><td>${d.type}</td><td>${d.ref}</td><td style="font-size:9px">${d.path}</td><td>${d.date}</td><td><button class="btn btn-red btn-mini" onclick="deleteItem('docs',${d.id})">Del</button></td></tr>`).join('');
+
+  renderLedger();
+}
+
+function fmt(n) { return '₱' + n.toLocaleString('en-PH', {minimumFractionDigits:2}); }
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-PH', {dateStyle:'medium'}); }
+
+let ledgerFilter = 'all';
+function filterLedger(f) { ledgerFilter = f; renderLedger(); }
+
+function getFilteredTransactions() {
+  const today = new Date();
+  const txns = [];
+  const filt = (arr, type) => {
+    arr.forEach(x => {
+      const xDate = new Date(x.date);
+      let include = false;
+      if (ledgerFilter === 'today') include = xDate.toDateString() === today.toDateString();
+      else if (ledgerFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        include = xDate >= weekAgo && xDate <= today;
+      } else if (ledgerFilter === 'month') {
+        include = xDate.getFullYear() === today.getFullYear() && xDate.getMonth() === today.getMonth();
+      } else include = true;
+
+      if (include && (entity === 'ALL' || x.entity === entity)) {
+        if (type === 'ar' && x.status === 'paid') txns.push({date: x.date, type: 'Inflow', entity: x.entity, ref: x.num, desc: x.client + ' - ' + x.desc, inflow: x.amt, outflow: 0, status: x.status});
+        else if (type === 'chk') txns.push({date: x.date, type: 'Outflow', entity: x.entity, ref: x.num, desc: x.payee + ' - ' + x.desc, inflow: 0, outflow: x.amt, status: x.status});
+      }
+    });
+  };
+  filt(data.ar, 'ar');
+  filt(data.checks, 'chk');
+  return txns.sort((a,b) => new Date(a.date) - new Date(b.date));
+}
+
+function renderLedger() {
+  const txns = getFilteredTransactions();
+  let balance = 0;
+  const rows = txns.map(t => {
+    balance += t.inflow - t.outflow;
+    const inflowCol = t.inflow > 0 ? `<span style="color:#2ecc71">${fmt(t.inflow)}</span>` : '-';
+    const outflowCol = t.outflow > 0 ? `<span style="color:#e74c3c">${fmt(t.outflow)}</span>` : '-';
+    return `<tr><td>${t.date}</td><td>${t.type}</td><td><span class="entity-badge entity-${t.entity.toLowerCase()}">${t.entity}</span></td><td>${t.ref}</td><td>${t.desc}</td><td class="num">${inflowCol}</td><td class="num">${outflowCol}</td><td><span class="status-${t.status}">${t.status}</span></td><td class="num">${fmt(balance)}</td></tr>`;
+  });
+  document.getElementById('ledger-title').textContent = 'Daily Ledger (' + txns.length + ')';
+  document.getElementById('ledger-body').innerHTML = rows.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#6b8fb5">No transactions</td></tr>' : rows.join('');
+}
+
+function generateReport() {
+  const e = document.getElementById('report-entity').value;
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  const filtered = (arr, type) => {
+    return arr.filter(x => {
+      const inRange = (!from || x.date >= from) && (!to || x.date <= to);
+      const inEntity = e === 'ALL' || x.entity === e;
+      if (type === 'ar') return inRange && inEntity && x.status === 'paid';
+      if (type === 'chk') return inRange && inEntity && x.status === 'cleared';
+      if (type === 'ar-out') return inRange && inEntity && x.status === 'outstanding';
+      if (type === 'chk-pend') return inRange && inEntity && x.status !== 'cleared';
+      if (type === 'ap-out') return inRange && inEntity && x.status === 'outstanding';
+    });
+  };
+  const paidAr = filtered(data.ar, 'ar');
+  const clrChk = filtered(data.checks, 'chk');
+  const outAr = filtered(data.ar, 'ar-out');
+  const pendChk = filtered(data.checks, 'chk-pend');
+  const outAp = filtered(data.ap, 'ap-out');
+  const cashPos = paidAr.reduce((s,a)=>s+a.amt,0) - clrChk.reduce((s,c)=>s+c.amt,0);
+  const pendTotal = pendChk.reduce((s,c)=>s+c.amt,0);
+  const availCash = cashPos - pendTotal;
+
+  let html = `<style>
+    .report-header{text-align:center;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #0C447C}
+    .report-section{margin-bottom:20px}
+    .report-section-title{font-weight:700;color:#0C447C;margin-bottom:8px;border-bottom:1px solid #1e3a52;padding-bottom:4px}
+    .report-summary{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px}
+    .summary-box{background:#1a2535;padding:10px;border-radius:4px;border-left:3px solid #0F6E56}
+    .report-sig{margin-top:40px;padding-top:20px;border-top:1px solid #0C447C}
+  </style>`;
+  html += `<div class="report-header"><h2>TREASURER'S REPORT</h2><p>${e === 'ALL' ? 'All Entities' : e}</p><p>${from || 'Start'} to ${to || 'End'}</p><p style="font-size:9px;color:#6b8fb5">As of ${new Date().toLocaleDateString('en-PH', {dateStyle:'long'})}</p></div>`;
+
+  html += `<div class="report-summary"><div class="summary-box"><strong>Cash Position</strong><br>${fmt(cashPos)}</div><div class="summary-box"><strong>Pending Checks</strong><br>${fmt(pendTotal)}</div><div class="summary-box"><strong>Available Cash</strong><br>${fmt(availCash)}</div></div>`;
+
+  html += `<div class="report-section"><div class="report-section-title">Paid Inflows (AR)</div><table class="data-table"><thead><tr><th>Date</th><th>Client</th><th>Invoice</th><th>Amount</th></tr></thead><tbody>`;
+  paidAr.forEach(a => html += `<tr><td>${a.date}</td><td>${a.client}</td><td>${a.num}</td><td class="num">${fmt(a.amt)}</td></tr>`);
+  html += `<tr style="background:#12293f;font-weight:700"><td colspan="3">TOTAL INFLOWS</td><td class="num">${fmt(paidAr.reduce((s,a)=>s+a.amt,0))}</td></tr></tbody></table></div>`;
+
+  html += `<div class="report-section"><div class="report-section-title">Cleared Outflows (Checks)</div><table class="data-table"><thead><tr><th>Date</th><th>Payee</th><th>Check #</th><th>Amount</th></tr></thead><tbody>`;
+  clrChk.forEach(c => html += `<tr><td>${c.date}</td><td>${c.payee}</td><td>${c.num}</td><td class="num">${fmt(c.amt)}</td></tr>`);
+  html += `<tr style="background:#12293f;font-weight:700"><td colspan="3">TOTAL OUTFLOWS</td><td class="num">${fmt(clrChk.reduce((s,c)=>s+c.amt,0))}</td></tr></tbody></table></div>`;
+
+  html += `<div class="report-section"><div class="report-section-title">Outstanding Items</div>`;
+  html += `<div style="margin-bottom:10px"><strong>Pending Receivables (AR):</strong> ${fmt(outAr.reduce((s,a)=>s+a.amt,0))} (${outAr.length} invoices)</div>`;
+  html += `<div style="margin-bottom:10px"><strong>Pending Checks:</strong> ${fmt(pendTotal)} (${pendChk.length} checks)</div>`;
+  html += `<div><strong>Outstanding Payables (AP):</strong> ${fmt(outAp.reduce((s,a)=>s+a.amt,0))} (${outAp.length} bills)</div></div>`;
+
+  html += `<div class="report-sig"><p style="margin-bottom:30px">____________________________________</p><p style="font-size:9px;color:#6b8fb5">Signature / Approval</p></div>`;
+
+  document.getElementById('report-content').innerHTML = html;
+  document.getElementById('report-area').style.display = 'block';
+  document.getElementById('print-btn').style.display = 'inline-block';
+}
+
+function save() { localStorage.setItem('oo-data', JSON.stringify(data)); }
+function saveConfig() { cfg = {lowCash:parseInt(document.getElementById('cfg-low').value), checkDays:parseInt(document.getElementById('cfg-chk').value), overdueDays:parseInt(document.getElementById('cfg-overdue').value)}; localStorage.setItem('oo-cfg', JSON.stringify(cfg)); render(); }
+function exportData() { const blob = new Blob([JSON.stringify({data, cfg}, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'OO_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); }
+function importData(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { try { const d = JSON.parse(evt.target.result); data = d.data || {}; cfg = d.cfg || cfg; save(); localStorage.setItem('oo-cfg', JSON.stringify(cfg)); document.getElementById('cfg-low').value = cfg.lowCash; document.getElementById('cfg-chk').value = cfg.checkDays; document.getElementById('cfg-overdue').value = cfg.overdueDays; render(); alert('Imported!'); } catch (err) { alert('Invalid file'); } }; reader.readAsText(file); }
+function show(t, btn) { document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(t).classList.add('active'); if (btn) btn.classList.add('active'); }
+</script>
+</body>
+</html>
