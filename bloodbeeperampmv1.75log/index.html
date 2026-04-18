@@ -952,7 +952,8 @@ function _applyUserName(username) {
   // Show "Load My Data" button only for admin
   const docDataLoader = document.getElementById('doc-data-loader');
   if (docDataLoader) {
-    docDataLoader.style.display = (username === 'cmstaclara@up.edu.ph') ? 'flex' : 'none';
+    const isAdmin = (username === 'cmstaclara@up.edu.ph' || username === '007');
+    docDataLoader.style.display = isAdmin ? 'flex' : 'none';
   }
 }
 
