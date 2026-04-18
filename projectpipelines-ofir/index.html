@@ -922,11 +922,8 @@ function ppCheck(){
     document.getElementById('pp-licensee').textContent='Licensed to '+obj.name+' ';
     const rb=document.createElement('span');rb.className='role-badge';rb.textContent=obj.role;
     document.getElementById('pp-licensee').appendChild(rb);
-    // All roles see Documents, Meetings, Actions, Resolutions
+    // All roles see Documents
     document.getElementById('tab-btn-reports').style.display='';
-    document.getElementById('tab-btn-meetings').style.display='';
-    document.getElementById('tab-btn-actions').style.display='';
-    document.getElementById('tab-btn-resolutions').style.display='';
     // History: admin only
     if(obj.role==='admin') document.getElementById('tab-btn-history').style.display='';
     return true;
