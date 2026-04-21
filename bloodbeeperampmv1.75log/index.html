@@ -1204,9 +1204,9 @@ function loadReadings() {
       }
     }
 
-    // Seed demo data on first login per user
+    // Seed real data on first login per user
     if (!_readingsCache.length && !localStorage.getItem(`bbampmampm_seeded_${userKey}`)) {
-      _readingsCache = buildDemoReadings();
+      _readingsCache = buildRealReadings();
       localStorage.setItem(`bbampmampm_seeded_${userKey}`, 'true');
       saveReadings(_readingsCache);
     }
