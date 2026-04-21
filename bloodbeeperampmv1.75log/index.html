@@ -1804,9 +1804,16 @@ function saveCalInline(fid, readingId) {
   } else {
     readings.push({id:Date.now(),sys,dia,hr,notes,slotId:slot,timestamp:new Date(dt).toISOString()});
   }
-  saveReadings(readings);
-  renderCalendarOnly();
-  renderDashboard();
+  try {
+    saveReadings(readings);
+    alert('Reading saved!');
+    renderCalendarOnly();
+    renderDashboard();
+    document.getElementById(fid)?.remove();
+  } catch (e) {
+    alert('ERROR: Could not save. Storage blocked? Check browser settings.');
+    console.error('Save error:', e);
+  }
 }
 
 function cancelEdit() {
