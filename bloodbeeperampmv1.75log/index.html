@@ -1755,11 +1755,11 @@ function showCalInlineForm(panelId, dateISO, readingId) {
       <div style="font-size:0.7rem;font-weight:800;color:var(--accent);margin-bottom:8px;">${r?'✏️ Edit Reading':'✚ Add Reading'}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 70px;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Systolic</label>
-          <input type="number" id="${fid}-sys" value="${r?r.sys:''}" placeholder="120" min="60" max="250" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
+          <input type="number" id="${fid}-sys" value="${r?r.sys:'120'}" placeholder="120" min="60" max="250" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Diastolic</label>
-          <input type="number" id="${fid}-dia" value="${r?r.dia:''}" placeholder="80" min="40" max="150" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
+          <input type="number" id="${fid}-dia" value="${r?r.dia:'80'}" placeholder="80" min="40" max="150" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;font-weight:700;"></div>
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">HR</label>
-          <input type="number" id="${fid}-hr" value="${r&&r.hr?r.hr:''}" placeholder="70" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;"></div>
+          <input type="number" id="${fid}-hr" value="${r&&r.hr?r.hr:'80'}" placeholder="70" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem;"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
         <div><label style="font-size:0.78rem;color:var(--muted);display:block;">Date &amp; Time</label>
@@ -2611,15 +2611,6 @@ function updateAnalysisTable() {
   const readingTypes = ['AM LEFT', 'AM RIGHT', 'PM LEFT', 'PM RIGHT'];
   const keyMap = { 'AM LEFT': ['AM', 'LEFT'], 'AM RIGHT': ['AM', 'RIGHT'], 'PM LEFT': ['PM', 'LEFT'], 'PM RIGHT': ['PM', 'RIGHT'] };
 
-  // Diastolic color mapping
-  const diaColor = (dia) => {
-    if (dia < 70) return '#10b981';    // very good
-    if (dia < 80) return '#84cc16';    // good
-    if (dia < 90) return '#eab308';    // elevated
-    if (dia < 100) return '#f97316';   // high
-    return '#ef4444';                  // very high
-  };
-
   readingTypes.forEach(type => {
     const row = document.createElement('tr');
     const [period, arm] = keyMap[type];
@@ -2630,7 +2621,7 @@ function updateAnalysisTable() {
     typeCell.style.fontWeight = '600';
     row.appendChild(typeCell);
 
-    // Data cells (compact format) with SPLIT color coding (left=sys, right=dia)
+    // Data cells (compact format) with color coding
     dates.forEach(date => {
       const cell = document.createElement('td');
       const reading = byDate[date]?.[period]?.[arm];
@@ -2638,21 +2629,18 @@ function updateAnalysisTable() {
         const time = new Date(reading.timestamp).toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'});
         const sys = reading.sys, dia = reading.dia;
 
-        // Systolic color (left)
-        let sysColor = '#f0f0f0', sysText = '#000';
-        if (sys >= 180) { sysColor = '#7f1d1d'; sysText = '#fff'; }
-        else if (sys >= 140) { sysColor = '#ef4444'; sysText = '#fff'; }
-        else if (sys >= 130) { sysColor = '#f97316'; sysText = '#fff'; }
-        else if (sys >= 120) { sysColor = '#eab308'; sysText = '#000'; }
-        else { sysColor = '#22c55e'; sysText = '#fff'; }
+        // Color coding based on BP zones (AHA 2017)
+        let bgColor = '#f0f0f0', textColor = '#000';
+        if (sys >= 180 || dia >= 120) { bgColor = '#7f1d1d'; textColor = '#fff'; } // Crisis
+        else if (sys >= 140 || dia >= 90) { bgColor = '#ef4444'; textColor = '#fff'; } // Very High
+        else if (sys >= 130 || (dia >= 80 && sys >= 120)) { bgColor = '#f97316'; textColor = '#fff'; } // High: SBP 130-139 OR (DBP 80-89 with SBP 120-129)
+        else if (sys >= 120 && dia < 80) { bgColor = '#eab308'; textColor = '#000'; } // Elevated: SBP 120-129 with DBP <80
+        else { bgColor = '#22c55e'; textColor = '#fff'; } // Normal: SBP <120 AND DBP <80
 
-        // Diastolic color (right)
-        const diaColorVal = diaColor(dia);
-        const diaText = (dia < 70 || dia >= 80) ? '#fff' : '#000';
-
-        cell.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;border-radius:4px;overflow:hidden;"><div style="background:${sysColor};color:${sysText};padding:4px 2px;font-size:0.85rem;font-weight:600;text-align:center;">${sys}</div><div style="background:${diaColorVal};color:${diaText};padding:4px 2px;font-size:0.85rem;font-weight:600;text-align:center;">${dia}</div></div><div style="font-size:0.75rem;color:#666;text-align:center;margin-top:2px;">@${time}</div><div style="font-size:0.8rem;color:#666;text-align:center;font-weight:600;">♥${reading.hr || '—'}</div>`;
+        cell.innerHTML = `<div style="font-size:0.9rem;font-weight:600;color:${textColor};">${sys}/${dia}</div><div style="font-size:0.75rem;color:${textColor};opacity:0.8;">@${time}</div><div style="font-size:0.85rem;color:${textColor};font-weight:600;">♥${reading.hr || '—'}</div>`;
         cell.style.textAlign = 'center';
-        cell.style.padding = '4px 3px';
+        cell.style.padding = '6px 3px';
+        cell.style.backgroundColor = bgColor;
         cell.style.borderRadius = '4px';
         cell.style.fontWeight = '600';
       } else {
