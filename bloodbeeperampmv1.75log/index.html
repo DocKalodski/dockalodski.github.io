@@ -1351,6 +1351,8 @@ function buildRealReadings() {
     // Apr 24
     {id:6002401,timestamp:new Date(2026,3,24,8,30).toISOString(),sys:115,dia:86,hr:87,arm:'LEFT',slotId:'s1'},
     {id:6002402,timestamp:new Date(2026,3,24,8,30).toISOString(),sys:118,dia:64,hr:90,arm:'RIGHT',slotId:'s1'},
+    {id:6002403,timestamp:new Date(2026,3,24,19,0).toISOString(),sys:109,dia:76,hr:93,arm:'LEFT',slotId:'s2'},
+    {id:6002404,timestamp:new Date(2026,3,24,19,0).toISOString(),sys:115,dia:84,hr:94,arm:'RIGHT',slotId:'s2'},
     // Apr 25
     {id:6002501,timestamp:new Date(2026,3,25,9,0).toISOString(),sys:119,dia:86,hr:88,arm:'LEFT',slotId:'s1'},
     {id:6002502,timestamp:new Date(2026,3,25,9,0).toISOString(),sys:123,dia:87,hr:90,arm:'RIGHT',slotId:'s1'},
@@ -1359,6 +1361,8 @@ function buildRealReadings() {
     // Apr 26
     {id:6002601,timestamp:new Date(2026,3,26,8,30).toISOString(),sys:117,dia:83,hr:89,arm:'LEFT',slotId:'s1'},
     {id:6002602,timestamp:new Date(2026,3,26,8,30).toISOString(),sys:116,dia:85,hr:90,arm:'RIGHT',slotId:'s1'},
+    {id:6002603,timestamp:new Date(2026,3,26,23,0).toISOString(),sys:109,dia:78,hr:87,arm:'LEFT',slotId:'s2'},
+    {id:6002604,timestamp:new Date(2026,3,26,23,0).toISOString(),sys:103,dia:73,hr:87,arm:'RIGHT',slotId:'s2'},
   ];
 }
 
@@ -3124,7 +3128,7 @@ async function bbampmRenderClients() {
   populateSlotDropdown();
 
   // Auto-seed real data on first open; replace demo-only or stale real data
-  const APP_VERSION = '1.75.4';  // Update when seeding data changes
+  const APP_VERSION = '1.75.5';  // Update when seeding data changes
   const savedVersion = localStorage.getItem('bbampmampm_version');
   const readings = loadReadings();
   const isDemoOnly = readings.length > 0 && readings.every(r => r.id >= 4000000 && r.id < 5000000);
