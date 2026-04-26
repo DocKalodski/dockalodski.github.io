@@ -3123,10 +3123,17 @@ async function bbampmRenderClients() {
   document.getElementById('s-meds').value = _s.medications || '';
   populateSlotDropdown();
 
-  // Auto-seed real data on first open; replace demo-only data with real data
+  // Auto-seed real data on first open; replace demo-only or stale real data
+  const APP_VERSION = '1.75.3';  // Update when seeding data changes
+  const savedVersion = localStorage.getItem('bbampmampm_version');
   const readings = loadReadings();
   const isDemoOnly = readings.length > 0 && readings.every(r => r.id >= 4000000 && r.id < 5000000);
-  if (!readings.length || isDemoOnly) { saveReadings(buildRealReadings()); }
+  const isOutdated = savedVersion !== APP_VERSION;
+
+  if (!readings.length || isDemoOnly || isOutdated) {
+    saveReadings(buildRealReadings());
+    localStorage.setItem('bbampmampm_version', APP_VERSION);
+  }
 
   renderAll();
   checkReminders();
