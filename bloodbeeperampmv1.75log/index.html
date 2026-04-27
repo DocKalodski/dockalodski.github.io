@@ -1326,10 +1326,10 @@ function buildRealReadings() {
     {id:6001803,timestamp:new Date(2026,3,18,20,45).toISOString(),sys:123,dia:85,hr:92,arm:'LEFT',slotId:'s2'},
     {id:6001804,timestamp:new Date(2026,3,18,20,45).toISOString(),sys:114,dia:81,hr:93,arm:'RIGHT',slotId:'s2'},
     // Apr 19
-    {id:6001901,timestamp:new Date(2026,3,19,5,15).toISOString(),sys:121,dia:89,hr:88,arm:'LEFT',slotId:'s1'},
-    {id:6001902,timestamp:new Date(2026,3,19,5,15).toISOString(),sys:131,dia:93,hr:91,arm:'RIGHT',slotId:'s1'},
-    {id:6001903,timestamp:new Date(2026,3,19,21,0).toISOString(),sys:127,dia:98,hr:86,arm:'LEFT',slotId:'s2'},
-    {id:6001904,timestamp:new Date(2026,3,19,21,0).toISOString(),sys:129,dia:96,hr:87,arm:'RIGHT',slotId:'s2'},
+    {id:60191,timestamp:new Date(2026,3,19,7,0).toISOString(),sys:121,dia:89,hr:88,arm:'LEFT',slotId:'s1'},
+    {id:60192,timestamp:new Date(2026,3,19,7,0).toISOString(),sys:131,dia:93,hr:91,arm:'RIGHT',slotId:'s1'},
+    {id:60193,timestamp:new Date(2026,3,19,19,0).toISOString(),sys:127,dia:98,hr:86,arm:'LEFT',slotId:'s2'},
+    {id:60194,timestamp:new Date(2026,3,19,19,0).toISOString(),sys:129,dia:96,hr:87,arm:'RIGHT',slotId:'s2'},
     // Apr 20
     {id:6002001,timestamp:new Date(2026,3,20,8,30).toISOString(),sys:126,dia:94,hr:94,arm:'LEFT',slotId:'s1'},
     {id:6002002,timestamp:new Date(2026,3,20,8,30).toISOString(),sys:124,dia:94,hr:94,arm:'RIGHT',slotId:'s1'},
@@ -3130,7 +3130,7 @@ async function bbampmRenderClients() {
   populateSlotDropdown();
 
   // Auto-seed real data on first open; replace demo-only or stale real data
-  const APP_VERSION = '1.75.9';  // Update when seeding data changes
+  const APP_VERSION = '1.75.10';  // Update when seeding data changes
   const savedVersion = localStorage.getItem('bbampmampm_version');
   const readings = loadReadings();
   const isDemoOnly = readings.length > 0 && readings.every(r => r.id >= 4000000 && r.id < 5000000);
