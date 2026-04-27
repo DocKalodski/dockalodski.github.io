@@ -1326,8 +1326,8 @@ function buildRealReadings() {
     {id:6001803,timestamp:new Date(2026,3,18,20,45).toISOString(),sys:123,dia:85,hr:92,arm:'LEFT',slotId:'s2'},
     {id:6001804,timestamp:new Date(2026,3,18,20,45).toISOString(),sys:114,dia:81,hr:93,arm:'RIGHT',slotId:'s2'},
     // Apr 19
-    {id:6001901,timestamp:new Date(2026,3,19,5,30).toISOString(),sys:121,dia:89,hr:88,arm:'LEFT',slotId:'s1'},
-    {id:6001902,timestamp:new Date(2026,3,19,5,30).toISOString(),sys:131,dia:93,hr:91,arm:'RIGHT',slotId:'s1'},
+    {id:6001901,timestamp:new Date(2026,3,19,5,15).toISOString(),sys:121,dia:89,hr:88,arm:'LEFT',slotId:'s1'},
+    {id:6001902,timestamp:new Date(2026,3,19,5,15).toISOString(),sys:131,dia:93,hr:91,arm:'RIGHT',slotId:'s1'},
     {id:6001903,timestamp:new Date(2026,3,19,21,0).toISOString(),sys:127,dia:98,hr:86,arm:'LEFT',slotId:'s2'},
     {id:6001904,timestamp:new Date(2026,3,19,21,0).toISOString(),sys:129,dia:96,hr:87,arm:'RIGHT',slotId:'s2'},
     // Apr 20
@@ -2697,11 +2697,11 @@ function updateAnalysisTable() {
 
   // Diastolic color mapping
   const diaColor = (dia) => {
-    if (dia < 70) return '#10b981';    // very good
-    if (dia < 80) return '#84cc16';    // good
-    if (dia < 90) return '#eab308';    // elevated
-    if (dia < 100) return '#f97316';   // high
-    return '#ef4444';                  // very high
+    if (dia <= 70) return '#22c55e';   // green
+    if (dia <= 79) return '#eab308';   // yellow
+    if (dia <= 89) return '#f97316';   // orange
+    if (dia <= 99) return '#ef4444';   // red
+    return '#ef4444';                  // red (≥100)
   };
 
   readingTypes.forEach(type => {
@@ -3130,7 +3130,7 @@ async function bbampmRenderClients() {
   populateSlotDropdown();
 
   // Auto-seed real data on first open; replace demo-only or stale real data
-  const APP_VERSION = '1.75.8';  // Update when seeding data changes
+  const APP_VERSION = '1.75.9';  // Update when seeding data changes
   const savedVersion = localStorage.getItem('bbampmampm_version');
   const readings = loadReadings();
   const isDemoOnly = readings.length > 0 && readings.every(r => r.id >= 4000000 && r.id < 5000000);
