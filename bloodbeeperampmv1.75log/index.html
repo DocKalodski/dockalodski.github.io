@@ -14,7 +14,7 @@
     :root {
       --normal:   #22c55e;  --elevated: #eab308;
       --stage1:   #f97316;  --stage2:   #ef4444;
-      --crisis:   #7f1d1d;
+      --crisis:   #7f1d1d;  --black:    #1a1a1a;
       --bg:       #f8fafc;  --card:     #ffffff;
       --border:   #e2e8f0;  --text:     #1e293b;
       --muted:    #4b5563;  --accent:   #0ea5e9;
@@ -287,11 +287,12 @@
 
     /* ── Badges ───────────────────────────────── */
     .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 0.92rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-    .badge-normal   { background: #dcfce7; color: #166534; }
-    .badge-elevated { background: #fef9c3; color: #854d0e; }
-    .badge-stage1   { background: #ffedd5; color: #9a3412; }
-    .badge-stage2   { background: #fee2e2; color: #991b1b; }
-    .badge-crisis   { background: #7f1d1d; color: white; }
+    .badge-green  { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-maroon { background: #7f1d1d; color: white; }
+    .badge-black  { background: #1a1a1a; color: white; }
     .slot-pill { display: inline-block; padding: 4px 11px; border-radius: 20px; font-size: 0.88rem; background: #f1f5f9; color: var(--muted); }
 
     /* ── Reading List ─────────────────────────── */
@@ -962,11 +963,13 @@ function logoutUser() {
 
 // ── CLASSIFICATION ────────────────────────────────────────
 function classify(sys, dia) {
-  if (sys > 180 || dia > 120) return { key:'crisis',   label:'DANGER — Seek help now', cls:'badge-crisis'   };
-  if (sys >= 140 || dia >= 90) return { key:'stage2',   label:'Very High',              cls:'badge-stage2'   };
-  if (sys >= 130 || dia >= 80) return { key:'stage1',   label:'High',                   cls:'badge-stage1'   };
-  if (sys >= 120 && dia <  80) return { key:'elevated', label:'A little high',           cls:'badge-elevated' };
-  return                              { key:'normal',   label:'Normal',                 cls:'badge-normal'   };
+  if (sys > 170 || dia > 120) return { key:'black',  label:'Critical — Seek help now', cls:'badge-black'  };
+  if (sys >= 161 || dia >= 111) return { key:'black',  label:'Very Severe',            cls:'badge-black'  };
+  if (sys >= 151 || dia >= 101) return { key:'maroon', label:'Stage 3 High',           cls:'badge-maroon' };
+  if (sys >= 141 || dia >= 91)  return { key:'red',    label:'Stage 2 High',           cls:'badge-red'    };
+  if (sys >= 131 || dia >= 81)  return { key:'orange', label:'Stage 1 High',           cls:'badge-orange' };
+  if (sys >= 121 || dia >= 71)  return { key:'yellow', label:'Elevated',               cls:'badge-yellow' };
+  return                               { key:'green',  label:'Normal',                 cls:'badge-green'  };
 }
 function badgeHTML(sys, dia) { const c = classify(sys,dia); return `<span class="badge ${c.cls}">${c.label}</span>`; }
 // ── AM/PM CLASSIFICATION ──────────────────────────────────
@@ -2013,7 +2016,7 @@ function readingItemHTML(r, editingId='') {
 }
 
 // ── SHARED: reading row used in both 7-day accordion and monthly calendar ──
-const DOT_C = {normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'};
+const DOT_C = {green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',maroon:'#7f1d1d',black:'#1a1a1a'};
 const SEVERITY = {normal:0,elevated:1,stage1:2,stage2:3,crisis:4};
 
 function calRowHTML(r, panelId) {
@@ -2240,7 +2243,7 @@ function renderChart() {
   const showHr  = true;
 
   const dotColor = (sys, dia) => sys === null ? 'transparent' :
-    ({normal:'#22c55e',elevated:'#eab308',stage1:'#f97316',stage2:'#ef4444',crisis:'#7f1d1d'})[classify(sys,dia).key];
+    ({green:'#22c55e',yellow:'#eab308',orange:'#f97316',red:'#ef4444',maroon:'#7f1d1d',black:'#1a1a1a'})[classify(sys,dia).key];
 
   const datasets = [];
 
@@ -2643,11 +2646,12 @@ function renderAnalysis() {
     <!-- Legend -->
     <div class="analysis-card card" style="padding:8px 12px;margin-bottom:6px;">
       <div class="analysis-legend legend-row" style="margin:0;justify-content:center;gap:24px;flex-wrap:wrap;">
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal <120/80 (Good)</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 120–129 (Monitor)</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 130–139/80–89 (Bad)</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High ≥140/≥90 (Bad)</div>
-        <div class="zone-legend-item"><div class="zone-dot" style="background:#7f1d1d;"></div> Crisis ≥180/≥120</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#22c55e;"></div> Normal ≤120/≤70</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#eab308;"></div> Elevated 121–130/71–80</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#f97316;"></div> High 131–140/81–90</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#ef4444;"></div> Very High 141–150/91–100</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#7f1d1d;"></div> Severe 151–160/101–110</div>
+        <div class="zone-legend-item"><div class="zone-dot" style="background:#1a1a1a;"></div> Critical ≥161/≥111</div>
         <div class="zone-legend-item"><div style="font-size:1.2rem;width:10px;height:10px;display:flex;align-items:center;justify-content:center;color:#ff6b6b;">♥</div> Heart Rate (bpm)</div>
       </div>
     </div>
@@ -2697,11 +2701,12 @@ function updateAnalysisTable() {
 
   // Diastolic color mapping
   const diaColor = (dia) => {
-    if (dia <= 70) return '#22c55e';   // green
-    if (dia <= 79) return '#eab308';   // yellow
-    if (dia <= 89) return '#f97316';   // orange
-    if (dia <= 99) return '#ef4444';   // red
-    return '#ef4444';                  // red (≥100)
+    if (dia <= 70)  return '#22c55e';  // green
+    if (dia <= 80)  return '#eab308';  // yellow
+    if (dia <= 90)  return '#f97316';  // orange
+    if (dia <= 100) return '#ef4444';  // red
+    if (dia <= 110) return '#7f1d1d';  // maroon
+    return '#1a1a1a';                  // black (≥111)
   };
 
   readingTypes.forEach(type => {
@@ -2724,11 +2729,12 @@ function updateAnalysisTable() {
 
         // Systolic color (left)
         let sysColor = '#f0f0f0', sysText = '#000';
-        if (sys >= 180) { sysColor = '#7f1d1d'; sysText = '#fff'; }
-        else if (sys >= 140) { sysColor = '#ef4444'; sysText = '#fff'; }
-        else if (sys >= 130) { sysColor = '#f97316'; sysText = '#fff'; }
-        else if (sys >= 120) { sysColor = '#eab308'; sysText = '#000'; }
-        else { sysColor = '#22c55e'; sysText = '#fff'; }
+        if      (sys >= 161) { sysColor = '#1a1a1a'; sysText = '#fff'; }
+        else if (sys >= 151) { sysColor = '#7f1d1d'; sysText = '#fff'; }
+        else if (sys >= 141) { sysColor = '#ef4444'; sysText = '#fff'; }
+        else if (sys >= 131) { sysColor = '#f97316'; sysText = '#fff'; }
+        else if (sys >= 121) { sysColor = '#eab308'; sysText = '#000'; }
+        else                 { sysColor = '#22c55e'; sysText = '#fff'; }
 
         // Diastolic color (right)
         const diaColorVal = diaColor(dia);
@@ -3130,7 +3136,7 @@ async function bbampmRenderClients() {
   populateSlotDropdown();
 
   // Auto-seed real data on first open; replace demo-only or stale real data
-  const APP_VERSION = '1.75.10';  // Update when seeding data changes
+  const APP_VERSION = '1.75.11';  // Update when seeding data changes
   const savedVersion = localStorage.getItem('bbampmampm_version');
   const readings = loadReadings();
   const isDemoOnly = readings.length > 0 && readings.every(r => r.id >= 4000000 && r.id < 5000000);
